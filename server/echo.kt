@@ -28,5 +28,4 @@ fun main(args: Array<String>) {
 	
 	passcode.showPasscode()
 	server.start()
-	server.close()
 }
