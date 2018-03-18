@@ -10,12 +10,12 @@ class RandomCode {
 		return randomCode
 	}
 	
-	fun showCode(filepath: String? = null) {
-		println("RandomCode: $randomCode")
+	fun showCode(codeName:String="passcode", filepath: String? = null) {
+		println("$codeName: $randomCode")
 		filepath ?: return
 		val file = File(filepath)
 		file.createNewFile()
-		file.writeText("passcode = $randomCode")
+		file.writeText("$codeName = $randomCode")
 	}
 	
 	companion object {
