@@ -1,7 +1,7 @@
 package server
 
 val exitCode = RandomCode()
-const val port=12346
+const val port = 12346
 
 fun main(args: Array<String>) {
 	
@@ -41,7 +41,7 @@ fun main(args: Array<String>) {
 	object : Interactive(interactiveCommand) {
 		override fun run() {
 			println("server running in port $port")
-			register.server.passcode.showPasscode("passcode")
+			register.server.passcode.showPasscode(codeName = "exit code", filepath = "passcode")
 			super.run()
 		}
 	}.start()
