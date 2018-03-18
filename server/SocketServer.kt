@@ -14,13 +14,12 @@ import java.util.concurrent.Executors
  * 通过调用close()或closeServer()关闭服务器，造成的异常会被自动处理
  * cpuNumber是CPU处理器的个数
  */
-open class SocketServer(port: Int, threads: Int = 1) {
+open class SocketServer(port: Int, threads: Int = 1):Thread() {
 	var socket: Socket? = null
 	private val pool = Executors.newFixedThreadPool(threads)!!
 	private var server = ServerSocket(port)
 	
-	
-	open fun start() {
+	override fun run() {
 		while (true) {
 			try {
 				socket = server.accept()
