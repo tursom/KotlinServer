@@ -10,7 +10,7 @@ class RandomCode {
 		return randomCode
 	}
 	
-	fun showCode(codeName:String="passcode", filepath: String? = null) {
+	fun showCode(codeName: String = "passcode", filepath: String? = null) {
 		println("$codeName: $randomCode")
 		filepath ?: return
 		val file = File(filepath)
