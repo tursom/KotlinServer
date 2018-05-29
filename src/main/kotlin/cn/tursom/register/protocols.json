@@ -1,0 +1,45 @@
+{
+  "password struct": [
+    "password+time(int))",
+    "md5+id",
+    "md5"
+  ],
+  "login": {
+    "request": {
+      "request": "'id' or 'name'",
+      "id": "'user id' or '0'",
+      "name": "'user name' or ''"
+    },
+    "server": {
+      "result": "'error' or 'success'",
+      "error": "'request error' or 'cant find user'",
+      "success": {
+        "id": "user id",
+        "name": "user name",
+        "time": "time(int)",
+        "salt": "salt"
+      }
+    },
+    "request2": {
+      "request": "password"
+    },
+    "server2": {
+      "result": "'error' or 'success'",
+      "error": "'request error' or 'wrong password'",
+      "success": "key"
+    }
+  },
+  "register": {
+    "request": {
+      "request": "register",
+      "username": "name",
+      "time": "time",
+      "password": "password(salted)"
+    },
+    "server": {
+      "result": "'error' or 'success'",
+      "error": "request error",
+      "success": "user id"
+    }
+  }
+}

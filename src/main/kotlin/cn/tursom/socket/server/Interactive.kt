@@ -1,27 +1,34 @@
-package server
+package cn.tursom.socket.server
 
 open class Interactive(
 		private val command: Map<String, () -> Unit>,
 		private val indicator: String = ">>>",
 		private val cantFindCommand: String = "can't understand command") : Thread() {
+	private val input = System.`in`.bufferedReader()
 	
 	override fun run() {
 		try {
-			loop@ while (true) {
+			while (true) {
 				print(indicator)
-				val input = System.`in`.bufferedReader().readLine()
-				when (input) {
-					"" -> continue@loop
+				val command = input.readLine()
+				when (command) {
+					"" -> {
+					}
 					else -> {
-						val running = command[input]
+						val running = this.command[command]
 						if (running == null) println(cantFindCommand)
 						else running()
 					}
 				}
 			}
-		} catch (e: CloseException) {
+		} catch (e: Exception) {
+			input.close()
+			e.printStackTrace()
 		}
+		whenClose()
 	}
+	
+	open fun whenClose() {}
 	
 	class CloseException : Exception()
 }

@@ -1,10 +1,10 @@
-package server
+package cn.tursom.socket.server
 
 import java.io.File
 import java.util.*
 
 class RandomCode {
-	private val randomCode = "${Companion.randomInt(10000000, 99999999)}"
+	private val randomCode = "${randomInt(10000000, 99999999)}"
 	
 	override fun toString(): String {
 		return randomCode
