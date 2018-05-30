@@ -6,7 +6,7 @@ val exitCode = RandomCode()
 const val port = 12346
 
 fun main(args: Array<String>) {
-	object : SocketServer(port, cpuNumber * 2) {
+	object : SocketServer(port, cpuNumber * 2, startImmediately = true) {
 		override val handler: Runnable
 			get() = object : ServerHandler(socketQueue.poll()!!) {
 				override fun handle() {
@@ -14,10 +14,14 @@ fun main(args: Array<String>) {
 					var recv: ByteArray
 					var srecv = ""
 					while (srecv != exitCode.toString()) {
-						recv = recvByteArray(102400, 2, 2) ?: break
+						recv = recvByteArray(102400) ?: break
 						outputStream.write(recv)
+						if (recv.size == 102400) {
+							clean()
+						}
 						srecv = String(recv)
-						println("recv from $address: $srecv")
+//						println("recv from $address: $srecv")
+						println("recv size from $address: ${recv.size}")
 					}
 					socket.close()
 					throw object : ServerException("socket closed") {
@@ -26,7 +30,7 @@ fun main(args: Array<String>) {
 					}
 				}
 			}
-	}.start()
+	}
 	println("server running in ${InetAddress.getLocalHost().hostAddress}:$port")
 	exitCode.showCode(codeName = "exit code", filepath = "passcode")
 }

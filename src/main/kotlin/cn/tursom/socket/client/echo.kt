@@ -10,12 +10,15 @@ fun main(args: Array<String>) {
 		while (client.isConnected()) {
 			val message = bufferedReader.readLine() ?: ""
 			client.send(message)
-			val time3 = System.currentTimeMillis()
-			val recv = client.recvByteArray(102400, 2, 2)
-			val time4 = System.currentTimeMillis()
-			println("recv from server ${client.address}:${String(recv ?: "".toByteArray())}")
-			println("size: ${recv?.size}")
-			println("recv using time: ${time4 - time3}ms")
+			val timeRecvStart = System.currentTimeMillis()
+			val recv = client.recvByteArray(102400)
+			val timeRecvEnd = System.currentTimeMillis()
+			if (recv?.size == 102400) {
+				client.clean()
+			}
+//			println("recv from server ${client.address}:${String(recv ?: "".toByteArray())}")
+			println("recv size: ${recv?.size}")
+			println("recv using time: ${timeRecvEnd - timeRecvStart}ms")
 			if (message == "exit client") throw SocketClient.ClientException("we are exiting socket client")
 		}
 	}

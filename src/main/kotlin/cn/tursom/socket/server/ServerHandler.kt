@@ -1,9 +1,14 @@
 package cn.tursom.socket.server
 
+import cn.tursom.socket.client.SocketClient.Companion.defaultReadSize
+import cn.tursom.socket.client.SocketClient.Companion.defaultReadTimeout
+import cn.tursom.socket.client.SocketClient.Companion.defaultWaitTimeout
 import cn.tursom.tools.getTAG
 import org.apache.http.util.ByteArrayBuffer
 import java.lang.Thread.sleep
 import java.net.Socket
+import java.net.SocketException
+import kotlin.math.min
 
 /**
  * ServerHandler请求处理类
@@ -33,10 +38,20 @@ abstract class ServerHandler(val socket: Socket) : Runnable {
 				e.printStackTrace()
 			else
 				System.err.println("$address: ${e::class.java}: ${e.message}")
-			send(serverError)
+
+			try {
+				send(serverError)
+			} catch (e: SocketClosedException) {
+				System.err.println("$address: ${e::class.java}: ${e.message}")
+			}
+
 		} catch (e: Exception) {
 			e.printStackTrace()
-			send(serverError)
+			try {
+				send(serverError)
+			} catch (e: SocketClosedException) {
+				System.err.println("$address: ${e::class.java}: ${e.message}")
+			}
 		}
 		closeSocket()
 		println("$address: connection closed")
@@ -46,33 +61,57 @@ abstract class ServerHandler(val socket: Socket) : Runnable {
 
 	protected fun send(message: String) = send(message.toByteArray())
 	protected fun send(message: ByteArray) {
+		if (socket.isClosed) throw SocketClosedException()
 		try {
 			outputStream.write(message)
-		} catch (e: Exception) {
+		} catch (e: SocketException) {
 			e.printStackTrace()
 		}
 	}
 
-	fun recv(maxsize: Int = 102000, maxReadTime: Long = defaultMaxReadTime, maxWaitTime: Long = 100): String? {
-		return String(recvByteArray(maxsize, maxReadTime, maxWaitTime) ?: return null)
+	fun clean(blockSize: Int = defaultReadSize) {
+		try {
+			while (recvByteArraySingle(maxsize = blockSize, dataWaitTimeout = 1, readTimeout = 1)?.size ?: 0 == blockSize) {
+			}
+		} catch (e: ServerException) {
+		}
 	}
 
-	fun recvSingle(maxsize: Int, maxReadTime: Long = defaultMaxReadTime, maxWaitTime: Long = defaultMaxWaitTime): String? {
-		return String(recvByteArraySingle(maxsize, maxReadTime, maxWaitTime) ?: return null)
+	fun recv(maxsize: Int = defaultReadSize * 10,
+	         readTimeout: Long = 1,
+	         dataWaitTimeout: Long = 1,
+	         firstWaitTime: Long = defaultWaitTimeout)
+		: String? {
+		return String(recvByteArray(maxsize, readTimeout, dataWaitTimeout, firstWaitTime) ?: return null)
+	}
+
+	fun recvSingle(maxsize: Int, readTimeout: Long = defaultReadTimeout, dataWaitTimeout: Long = defaultWaitTimeout): String? {
+		return String(recvByteArraySingle(maxsize, readTimeout, dataWaitTimeout) ?: return null)
 	}
 
 	fun recvByteArray(
-			maxsize: Int = defaultReadSize * 10,
-			maxReadTime: Long = defaultMaxReadTime,
-			maxWaitTime: Long = 100)
-			: ByteArray? {
+		maxsize: Int = defaultReadSize * 10,
+		readTimeout: Long = 1,
+		dataWaitTimeout: Long = 1,
+		firstWaitTime: Long = defaultWaitTimeout)
+		: ByteArray? {
 		val byteArrayBuffer = ByteArrayBuffer(maxsize / defaultReadSize + 1)
-		var buffer = recvByteArraySingle(defaultReadSize, maxReadTime, defaultMaxWaitTime) ?: return null
+		var buffer: ByteArray
+		try {
+			buffer = recvByteArraySingle(defaultReadSize, readTimeout, firstWaitTime) ?: return null
+		} catch (e: ServerException) {
+			return null
+		}
 		byteArrayBuffer.append(buffer, 0, buffer.size)
+
 		var loopTime = 0
-		while ((buffer.size + loopTime * defaultReadSize) < maxsize && buffer.size == defaultReadSize) {
-			buffer = (recvByteArraySingle(defaultReadSize, maxReadTime, maxWaitTime)
+		while (buffer.size == defaultReadSize && (buffer.size + loopTime * defaultReadSize) < maxsize) {
+			try {
+				buffer = (recvByteArraySingle(defaultReadSize, readTimeout, dataWaitTimeout)
 					?: return byteArrayBuffer.toByteArray())
+			} catch (e: ServerException) {
+				return byteArrayBuffer.toByteArray()
+			}
 			byteArrayBuffer.append(buffer, 0, buffer.size)
 			loopTime++
 		}
@@ -80,41 +119,40 @@ abstract class ServerHandler(val socket: Socket) : Runnable {
 	}
 
 	fun recvByteArraySingle(
-			maxsize: Int,
-			maxReadTime: Long = defaultMaxReadTime,
-			maxWaitTime: Long = defaultMaxWaitTime)
-			: ByteArray? {
+		maxsize: Int,
+		readTimeout: Long = defaultReadTimeout,
+		dataWaitTimeout: Long = defaultWaitTimeout)
+		: ByteArray? {
 		if (socket.isClosed) {
-			System.err.println("socket closed")
-			return null
+			throw SocketClosedException()
 		}
 		val buffer = ByteArray(maxsize)
 		var readSize = 0
 		try {
 			//等待数据到达
-			val maxTimeOut = System.currentTimeMillis() + maxWaitTime
+			val maxTimeOut = System.currentTimeMillis() + dataWaitTimeout
 			while (inputStream.available() == 0) {
+				if (socket.isClosed) {
+					throw SocketClosedException()
+				}
 				if (System.currentTimeMillis() > maxTimeOut) {
-					System.err.println("socket out of time")
-					return null
+					throw ServerException("socket out of time")
 				} else {
-					sleep(10)
+					sleep(2)
 				}
 			}
 
 			//读取数据
 			while (readSize < maxsize) {
-				val readLength = java.lang.Math.min(
-						inputStream.available(), maxsize - readSize)
+				val readLength = min(inputStream.available(), maxsize - readSize)
 				if (readLength <= 0) {
-					sleep(maxReadTime xor 4)
 					continue
 				}
 				// can alternatively use bufferedReader, guarded by isReady():
 				val readResult = inputStream.read(buffer, readSize, readLength)
 				if (readResult == -1) break
 				readSize += readResult
-				val maxTimeMillis = System.currentTimeMillis() + maxReadTime
+				val maxTimeMillis = System.currentTimeMillis() + readTimeout
 				while (inputStream.available() == 0) {
 					if (System.currentTimeMillis() > maxTimeMillis) {
 						return buffer.copyOf(readSize)
@@ -162,8 +200,8 @@ abstract class ServerHandler(val socket: Socket) : Runnable {
 
 	companion object Companion {
 		const val defaultReadSize: Int = 10240
-		const val defaultMaxReadTime: Long = 10
-		const val defaultMaxWaitTime: Long = 3 * 60 * 1000
+		const val defaultReadTimeout: Long = 10
+		const val defaultWaitTimeout: Long = 3 * 60 * 1000
 		val TAG = getTAG(this::class.java)
 		const val debug: Boolean = true
 		val serverError = "server error".toByteArray()
