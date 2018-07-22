@@ -11,5 +11,6 @@ kotlin_server.iml
 build/
 gradle/
 KotlinServer.iml
+src/test/
 将删除 KotlinServer.iml
 将删除 src/test/
