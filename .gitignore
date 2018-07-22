@@ -10,3 +10,5 @@ kotlin_server.iml
 .gradle/
 build/
 gradle/
+KotlinServer.iml
+将删除 KotlinServer.iml

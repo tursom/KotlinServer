@@ -3,51 +3,57 @@ package cn.tursom.database.sqlite
 import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.sql.ResultSet
+import java.sql.SQLException
+import java.text.SimpleDateFormat
+import java.util.*
 
-class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
-
+/**
+ * SQLite查询结果储存类
+ */
+open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
+	
 	@Suppress("UNCHECKED_CAST")
-	fun adapt(resultSet: ResultSet) {
+	open fun adapt(resultSet: ResultSet) {
 		clear()
-		var field: Field?
+		val field: Field = Unsafe::class.java.getDeclaredField("theUnsafe")
+		field.isAccessible = true
+		val unsafe = field.get(null) as Unsafe
 		try {
-			// 取得ResultSet列名
-			val rsmd = resultSet.metaData
-			// 获取记录集中的列数
-			val counts = rsmd.columnCount
-			// 定义counts个String 变量
-			val columnNames = arrayOfNulls<String>(counts)
-			// 给每个变量赋值(字段名称全部转换成小写)
-			for (i in 0 until counts) {
-				columnNames[i] = rsmd.getColumnLabel(i + 1).toLowerCase()
-			}
 			// 遍历ResultSet
 			while (resultSet.next()) {
 				//绕过构造函数获取变量
-				field = Unsafe::class.java.getDeclaredField("theUnsafe")
-				field.isAccessible = true
-				val unsafe = field.get(null) as Unsafe
-
 				val t = unsafe.allocateInstance(clazz) as T
-				// 反射, 从ResultSet绑定到JavaBean
-				for (i in 0 until counts) {
-					// 设置参数类型，此类型应该跟javaBean 里边的类型一样，而不是取数据库里边的类型
-					field = clazz.getDeclaredField(columnNames[i])
-					field.isAccessible = true
+				
+				clazz.declaredFields.forEach {
+					it.isAccessible = true
 					// 这里是获取bean属性的类型
-					val beanType = field!!.type
+					val beanType = it.type
 					// 根据 rs 列名 ，组装javaBean里边的其中一个set方法，object 就是数据库第一行第一列的数据了
-					var value: Any? = resultSet.getObject(columnNames[i])
-					if (value != null) {
-						// 这里是获取数据库字段的类型
-						val dbType = value.javaClass
-						// 处理日期类型不匹配问题
-						if (dbType == java.sql.Timestamp::class.java && beanType == java.util.Date::class.java) {
-							value = java.util.Date(
-									(value as java.sql.Timestamp).time)
+					var value: Any?
+					try {
+						value = resultSet.getObject(it.name)
+					} catch (e: SQLException) {
+						if (e.message == "no such column: '${it.name}'") {
+							return@forEach
+						} else {
+							e.printStackTrace()
+							return@forEach
 						}
 					}
-					field.set(t, value)
+					if (value != null) {
+						val dbType = value.javaClass // 这里是获取数据库字段的类型
+						if (beanType == java.util.Date::class.java) {
+							// 处理日期类型不匹配问题
+							if (dbType == java.sql.Timestamp::class.java) {
+								value = java.util.Date((value as java.sql.Timestamp).time)
+							} else if (dbType == String::class.java) {
+								value = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S").parse(value as String)
+							}
+						} else if (beanType == java.lang.Float::class.java && dbType == java.lang.Double::class.java) {
+							value = (value as Double).toFloat()
+						}
+					}
+					it.set(t, value)
 				}
 				add(t)
 			}

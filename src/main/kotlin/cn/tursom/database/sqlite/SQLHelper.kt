@@ -1,84 +1,183 @@
 package cn.tursom.database.sqlite
 
+import org.sqlite.SQLiteException
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
+import java.util.*
+import java.util.logging.Logger
+import kotlin.collections.ArrayList
 
-/*
+
+/**
  * SQLHelper，SQLite辅助使用类
  * 实现创建表格、查询、插入和更新功能
  */
-class SQLHelper(private val connection: Connection) {
+
+class SQLHelper
+/**
+ * 创建名为 base.db 的数据库连接
+ */
+(val base: String) {
+	private val connection: Connection
+	
 	init {
-		connection.autoCommit = false
+		if (base in connectionMap) {
+			connection = connectionMap[base]!!
+		} else {
+			connection = DriverManager.getConnection("jdbc:sqlite:$base.db") ?: throw CantConnectDataBase()
+			connectionMap[base] = connection
+			connection.autoCommit = false
+		}
 	}
 	
-	constructor(base: String)
-			: this(DriverManager.getConnection("jdbc:sqlite:$base") ?: throw CantConnectDataBase())
-	
-	/*
+	/**
 	 * 创建表格
-	 * table: 表格名
-	 * keys: 属性列表
+	 * @param table: 表格名
+	 * @param keys: 属性列表
 	 */
-	fun createTable(table: String, keys: Array<String>) {
+	fun createTable(table: String, vararg keys: String) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("CREATE TABLE if not exists $table (${toColumn(keys)})")
 		commit()
 	}
 	
-	/*
-	 * 查询
-	 * adapter: 用于保存查询结果的数据类，由SQLAdapter继承而来
-	 * table: 表名
-	 * name: 查询字段
-	 * where: 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
-	 */
-	fun <T:Any> select(
-			adapter: SQLAdapter<T>, table: String,
-			name: Array<String> = arrayOf("*"), where: Array<Pair<String, String>>) {
-		select(adapter, table, toColumn(name), toWhere(where))
+	
+	fun <T> createTable(table: String, keys: Class<T>) {
+		val statement = connection.createStatement()
+		val keysArray = ArrayList<String>()
+		keys.declaredFields.forEach {
+			keysArray.add("${it.name} ${it.type.toString().split(".").last().toUpperCase()}")
+		}
+		statement.executeUpdate("CREATE TABLE if not exists \"$table\" (${toColumn(keysArray)})")
+		commit()
 	}
 	
-	fun <T:Any> select(
-			adapter: SQLAdapter<T>, table: String,
-			name: String = "*", where: String? = null
+	fun deleteTable(table: String) {
+		val statement = connection.createStatement()
+		statement.executeUpdate("DROP TABLE if exists $table")
+		commit()
+	}
+	
+	fun dropTable(table: String) {
+		deleteTable(table)
+	}
+	
+	/**
+	 * 查询
+	 * @param adapter: 用于保存查询结果的数据类，由SQLAdapter继承而来
+	 * @param table: 表名
+	 * @param name: 查询字段
+	 * @param where: 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
+	 */
+	fun <T : Any> select(
+		adapter: SQLAdapter<T>, table: String,
+		name: Array<String> = arrayOf("*"), where: Map<String, String>? = null, maxCount: Int? = null) {
+		if (where != null) {
+			select(adapter, table, toColumn(name), toWhere(where), maxCount)
+		} else {
+			select(adapter, table, toColumn(name), maxCount = maxCount)
+		}
+	}
+	
+	private fun <T : Any> select(
+		adapter: SQLAdapter<T>, table: String, name: String = "*", where: String? = null, maxCount: Int? = null
 	) {
 		val statement = connection.createStatement()
 		adapter.adapt(
-				if (where == null)
-					statement.executeQuery("SELECT $name FROM $table ;")
-				else
-					statement.executeQuery("SELECT $name FROM $table WHERE $where;")
+			if (where == null)
+				statement.executeQuery("SELECT $name FROM $table limit 0,${maxCount ?: Int.MAX_VALUE};")
+			else
+				statement.executeQuery("SELECT $name FROM $table WHERE $where limit 0,${maxCount ?: Int.MAX_VALUE};")
 		)
 		statement.closeOnCompletion()
 	}
 	
-	/*
+	fun <T : Any> reverseSelect(
+		adapter: SQLAdapter<T>, table: String,
+		name: Array<String> = arrayOf("*"), where: Map<String, String>? = null, index: String, maxCount: Int? = null) {
+		if (where != null) {
+			reverseSelect(adapter, table, toColumn(name), toWhere(where), index, maxCount)
+		} else {
+			reverseSelect(adapter, table, toColumn(name), index = index, maxCount = maxCount)
+		}
+	}
+	
+	private fun <T : Any> reverseSelect(
+		adapter: SQLAdapter<T>, table: String, name: String = "*", where: String? = null, index: String, maxCount: Int? = null
+	) {
+		val statement = connection.createStatement()
+		adapter.adapt(
+			if (where == null)
+				statement.executeQuery("SELECT $name FROM $table ORDER BY $index DESC limit 0,${maxCount ?: Int.MAX_VALUE};")
+			else
+				statement.executeQuery("SELECT $name FROM $table WHERE $where ORDER BY $index DESC limit 0,${maxCount
+					?: Int.MAX_VALUE};")
+		)
+		statement.closeOnCompletion()
+	}
+	
+	/**
 	 * 插入
-	 * table: 表名
-	 * column:
+	 * @param table: 表名
+	 * @param column:
 	 */
-	fun insert(table: String, column: Array<Pair<String, String>>) {
+	fun <T : Any> insert(table: String, value: T) {
+		val valueMap = HashMap<String, String>()
+		value.javaClass.declaredFields.forEach {
+			if (it.type == java.util.Date::class.java) {
+				valueMap[it.name] = java.sql.Timestamp((getFieldValueByName(it.name, value) as java.util.Date).time).toString()
+			} else {
+				valueMap[it.name] = getFieldValueByName(it.name, value).toString()
+			}
+		}
+		try {
+			insert(table, valueMap)
+		} catch (e: SQLiteException) {
+			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
+				createTable(table, value.javaClass)
+				insert(table, valueMap)
+			} else {
+				e.printStackTrace()
+			}
+		}
+	}
+	
+	private fun insert(table: String, column: Map<String, String>) {
 		val columns = toKeys(column)
 		insert(table, columns.first, columns.second)
 	}
 	
-	fun insert(table: String, column: String, values: String) {
+	private fun insert(table: String, column: String, values: String) {
 		val statement = connection.createStatement()
-		statement.executeUpdate("INSERT INTO $table ($column) VALUES ($values)")
+		val sql = "INSERT INTO $table ($column) VALUES ($values)"
+		statement.executeUpdate(sql)
 		commit()
 		statement.closeOnCompletion()
 	}
 	
-	fun update(
-			table: String,
-			set: Array<Pair<String, String>> = arrayOf(),
-			where: Array<Pair<String, String>> = arrayOf()) {
+	private fun update(
+		table: String,
+		set: Map<String, String> = mapOf(),
+		where: Map<String, String> = mapOf()) {
 		val statement = connection.createStatement()
-		statement.executeUpdate("UPDATE $table SET ${toWhere(set)} WHERE ${toWhere(where)};")
+		statement.executeUpdate("UPDATE $table SET ${toValue(set)} WHERE ${toWhere(where)};")
 		commit()
 		statement.closeOnCompletion()
+	}
+	
+	fun <T : Any> update(
+		table: String, value: T, where: Map<String, String>
+	) {
+		val set = HashMap<String, String>()
+		value.javaClass.declaredFields.forEach {
+			if (it.type == java.util.Date::class.java) {
+				set[it.name] = java.sql.Timestamp((getFieldValueByName(it.name, value) as java.util.Date).time).toString()
+			} else {
+				set[it.name] = getFieldValueByName(it.name, value).toString()
+			}
+		}
+		update(table, set, where)
 	}
 	
 	private fun commit() {
@@ -87,13 +186,17 @@ class SQLHelper(private val connection: Connection) {
 		}
 	}
 	
-	private fun toKeys(columns: Array<Pair<String, String>>): Pair<String, String> {
-		val column = StringBuffer()
-		val value = StringBuffer()
+	fun close() {
+		connection.close()
+	}
+	
+	private fun toKeys(columns: Map<String, String>): Pair<String, String> {
+		val column = StringBuilder()
+		val value = StringBuilder()
 		columns.forEach {
-			if (it.first.isNotEmpty() && it.second.isNotEmpty()) {
-				column.append("${it.first},")
-				value.append("\"${it.second}\",")
+			if (it.key.isNotEmpty() && it.value.isNotEmpty()) {
+				column.append("${it.key},")
+				value.append("'${it.value.replace("'", "''")}',")
 			}
 		}
 		column.delete(column.length - 1, column.length)
@@ -101,26 +204,69 @@ class SQLHelper(private val connection: Connection) {
 		return Pair(column.toString(), value.toString())
 	}
 	
-	private fun toColumn(column: Array<String>): String {
-		val stringBuffer = StringBuffer()
+	private fun toColumn(column: Array<out String>): String {
+		val stringBuilder = StringBuilder()
 		column.forEach {
 			if (it.isNotEmpty())
-				stringBuffer.append("$it,")
+				stringBuilder.append("$it,")
 		}
-		stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
-		return stringBuffer.toString()
+		stringBuilder.delete(stringBuilder.length - 1, stringBuilder.length)
+		return stringBuilder.toString()
 	}
 	
-	private fun toWhere(where: Array<Pair<String, String>>): String {
-		val stringBuffer = StringBuffer()
-		where.forEach {
-			if (it.first.isNotEmpty() && it.second.isNotEmpty())
-				stringBuffer.append("${it.first}=\"${it.second}\" AND ")
+	private fun toColumn(column: ArrayList<out String>): String {
+		val stringBuilder = StringBuilder()
+		column.forEach {
+			if (it.isNotEmpty())
+				stringBuilder.append("$it,")
 		}
-		if (stringBuffer.isNotEmpty())
-			stringBuffer.delete(stringBuffer.length - 5, stringBuffer.length)
-		return stringBuffer.toString()
+		stringBuilder.delete(stringBuilder.length - 1, stringBuilder.length)
+		return stringBuilder.toString()
+	}
+	
+	private fun toValue(where: Map<String, String>): String {
+		val stringBuilder = StringBuilder()
+		where.forEach {
+			if (it.key.isNotEmpty() && it.value.isNotEmpty())
+				stringBuilder.append("${it.key}='${it.value.replace("'", "''")}',")
+		}
+		if (stringBuilder.isNotEmpty())
+			stringBuilder.delete(stringBuilder.length - 1, stringBuilder.length)
+		return stringBuilder.toString()
+	}
+	
+	private fun toWhere(where: Map<String, String>): String {
+		val stringBuilder = StringBuilder()
+		where.forEach {
+			if (it.key.isNotEmpty() && it.value.isNotEmpty())
+				stringBuilder.append("${it.key}='${it.value.replace("'", "''")}' AND ")
+		}
+		if (stringBuilder.isNotEmpty())
+			stringBuilder.delete(stringBuilder.length - 5, stringBuilder.length)
+		return stringBuilder.toString()
+	}
+	
+	/**
+	 * 根据属性名获取属性值
+	 */
+	private fun getFieldValueByName(fieldName: String, o: Any): Any? {
+		return try {
+			val firstLetter = fieldName.substring(0, 1).toUpperCase()
+			val getter = "get" + firstLetter + fieldName.substring(1)
+			val method = o.javaClass.getMethod(getter)
+			method.invoke(o)
+		} catch (e: Exception) {
+			e.printStackTrace()
+			logger.warning("${e.message}: $fieldName")
+			null
+		}
+		
 	}
 	
 	class CantConnectDataBase(s: String? = null) : SQLException(s)
+	
+	companion object {
+		private val logger = Logger.getLogger("sqlite")!!
+		private val connectionMap = HashMap<String, Connection>()
+	}
 }
