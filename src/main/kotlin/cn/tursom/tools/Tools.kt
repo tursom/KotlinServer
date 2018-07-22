@@ -32,58 +32,53 @@ import java.util.*
 
 val cpuNumber = Runtime.getRuntime().availableProcessors()
 
-fun md5(content: String): String {
-	try {
+fun md5(content: ByteArray): ByteArray? {
+	return try {
 		//获取md5加密对象
 		val instance = MessageDigest.getInstance("MD5")
-		//对字符串加密，返回字节数组
-		val digest = instance.digest(content.toByteArray())
-		val sb = StringBuffer()
-		for (b in digest) {
-			//获取低八位有效值
-			val i: Int = b.toInt() and 0xff
-			//将整数转化为16进制
-			var hexString = Integer.toHexString(i)
-			if (hexString.length < 2) {
-				//如果是一位的话，补0
-				hexString = "0$hexString"
-			}
-			sb.append(hexString)
-		}
-		return sb.toString()
-		
+		//加密，返回字节数组
+		instance.digest(content)
 	} catch (e: NoSuchAlgorithmException) {
 		e.printStackTrace()
+		null
 	}
-	
-	return ""
+}
+
+fun MD5(content: String): String? {
+	return byteArrayToHexString(md5(content.toByteArray()))
+}
+
+fun sha256(content: ByteArray): ByteArray? {
+	return try {
+		//获取md5加密对象
+		val instance = MessageDigest.getInstance("SHA-256")
+		//加密，返回字节数组
+		instance.digest(content)
+	} catch (e: NoSuchAlgorithmException) {
+		e.printStackTrace()
+		null
+	}
 }
 
 fun sha256(content: String): String? {
-	try {
-		//获取md5加密对象
-		val instance = MessageDigest.getInstance("SHA-256")
-		//对字符串加密，返回字节数组
-		val digest = instance.digest(content.toByteArray())
-		val sb = StringBuffer()
-		for (b in digest) {
-			//获取低八位有效值+
-			val i: Int = b.toInt() and 0xff
-			//将整数转化为16进制
-			var hexString = Integer.toHexString(i)
-			if (hexString.length < 2) {
-				//如果是一位的话，补0
-				hexString = "0$hexString"
-			}
-			sb.append(hexString)
+	return byteArrayToHexString(sha256(content.toByteArray()))
+}
+
+fun byteArrayToHexString(array: ByteArray?): String? {
+	array ?: return null
+	val sb = StringBuilder()
+	array.forEach {
+		//获取低八位有效值+
+		val i: Int = it.toInt() and 0xff
+		//将整数转化为16进制
+		var hexString = Integer.toHexString(i)
+		if (hexString.length < 2) {
+			//如果是一位的话，补0
+			hexString = "0$hexString"
 		}
-		return sb.toString()
-		
-	} catch (e: NoSuchAlgorithmException) {
-		e.printStackTrace()
+		sb.append(hexString)
 	}
-	
-	return null
+	return sb.toString()
 }
 
 fun randomInt(min: Int, max: Int) = Random().nextInt(max) % (max - min + 1) + min
