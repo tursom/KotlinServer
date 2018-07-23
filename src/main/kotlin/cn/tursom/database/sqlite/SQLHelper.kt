@@ -36,12 +36,11 @@ class SQLHelper
 	 * @param table: 表格名
 	 * @param keys: 属性列表
 	 */
-	fun createTable(table: String, vararg keys: String) {
+	private fun createTable(table: String, keys: Array<String>) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("CREATE TABLE if not exists $table (${toColumn(keys)})")
 		commit()
 	}
-	
 	
 	fun <T> createTable(table: String, keys: Class<T>) {
 		val statement = connection.createStatement()
@@ -49,8 +48,7 @@ class SQLHelper
 		keys.declaredFields.forEach {
 			keysArray.add("${it.name} ${it.type.toString().split(".").last().toUpperCase()}")
 		}
-		statement.executeUpdate("CREATE TABLE if not exists \"$table\" (${toColumn(keysArray)})")
-		commit()
+		createTable(table, keysArray.toTypedArray())
 	}
 	
 	fun deleteTable(table: String) {
