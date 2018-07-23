@@ -1,12 +1,11 @@
 package cn.tursom.database.mysql
 
-import com.sun.xml.internal.fastinfoset.alphabet.BuiltInRestrictedAlphabets.table
 import java.sql.Connection
 import java.sql.DriverManager
-import java.sql.SQLException
-import java.sql.Timestamp
 import java.util.*
 import kotlin.collections.ArrayList
+import java.text.SimpleDateFormat
+import java.text.DateFormat
 
 
 /*
@@ -118,6 +117,7 @@ class SQLHelper(val connection: Connection) {
 			column.append("${it.name},")
 			values.append(when (it.type) {
 				String::class.java -> "'${getFieldValueByName(it.name, value).toString().replace("'", "''")}'"
+				Date::class.java -> "'${dateFoemat.format(getFieldValueByName(it.name, value) as Date)}'"
 				else -> getFieldValueByName(it.name, value).toString()
 			})
 			values.append(',')
@@ -134,7 +134,6 @@ class SQLHelper(val connection: Connection) {
 		set: String,
 		where: String) {
 		val statement = connection.createStatement()
-		println(set)
 		statement.executeUpdate("UPDATE $table SET $set WHERE $where;")
 		connection.commit()
 		statement.closeOnCompletion()
@@ -149,26 +148,122 @@ class SQLHelper(val connection: Connection) {
 	fun <T : Any> update(table: String, value: T, where: Array<String>) {
 		val sb = StringBuilder()
 		value.javaClass.declaredFields.forEach {
-			if (it.type == String::class.java) {
-				sb.append("${it.name}='${getFieldValueByName(it.name, value).toString().replace("'", "''")}' AND ")
-			} else {
-				sb.append("${it.name}=${getFieldValueByName(it.name, value).toString()} AND ")
-			}
+			sb.append(it.name)
+			sb.append("=")
+			sb.append(when (it.type) {
+				String::class.java -> "'${getFieldValueByName(it.name, value).toString().replace("'", "''")}'"
+				Date::class.java -> "'${dateFoemat.format(getFieldValueByName(it.name, value) as Date)}'"
+				else -> getFieldValueByName(it.name, value).toString()
+			})
+			sb.append(",")
 		}
 		if (sb.isNotEmpty())
-			sb.delete(sb.length - 5, sb.length)
+			sb.delete(sb.length - 1, sb.length)
 		update(table, sb.toString(), toWhere(where))
 	}
 	
 	/**
 	 * 同上，但是where限定为=
 	 */
-	fun <T : Any> update(table: String, value: T, where: Map<String, String>) {
+	fun <T : Any> update(table: String, value: T, where: Map<String, Any>) {
 		val whereArray = ArrayList<String>()
 		where.forEach {
-			whereArray.add("${it.key}=\"${it.value}\"")
+			when (it.value.javaClass) {
+				String::class.java ->
+					whereArray.add("${it.key}='${it.value.toString().replace("'", "''")}'")
+				else ->
+					whereArray.add("${it.key}=${it.value}")
+			}
 		}
 		update(table, value, whereArray.toTypedArray())
+	}
+	
+	fun delete(table: String, where: String?) {
+		val statement = connection.createStatement()
+		if (where == null) {
+			statement.executeUpdate("DELETE FROM `$table`;")
+		} else {
+			statement.executeUpdate("DELETE FROM `$table` WHERE $where;")
+		}
+		connection.commit()
+		statement.closeOnCompletion()
+	}
+	
+	fun delete(table: String, where: Map<String, Any>) {
+		val whereArray = StringBuilder()
+		where.forEach {
+			when (it.value.javaClass) {
+				String::class.java ->
+					whereArray.append("${it.key}='${it.value.toString().replace("'", "''")}',")
+				else ->
+					whereArray.append("${it.key}=${it.value},")
+			}
+		}
+		if (whereArray.isNotEmpty())
+			whereArray.delete(whereArray.length - 1, whereArray.length)
+		delete(table, whereArray.toString())
+	}
+	
+	fun <T : Any> insertArray(table: String, values: Array<T>) {
+		val statement = connection.createStatement()
+		
+		values.forEach { valueObject ->
+			val valueMap = HashMap<String, String>()
+			valueObject.javaClass.declaredFields.forEach {
+				if (it.type == Date::class.java) {
+					valueMap[it.name] = java.sql.Date((getFieldValueByName(it.name, valueObject) as Date).time).toString()
+				} else
+					valueMap[it.name] = getFieldValueByName(it.name, valueObject).toString()
+			}
+			
+			val column = StringBuilder()
+			val value = StringBuilder()
+			valueObject.javaClass.declaredFields.forEach {
+				column.append("${it.name},")
+				value.append(when (it.type) {
+					String::class.java -> "'${getFieldValueByName(it.name, valueObject).toString().replace("'", "''")}'"
+					Date::class.java -> "'${dateFoemat.format(getFieldValueByName(it.name, valueObject) as Date)}'"
+					else -> getFieldValueByName(it.name, valueObject).toString()
+				})
+				value.append(',')
+			}
+			if (column.isNotEmpty())
+				column.delete(column.length - 1, column.length)
+			if (value.isNotEmpty())
+				value.delete(value.length - 1, value.length)
+			statement.executeUpdate("INSERT INTO $table ($column) VALUES ($value);")
+		}
+		
+		connection.commit()
+		statement.closeOnCompletion()
+	}
+	
+	/**
+	 * 更新数据库数据
+	 * @param table 表名
+	 * @param values 用来存储数据的bean对象与限定条件
+	 */
+	fun <T : Any> updateArray(table: String, values: Array<Pair<T, Array<String>>>) {
+		val statement = connection.createStatement()
+		values.forEach {
+			val sb = StringBuilder()
+			val value = it.first
+			value.javaClass.declaredFields.forEach {
+				sb.append(it.name)
+				sb.append("=")
+				sb.append(when (it.type) {
+					String::class.java -> "'${getFieldValueByName(it.name, value).toString().replace("'", "''")}'"
+					Date::class.java -> "'${dateFoemat.format(getFieldValueByName(it.name, value) as Date)}'"
+					else -> getFieldValueByName(it.name, value).toString()
+				})
+				sb.append(",")
+			}
+			if (sb.isNotEmpty())
+				sb.delete(sb.length - 1, sb.length)
+			statement.executeUpdate("UPDATE $table SET $sb WHERE ${toWhere(it.second)};")
+		}
+		connection.commit()
+		statement.closeOnCompletion()
 	}
 	
 	private fun toKeys(columns: Map<String, String>): Pair<String, String> {
@@ -177,7 +272,7 @@ class SQLHelper(val connection: Connection) {
 		columns.forEach {
 			if (it.key.isNotEmpty() && it.value.isNotEmpty()) {
 				column.append("${it.key},")
-				value.append("\"${it.value}\",")
+				value.append("'${it.value.replace("'", "''")}',")
 			}
 		}
 		column.delete(column.length - 1, column.length)
@@ -199,10 +294,10 @@ class SQLHelper(val connection: Connection) {
 		val stringBuffer = StringBuffer()
 		where.forEach {
 			if (it.key.isNotEmpty() && it.value.isNotEmpty())
-				stringBuffer.append("${it.key}='${it.value.replace("'", "''")}' AND ")
+				stringBuffer.append("${it.key}='${it.value.replace("'", "''")}',")
 		}
 		if (stringBuffer.isNotEmpty())
-			stringBuffer.delete(stringBuffer.length - 5, stringBuffer.length)
+			stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
 		return stringBuffer.toString()
 	}
 	
@@ -210,10 +305,10 @@ class SQLHelper(val connection: Connection) {
 		val stringBuffer = StringBuffer()
 		where.forEach {
 			if (it.isNotEmpty())
-				stringBuffer.append("$it AND ")
+				stringBuffer.append("$it,")
 		}
 		if (stringBuffer.isNotEmpty())
-			stringBuffer.delete(stringBuffer.length - 5, stringBuffer.length)
+			stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
 		return stringBuffer.toString()
 	}
 	
@@ -245,6 +340,8 @@ class SQLHelper(val connection: Connection) {
 		init {
 			Class.forName("com.mysql.cj.jdbc.Driver")
 		}
+		
+		var dateFoemat: DateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 		
 		val typeMap = mapOf(
 			Pair(Char::class.java, "TINYINT"),

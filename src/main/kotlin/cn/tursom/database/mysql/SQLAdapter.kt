@@ -1,11 +1,10 @@
 package cn.tursom.database.mysql
 
+import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.sql.ResultSet
-import sun.misc.Unsafe
 import java.sql.SQLException
-import java.text.SimpleDateFormat
-import java.util.ArrayList
+import java.util.*
 
 @Suppress("UNCHECKED_CAST")
 open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
@@ -39,15 +38,16 @@ open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
 					}
 					if (value != null) {
 						val dbType = value.javaClass // 这里是获取数据库字段的类型
-						if (beanType == java.util.Date::class.java) {
-							// 处理日期类型不匹配问题
-							if (dbType == java.sql.Timestamp::class.java) {
-								value = java.util.Date((value as java.sql.Timestamp).time)
-							} else if (dbType == String::class.java) {
-								value = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S").parse(value as String)
-							}
-						} else if (beanType == java.lang.Float::class.java && dbType == java.lang.Double::class.java) {
-							value = (value as Double).toFloat()
+						//处理类型不匹配问题
+						when (beanType) {
+//							java.util.Date::class.java ->
+//								when (dbType) {
+//									String::class.java -> value = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S").parse(value as String)
+//								}
+							java.lang.Float::class.java ->
+								if (dbType == java.lang.Double::class.java)
+									value = (value as Double).toFloat()
+							SQLHelper.SQLCommand::class.java -> value = SQLHelper.SQLCommand(value.toString())
 						}
 					}
 					it.set(t, value)
