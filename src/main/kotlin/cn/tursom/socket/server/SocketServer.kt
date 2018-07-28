@@ -27,7 +27,7 @@ open class SocketServer(
 		timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
 		startImmediately: Boolean = false) : Thread() {
 
-	val socketQueue: Queue<Socket> = LinkedList<Socket>()
+	var socket = Socket()
 	private val pool = ThreadPoolExecutor(threads, threads, timeout, timeUnit, LinkedBlockingQueue(queueSize))
 	private var serverSocket: ServerSocket = ServerSocket(port)
 
@@ -52,11 +52,9 @@ open class SocketServer(
 	 * 自动关闭套接字服务器与线程池
 	 */
 	override fun run() {
-		var socket = Socket()
 		while (!serverSocket.isClosed) {
 			try {
 				socket = serverSocket.accept()
-				socketQueue.offer(socket)
 				println("$TAG: run(): get connect: $socket")
 				pool.execute(handler)
 			} catch (e: IOException) {
@@ -86,7 +84,7 @@ open class SocketServer(
 	 */
 	open val handler: Runnable
 		get() = Runnable {
-			socketQueue.poll()?.close()
+			socket.close()
 		}
 
 	fun closeServer() {

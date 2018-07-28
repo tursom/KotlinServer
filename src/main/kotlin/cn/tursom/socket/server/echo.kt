@@ -1,5 +1,6 @@
 package cn.tursom.socket.server
 
+import cn.tursom.socket.utils.RandomCode
 import java.net.InetAddress
 
 val exitCode = RandomCode()
@@ -8,19 +9,17 @@ const val port = 12346
 fun main(args: Array<String>) {
 	object : SocketServer(port, cpuNumber * 2, startImmediately = true) {
 		override val handler: Runnable
-			get() = object : ServerHandler(socketQueue.poll()!!) {
+			get() = object : ServerHandler(socket) {
 				override fun handle() {
 					println("connection from $address, local port=$localport")
-					var recv: ByteArray
-					var srecv = ""
-					while (srecv != exitCode.toString()) {
+					var recv = ByteArray(0)
+					while (String(recv) != exitCode.toString()) {
 						recv = recvByteArray(102400) ?: break
 						outputStream.write(recv)
 						if (recv.size == 102400) {
 							clean()
 						}
-						srecv = String(recv)
-//						println("recv from $address: $srecv")
+						send(recv)
 						println("recv size from $address: ${recv.size}")
 					}
 					socket.close()

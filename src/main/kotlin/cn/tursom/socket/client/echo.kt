@@ -1,5 +1,7 @@
 package cn.tursom.socket.client
 
+import java.net.SocketException
+
 const val localhost = "127.0.0.1"
 const val localport = 12346
 
@@ -19,7 +21,7 @@ fun main(args: Array<String>) {
 //			println("recv from server ${client.address}:${String(recv ?: "".toByteArray())}")
 			println("recv size: ${recv?.size}")
 			println("recv using time: ${timeRecvEnd - timeRecvStart}ms")
-			if (message == "exit client") throw SocketClient.ClientException("we are exiting socket client")
+			if (message == "exit client") throw SocketException("we are exiting socket client")
 		}
 	}
 }

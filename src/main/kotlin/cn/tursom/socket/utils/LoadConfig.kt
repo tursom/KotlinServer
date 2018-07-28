@@ -1,4 +1,4 @@
-package cn.tursom.socket.server
+package cn.tursom.socket.utils
 
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException

@@ -1,4 +1,4 @@
-package cn.tursom.socket.server
+package cn.tursom.socket.utils
 
 open class Interactive(
 		private val command: Map<String, () -> Unit>,

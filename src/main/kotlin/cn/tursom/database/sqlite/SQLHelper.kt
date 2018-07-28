@@ -25,7 +25,7 @@ class SQLHelper
 		if (base in connectionMap) {
 			connection = connectionMap[base]!!
 		} else {
-			connection = DriverManager.getConnection("jdbc:sqlite:$base.db") ?: throw CantConnectDataBase()
+			connection = DriverManager.getConnection("jdbc:sqlite:$base") ?: throw CantConnectDataBase()
 			connectionMap[base] = connection
 			connection.autoCommit = false
 		}
@@ -70,7 +70,7 @@ class SQLHelper
 	 */
 	fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String,
-		name: Array<String> = arrayOf("*"), where: Map<String, String>? = null, maxCount: Int? = null) {
+		name: Array<String> = arrayOf("*"), where: Map<String, String>, maxCount: Int? = null) {
 		if (where != null) {
 			select(adapter, table, toColumn(name), toWhere(where), maxCount)
 		} else {
@@ -78,16 +78,26 @@ class SQLHelper
 		}
 	}
 	
+	fun <T : Any> select(
+		adapter: SQLAdapter<T>, table: String,
+		name: Array<String> = arrayOf("*"), where: Pair<String, String>, maxCount: Int? = null) {
+		select(adapter, table, name, mapOf(where), maxCount)
+	}
+	
 	private fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String, name: String = "*", where: String? = null, maxCount: Int? = null
 	) {
 		val statement = connection.createStatement()
-		adapter.adapt(
-			if (where == null)
-				statement.executeQuery("SELECT $name FROM $table limit 0,${maxCount ?: Int.MAX_VALUE};")
-			else
-				statement.executeQuery("SELECT $name FROM $table WHERE $where limit 0,${maxCount ?: Int.MAX_VALUE};")
-		)
+		try {
+			adapter.adapt(
+				if (where == null)
+					statement.executeQuery("SELECT $name FROM $table limit 0,${maxCount ?: Int.MAX_VALUE};")
+				else
+					statement.executeQuery("SELECT $name FROM $table WHERE $where limit 0,${maxCount ?: Int.MAX_VALUE};")
+			)
+		} catch (e: SQLiteException) {
+			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") throw e
+		}
 		statement.closeOnCompletion()
 	}
 	
@@ -101,24 +111,34 @@ class SQLHelper
 		}
 	}
 	
+	fun <T : Any> reverseSelect(
+		adapter: SQLAdapter<T>, table: String,
+		name: Array<String> = arrayOf("*"), where: Pair<String, String>, index: String, maxCount: Int? = null) {
+		reverseSelect(adapter, table, name, mapOf(where), index, maxCount)
+	}
+	
 	private fun <T : Any> reverseSelect(
 		adapter: SQLAdapter<T>, table: String, name: String = "*", where: String? = null, index: String, maxCount: Int? = null
 	) {
 		val statement = connection.createStatement()
-		adapter.adapt(
-			if (where == null)
-				statement.executeQuery("SELECT $name FROM $table ORDER BY $index DESC limit 0,${maxCount ?: Int.MAX_VALUE};")
-			else
-				statement.executeQuery("SELECT $name FROM $table WHERE $where ORDER BY $index DESC limit 0,${maxCount
-					?: Int.MAX_VALUE};")
-		)
+		try {
+			adapter.adapt(
+				if (where == null)
+					statement.executeQuery("SELECT $name FROM $table ORDER BY $index DESC limit 0,${maxCount ?: Int.MAX_VALUE};")
+				else
+					statement.executeQuery("SELECT $name FROM $table WHERE $where ORDER BY $index DESC limit 0,${maxCount
+						?: Int.MAX_VALUE};")
+			)
+		} catch (e: SQLiteException) {
+			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") throw e
+		}
 		statement.closeOnCompletion()
 	}
 	
 	/**
 	 * 插入
-	 * @param table: 表名
-	 * @param column:
+	 * @param table 表名
+	 * @param value 值
 	 */
 	fun <T : Any> insert(table: String, value: T) {
 		val valueMap = HashMap<String, String>()
