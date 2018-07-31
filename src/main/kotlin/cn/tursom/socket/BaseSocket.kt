@@ -1,6 +1,5 @@
 package cn.tursom.socket
 
-import cn.tursom.tools.getTAG
 import java.lang.Thread.sleep
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -8,9 +7,15 @@ import java.net.SocketException
 import kotlin.math.log2
 import kotlin.math.min
 
+/**
+ * 对基础的Socket做了些许封装
+ */
 open class BaseSocket(val socket: Socket) {
-	protected val inputStream = socket.getInputStream()!!
-	protected val outputStream = socket.getOutputStream()!!
+	val address = socket.inetAddress?.toString()?.drop(1) ?: "0.0.0.0"
+	val port = socket.port
+	val localPort = socket.localPort
+	private val inputStream = socket.getInputStream()!!
+	private val outputStream = socket.getOutputStream()!!
 	
 	constructor(host: String, port: Int) : this(
 		kotlin.run {
@@ -152,9 +157,6 @@ open class BaseSocket(val socket: Socket) {
 	companion object Companion {
 		const val defaultReadSize: Int = 10240
 		const val timeout: Long = 3 * 60 * 1000
-		val TAG = getTAG(this::class.java)
-		const val debug: Boolean = true
-		val serverError = "server error".toByteArray()
 		fun formatIpAddress(ip: Int) =
 			"${ip and 0xff}.${(ip shr 8) and 0xff}.${(ip shr 16) and 0xff}.${(ip shr 24) and 0xff}"
 		

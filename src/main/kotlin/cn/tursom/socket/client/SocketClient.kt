@@ -5,11 +5,9 @@ import java.io.IOException
 import java.net.SocketException
 
 class SocketClient(
-	host: String,
+	val host: String,
 	port: Int,
 	private val ioException: (io: IOException) -> Unit = { it.printStackTrace() }) : BaseSocket(host, port) {
-	
-	val address: String = "$host:$port"
 	
 	fun execute(func: () -> Unit) {
 		try {

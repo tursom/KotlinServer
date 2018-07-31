@@ -36,14 +36,18 @@ class SQLHelper
 	 * @param table: 表格名
 	 * @param keys: 属性列表
 	 */
-	private fun createTable(table: String, keys: Array<String>) {
+	fun createTable(table: String, keys: Array<String>) {
+		println("CREATE TABLE if not exists $table (${toColumn(keys)})")
 		val statement = connection.createStatement()
 		statement.executeUpdate("CREATE TABLE if not exists $table (${toColumn(keys)})")
 		commit()
 	}
 	
+	/**
+	 * 根据提供的class对象自动化创建表格
+	 * 但是有诸多缺陷，所以不是很建议使用
+	 */
 	fun <T> createTable(table: String, keys: Class<T>) {
-		val statement = connection.createStatement()
 		val keysArray = ArrayList<String>()
 		keys.declaredFields.forEach {
 			keysArray.add("${it.name} ${it.type.toString().split(".").last().toUpperCase()}")
@@ -51,26 +55,33 @@ class SQLHelper
 		createTable(table, keysArray.toTypedArray())
 	}
 	
+	/**
+	 * 删除表格
+	 */
 	fun deleteTable(table: String) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("DROP TABLE if exists $table")
 		commit()
 	}
 	
+	/**
+	 * 删除表格
+	 */
 	fun dropTable(table: String) {
 		deleteTable(table)
 	}
 	
 	/**
 	 * 查询
-	 * @param adapter: 用于保存查询结果的数据类，由SQLAdapter继承而来
-	 * @param table: 表名
-	 * @param name: 查询字段
-	 * @param where: 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
+	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
+	 * @param table 表名
+	 * @param name 查询字段
+	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
+	 * @param maxCount 最大查询数量
 	 */
 	fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String,
-		name: Array<String> = arrayOf("*"), where: Map<String, String>, maxCount: Int? = null) {
+		name: Array<String> = arrayOf("*"), where: Map<String, String>?, maxCount: Int? = null) {
 		if (where != null) {
 			select(adapter, table, toColumn(name), toWhere(where), maxCount)
 		} else {
@@ -78,13 +89,21 @@ class SQLHelper
 		}
 	}
 	
+	/**
+	 * 查询
+	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
+	 * @param table 表名
+	 * @param name 查询字段
+	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
+	 * @param maxCount 最大查询数量
+	 */
 	fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String,
 		name: Array<String> = arrayOf("*"), where: Pair<String, String>, maxCount: Int? = null) {
 		select(adapter, table, name, mapOf(where), maxCount)
 	}
 	
-	private fun <T : Any> select(
+	fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String, name: String = "*", where: String? = null, maxCount: Int? = null
 	) {
 		val statement = connection.createStatement()
@@ -198,6 +217,21 @@ class SQLHelper
 		update(table, set, where)
 	}
 	
+	fun delete(table: String, where: String) {
+		val statement = connection.createStatement()
+		statement.executeUpdate("DELETE FROM $table WHERE $where;")
+		commit()
+		statement.closeOnCompletion()
+	}
+	
+	fun delete(table: String, where: Map<String, String>) {
+		delete(table, toWhere(where))
+	}
+	
+	fun delete(table: String, where: Pair<String, String>) {
+		delete(table, mapOf(where))
+	}
+	
 	private fun commit() {
 		synchronized(connection) {
 			connection.commit()
@@ -223,16 +257,6 @@ class SQLHelper
 	}
 	
 	private fun toColumn(column: Array<out String>): String {
-		val stringBuilder = StringBuilder()
-		column.forEach {
-			if (it.isNotEmpty())
-				stringBuilder.append("$it,")
-		}
-		stringBuilder.delete(stringBuilder.length - 1, stringBuilder.length)
-		return stringBuilder.toString()
-	}
-	
-	private fun toColumn(column: ArrayList<out String>): String {
 		val stringBuilder = StringBuilder()
 		column.forEach {
 			if (it.isNotEmpty())
