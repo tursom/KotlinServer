@@ -35,6 +35,7 @@ fun <T : Any> parseXmlAttribute(bean: T, element: Element) {
 			val value = element.attributeValue(it.name)!!
 			it.set(bean, (typeTrans[it.type]
 				?: { valueObj: String -> it.type.getConstructor(java.lang.String::class.java).newInstance(valueObj) })(value))
+		} catch (e: kotlin.KotlinNullPointerException) {
 		} catch (e: Exception) {
 			e.printStackTrace()
 		}

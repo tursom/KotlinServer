@@ -25,7 +25,10 @@ open class BaseSocket(val socket: Socket) {
 		}
 	)
 	
-	fun send(message: String) = send(message.toByteArray())
+	fun send(message: String?) {
+		send((message ?: return).toByteArray())
+	}
+	
 	fun send(message: ByteArray) {
 		if (socket.isClosed) throw SocketException("Socket Closed")
 		try {

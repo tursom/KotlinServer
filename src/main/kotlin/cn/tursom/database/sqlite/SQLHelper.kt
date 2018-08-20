@@ -162,6 +162,9 @@ class SQLHelper
 	fun <T : Any> insert(table: String, value: T) {
 		val valueMap = HashMap<String, String>()
 		value.javaClass.declaredFields.forEach {
+			if (getFieldValueByName(it.name, value) == null) {
+				return@forEach
+			}
 			if (it.type == java.util.Date::class.java) {
 				valueMap[it.name] = java.sql.Timestamp((getFieldValueByName(it.name, value) as java.util.Date).time).toString()
 			} else {
@@ -208,6 +211,9 @@ class SQLHelper
 	) {
 		val set = HashMap<String, String>()
 		value.javaClass.declaredFields.forEach {
+			if (getFieldValueByName(it.name, value) == null) {
+				return@forEach
+			}
 			if (it.type == java.util.Date::class.java) {
 				set[it.name] = java.sql.Timestamp((getFieldValueByName(it.name, value) as java.util.Date).time).toString()
 			} else {
