@@ -32,42 +32,41 @@ import java.util.*
 
 val cpuNumber = Runtime.getRuntime().availableProcessors()
 
-fun md5(content: ByteArray): ByteArray? {
+fun ByteArray.md5(): ByteArray? {
 	return try {
 		//获取md5加密对象
 		val instance = MessageDigest.getInstance("MD5")
 		//加密，返回字节数组
-		instance.digest(content)
+		instance.digest(this)
 	} catch (e: NoSuchAlgorithmException) {
 		e.printStackTrace()
 		null
 	}
 }
 
-fun MD5(content: String): String? {
-	return byteArrayToHexString(md5(content.toByteArray()))
+fun String.md5(): String? {
+	return toByteArray().md5()?.byteArrayToHexString()
 }
 
-fun sha256(content: ByteArray): ByteArray? {
+fun ByteArray.sha256(): ByteArray? {
 	return try {
 		//获取md5加密对象
 		val instance = MessageDigest.getInstance("SHA-256")
 		//加密，返回字节数组
-		instance.digest(content)
+		instance.digest(this)
 	} catch (e: NoSuchAlgorithmException) {
 		e.printStackTrace()
 		null
 	}
 }
 
-fun sha256(content: String): String? {
-	return byteArrayToHexString(sha256(content.toByteArray()))
+fun String.sha256(): String? {
+	return toByteArray().sha256()?.byteArrayToHexString()
 }
 
-fun byteArrayToHexString(array: ByteArray?): String? {
-	array ?: return null
+fun ByteArray.byteArrayToHexString(): String? {
 	val sb = StringBuilder()
-	array.forEach {
+	forEach {
 		//获取低八位有效值+
 		val i: Int = it.toInt() and 0xff
 		//将整数转化为16进制
