@@ -84,7 +84,7 @@ open class BaseSocket(val socket: Socket) {
 		maxsize: Int,
 		timeout1: Long = timeout)
 		: ByteArray? {
-		if (socket.isClosed) {
+		if (testConnection()) {
 			throw SocketException("Socket Closed")
 		}
 		val buffer = ByteArray(maxsize)
@@ -94,7 +94,7 @@ open class BaseSocket(val socket: Socket) {
 			val maxTimeOut = System.currentTimeMillis() + timeout1
 			var sleepTime = 0L
 			while (inputStream.available() == 0) {
-				if (socket.isClosed) {
+				if (testConnection()) {
 					throw SocketException("Socket Closed")
 				}
 				sleepTime++
@@ -155,6 +155,13 @@ open class BaseSocket(val socket: Socket) {
 	
 	fun isConnected(): Boolean {
 		return socket.isConnected
+	}
+	
+	fun testConnection() = try {
+		socket.sendUrgentData(0xff)
+		true
+	} catch (e: Exception) {
+		false
 	}
 	
 	companion object Companion {

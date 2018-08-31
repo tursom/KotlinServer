@@ -49,7 +49,8 @@ open class SocketServer : Thread {
 	 * @param startImmediately 是否立即启动
 	 */
 	constructor(
-		port: Int, threads: Int = 1,
+		port: Int,
+		threads: Int = 1,
 		queueSize: Int = 1,
 		timeout: Long = 0L,
 		timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
