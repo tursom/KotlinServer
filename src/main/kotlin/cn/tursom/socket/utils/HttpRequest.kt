@@ -8,7 +8,7 @@ import java.net.URL
 
 object HttpRequest {
 	const val debug = false
-
+	
 	/**
 	 * 向指定URL发送GET方法的请求
 	 *
@@ -30,7 +30,7 @@ object HttpRequest {
 			connection.setRequestProperty("accept", "*/*")
 			connection.setRequestProperty("connection", "Keep-Alive")
 			connection.setRequestProperty("user-agent",
-					"Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)")
+				"Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)")
 			if (header != null) {
 				connection.addRequestProperty("Authorization", header)
 			}
@@ -44,7 +44,7 @@ object HttpRequest {
 //			}
 			// 定义 BufferedReader输入流来读取URL的响应
 			`in` = BufferedReader(InputStreamReader(
-					connection.getInputStream()))
+				connection.getInputStream()))
 			var line: String
 			while (true) {
 				line = `in`.readLine() ?: break
@@ -63,11 +63,11 @@ object HttpRequest {
 				if (debug)
 					e2.printStackTrace()
 			}
-
+			
 		}// 使用finally块来关闭输入流
 		return result
 	}
-
+	
 	/**
 	 * 向指定 URL 发送POST方法的请求
 	 *
@@ -89,7 +89,7 @@ object HttpRequest {
 			conn.setRequestProperty("accept", "*/*")
 			conn.setRequestProperty("connection", "Keep-Alive")
 			conn.setRequestProperty("user-agent",
-					"Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)")
+				"Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)")
 			// 发送POST请求必须设置如下两行
 			conn.doOutput = true
 			conn.doInput = true
@@ -101,7 +101,7 @@ object HttpRequest {
 			out.flush()
 			// 定义BufferedReader输入流来读取URL的响应
 			`in` = BufferedReader(
-					InputStreamReader(conn.getInputStream()))
+				InputStreamReader(conn.getInputStream()))
 			var line: String
 			while (true) {
 				line = `in`.readLine() ?: break
@@ -121,7 +121,7 @@ object HttpRequest {
 			} catch (ex: IOException) {
 				ex.printStackTrace()
 			}
-
+			
 		}//使用finally块来关闭输出流、输入流
 		return result
 	}

@@ -1,6 +1,7 @@
 package cn.tursom.tools
 
 import com.google.gson.Gson
+import java.nio.charset.Charset
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
@@ -45,7 +46,7 @@ fun ByteArray.md5(): ByteArray? {
 }
 
 fun String.md5(): String? {
-	return toByteArray().md5()?.byteArrayToHexString()
+	return toByteArray().md5()?.toHexString()
 }
 
 fun ByteArray.sha256(): ByteArray? {
@@ -61,10 +62,10 @@ fun ByteArray.sha256(): ByteArray? {
 }
 
 fun String.sha256(): String? {
-	return toByteArray().sha256()?.byteArrayToHexString()
+	return toByteArray().sha256()?.toHexString()
 }
 
-fun ByteArray.byteArrayToHexString(): String? {
+fun ByteArray.toHexString(): String? {
 	val sb = StringBuilder()
 	forEach {
 		//获取低八位有效值+
@@ -78,6 +79,30 @@ fun ByteArray.byteArrayToHexString(): String? {
 		sb.append(hexString)
 	}
 	return sb.toString()
+}
+
+fun ByteArray.toUTF8String() = String(this, Charset.forName("UTF-8"))
+
+fun String.base64() = this.toByteArray().base64().toUTF8String()
+
+fun ByteArray.base64(): ByteArray {
+	return Base64.getEncoder().encode(this)
+}
+
+fun String.base64decode() = Base64.getDecoder().decode(this).toUTF8String()
+
+fun ByteArray.base64decode(): ByteArray = Base64.getDecoder().decode(this)
+
+fun String.digest(type: String) = toByteArray().digest(type)?.toHexString()
+
+fun ByteArray.digest(type: String) = try {
+	//获取加密对象
+	val instance = MessageDigest.getInstance(type)
+	//加密，返回字节数组
+	instance.digest(this)
+} catch (e: NoSuchAlgorithmException) {
+	e.printStackTrace()
+	null
 }
 
 fun randomInt(min: Int, max: Int) = Random().nextInt(max) % (max - min + 1) + min
