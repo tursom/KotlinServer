@@ -1,7 +1,6 @@
 package cn.tursom.tools
 
 import com.google.gson.Gson
-import java.nio.charset.Charset
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
@@ -81,7 +80,7 @@ fun ByteArray.toHexString(): String? {
 	return sb.toString()
 }
 
-fun ByteArray.toUTF8String() = String(this, Charset.forName("UTF-8"))
+fun ByteArray.toUTF8String() = String(this, Charsets.UTF_8)
 
 fun String.base64() = this.toByteArray().base64().toUTF8String()
 

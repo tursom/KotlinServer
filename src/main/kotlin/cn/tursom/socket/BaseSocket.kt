@@ -1,10 +1,8 @@
 package cn.tursom.socket
 
 import java.lang.Thread.sleep
-import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketException
-import kotlin.math.log2
 import kotlin.math.min
 
 /**
@@ -17,25 +15,21 @@ open class BaseSocket(val socket: Socket) {
 	private val inputStream = socket.getInputStream()!!
 	private val outputStream = socket.getOutputStream()!!
 	
-	constructor(host: String, port: Int) : this(
-		kotlin.run {
-			val socket = Socket()
-			socket.connect(InetSocketAddress(host, port))
-			socket
-		}
-	)
-	
 	fun send(message: String?) {
 		send((message ?: return).toByteArray())
 	}
 	
 	fun send(message: ByteArray) {
 		if (socket.isClosed) throw SocketException("Socket Closed")
-		try {
-			outputStream.write(message)
-		} catch (e: SocketException) {
-			e.printStackTrace()
-		}
+		outputStream.write(message)
+	}
+	
+	fun send(message: Int) {
+		send(message.toByteArray())
+	}
+	
+	fun send(message: Long) {
+		send(message.toByteArray())
 	}
 	
 	fun clean(blockSize: Int = defaultReadSize) {
@@ -52,30 +46,74 @@ open class BaseSocket(val socket: Socket) {
 		return String(recvByteArray(maxsize, timeout1) ?: return null)
 	}
 	
-	fun recvSingle(maxsize: Int, timeout1: Long = timeout): String? {
-		return String(recvByteArraySingle(maxsize, timeout1) ?: return null)
+	fun recvInt(timeout1: Long = timeout): Int? {
+		val buffer = ByteArray(4)
+		try {
+			//等待数据到达
+			val maxTimeOut = System.currentTimeMillis() + timeout1
+			var sleepTime = 0L
+			while (inputStream.available() < 4) {
+				sleepTime++
+				if (System.currentTimeMillis() > maxTimeOut) {
+					throw SocketException("socket read out of time")
+				} else {
+					sleep(sleepTime.left1().toLong())
+				}
+			}
+			
+			//读取数据
+			inputStream.read(buffer, 0, 4)
+		} catch (e: StringIndexOutOfBoundsException) {
+			e.printStackTrace()
+			return null
+		}
+		return buffer.toInt()
 	}
 	
-	fun recvByteArray(
+	fun recvLong(timeout1: Long = timeout): Long? {
+		val buffer = ByteArray(8)
+		try {
+			//等待数据到达
+			val maxTimeOut = System.currentTimeMillis() + timeout1
+			var sleepTime = 0L
+			while (inputStream.available() < 4) {
+				sleepTime++
+				if (System.currentTimeMillis() > maxTimeOut) {
+					throw SocketException("socket read out of time")
+				} else {
+					sleep(sleepTime.left1().toLong())
+				}
+			}
+			
+			//读取数据
+			inputStream.read(buffer, 0, 8)
+		} catch (e: StringIndexOutOfBoundsException) {
+			e.printStackTrace()
+			return null
+		}
+		return buffer.toLong()
+	}
+	
+	private fun recvByteArray(
 		maxsize: Int = defaultReadSize * 10,
 		timeout1: Long = timeout)
 		: ByteArray? {
+		
 		var buffer = ByteArray(0)
 		try {
-			buffer += recvByteArraySingle(defaultReadSize, timeout1) ?: return null
+			buffer += recvByteArraySingle(maxsize, timeout1) ?: return null
 		} catch (e: SocketException) {
 			return null
 		}
 		
-		var loopTime = 0
-		while (buffer.size == defaultReadSize && (buffer.size + loopTime * defaultReadSize) < maxsize) {
+		while (inputStream.available() != 0) {
 			try {
-				buffer += (recvByteArraySingle(defaultReadSize, 1)
+				buffer += (recvByteArraySingle(maxsize - buffer.size, 1)
 					?: return buffer)
 			} catch (e: SocketException) {
 				return buffer
 			}
-			loopTime++
+			sleep(1)
 		}
 		return buffer
 	}
@@ -84,9 +122,9 @@ open class BaseSocket(val socket: Socket) {
 		maxsize: Int,
 		timeout1: Long = timeout)
 		: ByteArray? {
-		if (testConnection()) {
-			throw SocketException("Socket Closed")
-		}
+//		if (testConnection()) {
+//			throw SocketException("Socket Closed")
+//		}
 		val buffer = ByteArray(maxsize)
 		var readSize = 0
 		try {
@@ -94,14 +132,14 @@ open class BaseSocket(val socket: Socket) {
 			val maxTimeOut = System.currentTimeMillis() + timeout1
 			var sleepTime = 0L
 			while (inputStream.available() == 0) {
-				if (testConnection()) {
-					throw SocketException("Socket Closed")
-				}
+//				if (testConnection()) {
+//					throw SocketException("Socket Closed")
+//				}
 				sleepTime++
 				if (System.currentTimeMillis() > maxTimeOut) {
-					throw SocketException("socket out of time")
+					throw SocketException("socket read out of time")
 				} else {
-					sleep(log2(sleepTime.shl(1).toFloat()).toLong())
+					sleep(sleepTime.left1().toLong())
 				}
 			}
 			
@@ -139,14 +177,14 @@ open class BaseSocket(val socket: Socket) {
 		}
 	}
 	
-	protected fun closeInputStream() {
+	private fun closeInputStream() {
 		try {
 			inputStream.close()
 		} catch (e: Exception) {
 		}
 	}
 	
-	protected fun closeOutputStream() {
+	private fun closeOutputStream() {
 		try {
 			outputStream.close()
 		} catch (e: Exception) {
@@ -157,6 +195,9 @@ open class BaseSocket(val socket: Socket) {
 		return socket.isConnected
 	}
 	
+	/**
+	 * @warning dangerous
+	 */
 	fun testConnection() = try {
 		socket.sendUrgentData(0xff)
 		true
@@ -166,7 +207,8 @@ open class BaseSocket(val socket: Socket) {
 	
 	companion object Companion {
 		const val defaultReadSize: Int = 10240
-		const val timeout: Long = 3 * 60 * 1000
+		const val timeout: Long = 60 * 1000
+		
 		fun formatIpAddress(ip: Int) =
 			"${ip and 0xff}.${(ip shr 8) and 0xff}.${(ip shr 16) and 0xff}.${(ip shr 24) and 0xff}"
 		
@@ -208,5 +250,38 @@ open class BaseSocket(val socket: Socket) {
 				(this[6].toLong() shl 8 and 0xff00) or
 				(this[7].toLong() and 0xFF)
 		
+		fun Int.left1(): Int {
+			if (this == 0) {
+				return -1
+			}
+			var exp = 4
+			var pos = 1 shl exp
+			while (exp > 0) {
+				exp--
+				if ((this shr pos) != 0) {
+					pos += 1 shl exp
+				} else {
+					pos -= 1 shl exp
+				}
+			}
+			return if (this shr pos != 0) pos else pos - 1
+		}
+		
+		fun Long.left1(): Int {
+			if (this == 0L) {
+				return -1
+			}
+			var exp = 8
+			var pos = 1 shl exp
+			while (exp > 0) {
+				exp--
+				if ((this shr pos) != 0L) {
+					pos += 1 shl exp
+				} else {
+					pos -= 1 shl exp
+				}
+			}
+			return if (this shr pos != 0L) pos else pos - 1
+		}
 	}
 }
