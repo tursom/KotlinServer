@@ -1,17 +1,13 @@
-package cn.tursom.database.sqlite
+package cn.tursom.database
 
 import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.text.SimpleDateFormat
-import java.util.*
-import kotlin.collections.HashSet
+import java.util.ArrayList
 
-/**
- * SQLite查询结果储存类
- */
-open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
+open class SQLAdapter<T : Any>(val clazz: Class<T>) : ArrayList<T>() {
 	//获取Unsafe
 	private val field: Field by lazy {
 		val field = Unsafe::class.java.getDeclaredField("theUnsafe")
@@ -46,7 +42,7 @@ open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
 	}
 	
 	@Suppress("UNCHECKED_CAST")
-	private fun adaptOnce(resultSet: ResultSet, fieldSet: HashSet<Field>) {
+	open fun adaptOnce(resultSet: ResultSet, fieldSet: HashSet<Field>) {
 		//绕过构造函数获取变量0
 		val t = unsafe.allocateInstance(clazz) as T
 		fieldSet.forEach {

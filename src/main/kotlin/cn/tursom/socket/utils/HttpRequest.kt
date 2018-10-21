@@ -56,9 +56,7 @@ object HttpRequest {
 				e.printStackTrace()
 		} finally {
 			try {
-				if (`in` != null) {
-					`in`.close()
-				}
+				`in`?.close()
 			} catch (e2: Exception) {
 				if (debug)
 					e2.printStackTrace()
@@ -112,12 +110,8 @@ object HttpRequest {
 			e.printStackTrace()
 		} finally {
 			try {
-				if (out != null) {
-					out.close()
-				}
-				if (`in` != null) {
-					`in`.close()
-				}
+				out?.close()
+				`in`?.close()
 			} catch (ex: IOException) {
 				ex.printStackTrace()
 			}

@@ -1,5 +1,7 @@
 package cn.tursom.database.sqlite
 
+import cn.tursom.database.SQLAdapter
+import cn.tursom.database.SQLHelper
 import org.sqlite.SQLiteException
 import java.sql.Connection
 import java.sql.DriverManager
@@ -10,18 +12,19 @@ import kotlin.collections.ArrayList
 
 
 /**
- * SQLHelper，SQLite辅助使用类
+ * MySQLHelper，SQLite辅助使用类
  * 实现创建表格、查询、插入和更新功能
  */
 
-class SQLHelper
+class SQLiteHelper
 /**
  * 创建名为 base.db 的数据库连接
  */
-(val base: String) {
+(val base: String) : SQLHelper {
 	private val connection: Connection
 	
 	init {
+		Class.forName("org.sqlite.JDBC")
 		if (base in connectionMap) {
 			connection = connectionMap[base]!!
 		} else {
@@ -31,12 +34,13 @@ class SQLHelper
 		}
 	}
 	
+	
 	/**
 	 * 创建表格
 	 * @param table: 表格名
 	 * @param keys: 属性列表
 	 */
-	fun createTable(table: String, keys: Array<String>) {
+	override fun createTable(table: String, keys: Array<String>) {
 		println("CREATE TABLE if not exists $table (${toColumn(keys)})")
 		val statement = connection.createStatement()
 		statement.executeUpdate("CREATE TABLE if not exists $table (${toColumn(keys)})")
@@ -47,7 +51,7 @@ class SQLHelper
 	 * 根据提供的class对象自动化创建表格
 	 * 但是有诸多缺陷，所以不是很建议使用
 	 */
-	fun <T> createTable(table: String, keys: Class<T>) {
+	override fun <T> createTable(table: String, keys: Class<T>) {
 		val keysArray = ArrayList<String>()
 		keys.declaredFields.forEach {
 			keysArray.add("${it.name} ${it.type.toString().split(".").last().toUpperCase()}")
@@ -58,7 +62,7 @@ class SQLHelper
 	/**
 	 * 删除表格
 	 */
-	fun deleteTable(table: String) {
+	override fun deleteTable(table: String) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("DROP TABLE if exists $table")
 		commit()
@@ -67,7 +71,7 @@ class SQLHelper
 	/**
 	 * 删除表格
 	 */
-	fun dropTable(table: String) {
+	override fun dropTable(table: String) {
 		deleteTable(table)
 	}
 	
@@ -79,9 +83,9 @@ class SQLHelper
 	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 * @param maxCount 最大查询数量
 	 */
-	fun <T : Any> select(
+	override fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String,
-		name: Array<String> = arrayOf("*"), where: Map<String, String>?, maxCount: Int? = null) {
+		name: Array<String>, where: Map<String, String>?, maxCount: Int?) {
 		if (where != null) {
 			select(adapter, table, toColumn(name), toWhere(where), maxCount)
 		} else {
@@ -97,14 +101,14 @@ class SQLHelper
 	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 * @param maxCount 最大查询数量
 	 */
-	fun <T : Any> select(
+	override fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String,
-		name: Array<String> = arrayOf("*"), where: Pair<String, String>, maxCount: Int? = null) {
+		where: Pair<String, String>, maxCount: Int?, name: Array<String>) {
 		select(adapter, table, name, mapOf(where), maxCount)
 	}
 	
-	fun <T : Any> select(
-		adapter: SQLAdapter<T>, table: String, name: String = "*", where: String? = null, maxCount: Int? = null
+	override fun <T : Any> select(
+		adapter: SQLAdapter<T>, table: String, name: String, where: String?, maxCount: Int?
 	) {
 		val statement = connection.createStatement()
 		try {
@@ -120,9 +124,9 @@ class SQLHelper
 		statement.closeOnCompletion()
 	}
 	
-	fun <T : Any> reverseSelect(
+	override fun <T : Any> reverseSelect(
 		adapter: SQLAdapter<T>, table: String,
-		name: Array<String> = arrayOf("*"), where: Map<String, String>? = null, index: String, maxCount: Int? = null) {
+		name: Array<String>, where: Map<String, String>?, index: String, maxCount: Int?) {
 		if (where != null) {
 			reverseSelect(adapter, table, toColumn(name), toWhere(where), index, maxCount)
 		} else {
@@ -130,14 +134,14 @@ class SQLHelper
 		}
 	}
 	
-	fun <T : Any> reverseSelect(
+	override fun <T : Any> reverseSelect(
 		adapter: SQLAdapter<T>, table: String,
-		name: Array<String> = arrayOf("*"), where: Pair<String, String>, index: String, maxCount: Int? = null) {
+		name: Array<String>, where: Pair<String, String>, index: String, maxCount: Int?) {
 		reverseSelect(adapter, table, name, mapOf(where), index, maxCount)
 	}
 	
-	private fun <T : Any> reverseSelect(
-		adapter: SQLAdapter<T>, table: String, name: String = "*", where: String? = null, index: String, maxCount: Int? = null
+	override fun <T : Any> reverseSelect(
+		adapter: SQLAdapter<T>, table: String, name: String, where: String? , index: String, maxCount: Int?
 	) {
 		val statement = connection.createStatement()
 		try {
@@ -159,7 +163,7 @@ class SQLHelper
 	 * @param table 表名
 	 * @param value 值
 	 */
-	fun <T : Any> insert(table: String, value: T) {
+	override fun <T : Any> insert(table: String, value: T) {
 		val valueMap = HashMap<String, String>()
 		value.javaClass.declaredFields.forEach {
 			if (getFieldValueByName(it.name, value) == null) {
@@ -183,12 +187,12 @@ class SQLHelper
 		}
 	}
 	
-	private fun insert(table: String, column: Map<String, String>) {
+	override fun insert(table: String, column: Map<String, String>) {
 		val columns = toKeys(column)
 		insert(table, columns.first, columns.second)
 	}
 	
-	private fun insert(table: String, column: String, values: String) {
+	override fun insert(table: String, column: String, values: String) {
 		val statement = connection.createStatement()
 		val sql = "INSERT INTO $table ($column) VALUES ($values)"
 		statement.executeUpdate(sql)
@@ -196,17 +200,17 @@ class SQLHelper
 		statement.closeOnCompletion()
 	}
 	
-	private fun update(
+	override fun update(
 		table: String,
-		set: Map<String, String> = mapOf(),
-		where: Map<String, String> = mapOf()) {
+		set: Map<String, String>,
+		where: Map<String, String>) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("UPDATE $table SET ${toValue(set)} WHERE ${toWhere(where)};")
 		commit()
 		statement.closeOnCompletion()
 	}
 	
-	fun <T : Any> update(
+	override fun <T : Any> update(
 		table: String, value: T, where: Map<String, String>
 	) {
 		val set = HashMap<String, String>()
@@ -223,28 +227,28 @@ class SQLHelper
 		update(table, set, where)
 	}
 	
-	fun delete(table: String, where: String) {
+	override fun delete(table: String, where: String) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("DELETE FROM $table WHERE $where;")
 		commit()
 		statement.closeOnCompletion()
 	}
 	
-	fun delete(table: String, where: Map<String, String>) {
+	override fun delete(table: String, where: Map<String, String>) {
 		delete(table, toWhere(where))
 	}
 	
-	fun delete(table: String, where: Pair<String, String>) {
+	override fun delete(table: String, where: Pair<String, String>) {
 		delete(table, mapOf(where))
 	}
 	
-	private fun commit() {
+	override fun commit() {
 		synchronized(connection) {
 			connection.commit()
 		}
 	}
 	
-	fun close() {
+	override fun close() {
 		connection.close()
 	}
 	
@@ -310,6 +314,7 @@ class SQLHelper
 		}
 		
 	}
+	
 	
 	class CantConnectDataBase(s: String? = null) : SQLException(s)
 	

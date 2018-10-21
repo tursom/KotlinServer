@@ -1,5 +1,7 @@
 package cn.tursom.database.mysql
 
+import cn.tursom.database.SQLAdapter
+import cn.tursom.database.SQLHelper
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.*
@@ -9,10 +11,81 @@ import java.text.DateFormat
 
 
 /*
- * SQLHelper，SQLite辅助使用类
+ * MySQLHelper，SQLite辅助使用类
  * 实现创建表格、查询、插入和更新功能
  */
-class SQLHelper(val connection: Connection) {
+class MySQLHelper(val connection: Connection) : SQLHelper {
+	/**
+	 * 根据提供的class对象自动化创建表格
+	 * 但是有诸多缺陷，所以不是很建议使用
+	 */
+	override fun <T> createTable(table: String, keys: Class<T>) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	/**
+	 * 删除表格
+	 */
+	override fun deleteTable(table: String) {
+		val statement = connection.createStatement()
+		statement.executeUpdate("DROP TABLE if exists $table ENGINE = InnoDB DEFAULT CHARSET=utf8;")
+		connection.commit()
+	}
+	
+	/**
+	 * 删除表格
+	 */
+	override fun dropTable(table: String) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	/**
+	 * 查询
+	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
+	 * @param table 表名
+	 * @param name 查询字段
+	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
+	 * @param maxCount 最大查询数量
+	 */
+	override fun <T : Any> select(adapter: SQLAdapter<T>, table: String, name: Array<String>, where: Map<String, String>?, maxCount: Int?) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	/**
+	 * 查询
+	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
+	 * @param table 表名
+	 * @param name 查询字段
+	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
+	 * @param maxCount 最大查询数量
+	 */
+	override fun <T : Any> select(adapter: SQLAdapter<T>, table: String, where: Pair<String, String>, maxCount: Int?, name: Array<String>) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	override fun <T : Any> select(adapter: SQLAdapter<T>, table: String, name: String, where: String?, maxCount: Int?) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	override fun <T : Any> reverseSelect(adapter: SQLAdapter<T>, table: String, name: Array<String>, where: Pair<String, String>, index: String, maxCount: Int?) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	override fun <T : Any> reverseSelect(adapter: SQLAdapter<T>, table: String, name: String, where: String?, index: String, maxCount: Int?) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	override fun update(table: String, set: Map<String, String>, where: Map<String, String>) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	override fun delete(table: String, where: Pair<String, String>) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	override fun commit() {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
 	
 	init {
 		connection.autoCommit = false
@@ -33,7 +106,7 @@ class SQLHelper(val connection: Connection) {
 	 * table: 表格名
 	 * keys: 属性列表
 	 */
-	fun createTable(table: String, keys: Array<String>) {
+	override fun createTable(table: String, keys: Array<String>) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("CREATE TABLE if not exists `$table` ( ${toColumn(keys)} ) ENGINE = InnoDB DEFAULT CHARSET=utf8;")
 		connection.commit()
@@ -58,7 +131,7 @@ class SQLHelper(val connection: Connection) {
 		table: String, name: Array<String> = arrayOf("*"),
 		where: Map<String, String>): SQLAdapter<T> {
 		val adapter = SQLAdapter(T::class.java)
-		select(adapter, table, toColumn(name), toWhere(where))
+		select(adapter, table, name, where)
 		return adapter
 	}
 	
@@ -90,19 +163,19 @@ class SQLHelper(val connection: Connection) {
 	 * @param table 表名
 	 * @param column
 	 */
-	private fun insert(table: String, column: Map<String, String>) {
+	override fun insert(table: String, column: Map<String, String>) {
 		val columns = toKeys(column)
 		insert(table, columns.first, columns.second)
 	}
 	
-	private fun insert(table: String, column: String, values: String) {
+	override fun insert(table: String, column: String, values: String) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("INSERT INTO $table ($column) VALUES ($values);")
 		connection.commit()
 		statement.closeOnCompletion()
 	}
 	
-	fun <T : Any> insert(table: String, value: T) {
+	override fun <T : Any> insert(table: String, value: T) {
 		val valueMap = HashMap<String, String>()
 		value.javaClass.declaredFields.forEach {
 			if (it.type == Date::class.java) {
@@ -165,7 +238,7 @@ class SQLHelper(val connection: Connection) {
 	/**
 	 * 同上，但是where限定为=
 	 */
-	fun <T : Any> update(table: String, value: T, where: Map<String, Any>) {
+	override fun <T : Any> update(table: String, value: T, where: Map<String, String>) {
 		val whereArray = ArrayList<String>()
 		where.forEach {
 			when (it.value.javaClass) {
@@ -178,18 +251,14 @@ class SQLHelper(val connection: Connection) {
 		update(table, value, whereArray.toTypedArray())
 	}
 	
-	fun delete(table: String, where: String?) {
+	override fun delete(table: String, where: String) {
 		val statement = connection.createStatement()
-		if (where == null) {
-			statement.executeUpdate("DELETE FROM `$table`;")
-		} else {
-			statement.executeUpdate("DELETE FROM `$table` WHERE $where;")
-		}
+		statement.executeUpdate("DELETE FROM `$table` WHERE $where;")
 		connection.commit()
 		statement.closeOnCompletion()
 	}
 	
-	fun delete(table: String, where: Map<String, Any>) {
+	override fun delete(table: String, where: Map<String, String>) {
 		val whereArray = StringBuilder()
 		where.forEach {
 			when (it.value.javaClass) {
@@ -280,7 +349,7 @@ class SQLHelper(val connection: Connection) {
 		return Pair(column.toString(), value.toString())
 	}
 	
-	fun toColumn(column: Array<String>): String {
+	private fun toColumn(column: Array<String>): String {
 		val stringBuffer = StringBuffer()
 		column.forEach {
 			if (it.isNotEmpty())
@@ -290,7 +359,7 @@ class SQLHelper(val connection: Connection) {
 		return stringBuffer.toString()
 	}
 	
-	fun toWhere(where: Map<String, String>): String {
+	private fun toWhere(where: Map<String, String>): String {
 		val stringBuffer = StringBuffer()
 		where.forEach {
 			if (it.key.isNotEmpty() && it.value.isNotEmpty())
@@ -312,7 +381,7 @@ class SQLHelper(val connection: Connection) {
 		return stringBuffer.toString()
 	}
 	
-	fun close() {
+	override fun close() {
 		connection.close()
 	}
 	
@@ -330,10 +399,6 @@ class SQLHelper(val connection: Connection) {
 			null
 		}
 		
-	}
-	
-	class SQLCommand(val command: String) {
-		override fun toString(): String = command
 	}
 	
 	companion object {
