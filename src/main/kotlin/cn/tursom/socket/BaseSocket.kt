@@ -1,7 +1,6 @@
 package cn.tursom.socket
 
 import java.net.Socket
-import java.net.SocketException
 
 /**
  * 对基础的Socket做了些许封装
