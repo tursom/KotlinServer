@@ -238,7 +238,6 @@ open class BaseSocket(private val socket: Socket) {
 		} catch (e: Exception) {
 			e.exception()
 		}
-		println(readSize)
 		return buffer.copyOf(readSize)
 	}
 	
