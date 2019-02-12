@@ -1,11 +1,16 @@
 package cn.tursom.socket
 
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.net.Socket
 import java.net.SocketTimeoutException
 
 /**
  * 对基础的Socket做了些许封装
  */
+@Suppress("unused")
 open class BaseSocket(private val socket: Socket) {
 	val address = socket.inetAddress?.toString()?.drop(1) ?: "0.0.0.0"
 	val port by lazy { socket.port }
@@ -30,12 +35,13 @@ open class BaseSocket(private val socket: Socket) {
 	}
 	
 	fun recv(
-		maxsize: Int = defaultReadSize * 10,
-		timeout1: Int = timeout,
+		maxsize: Int = defaultReadSize,
+		readTimeout: Int = 100,
+		firstTimeout: Int = timeout,
 		exception: Exception.() -> Unit = { printStackTrace() },
 		timeoutException: SocketTimeoutException.() -> Unit = {}
-	): String? {
-		return String(recvByteArray(maxsize, timeout1, exception, timeoutException) ?: return null)
+	): String {
+		return String(smartRecvByteArray(maxsize, readTimeout, firstTimeout, exception, timeoutException))
 	}
 	
 	fun recvInt(
@@ -43,26 +49,28 @@ open class BaseSocket(private val socket: Socket) {
 		exception: Exception.() -> Int? = { printStackTrace();null },
 		timeoutException: SocketTimeoutException.() -> Int? = { null }
 	): Int? {
-		val buffer = ByteArray(4)
-		val soTimeout = socket.soTimeout
-		socket.soTimeout = timeout1
-		var sTime = System.currentTimeMillis()
 		return try {
+			val buffer = ByteArray(4)
+			socket.soTimeout = timeout1
+			var sTime = System.currentTimeMillis()
 			//读取数据
 			var rSize = inputStream.read(buffer, 0, 4)
 			while (rSize < 4) {
 				val sTime2 = System.currentTimeMillis()
 				socket.soTimeout -= (sTime2 - sTime).toInt()
 				sTime = sTime2
-				rSize += inputStream.read(buffer, rSize, 4 - rSize)
+				val sReadSize = inputStream.read(buffer, rSize, 8 - rSize)
+				if (sReadSize <= 0) {
+					break
+				} else {
+					rSize += sReadSize
+				}
 			}
 			buffer.toInt()
 		} catch (e: SocketTimeoutException) {
 			e.timeoutException()
 		} catch (e: Exception) {
 			e.exception()
-		} finally {
-			socket.soTimeout = soTimeout
 		}
 	}
 	
@@ -71,47 +79,54 @@ open class BaseSocket(private val socket: Socket) {
 		exception: Exception.() -> Long? = { printStackTrace();null },
 		timeoutException: SocketTimeoutException.() -> Long? = { null }
 	): Long? {
-		val buffer = ByteArray(8)
-		val soTimeout = socket.soTimeout
-		socket.soTimeout = timeout1
-		var sTime = System.currentTimeMillis()
 		return try {
+			val buffer = ByteArray(8)
+			socket.soTimeout = timeout1
+			var sTime = System.currentTimeMillis()
 			//读取数据
 			var rSize = inputStream.read(buffer, 0, 8)
 			while (rSize < 4) {
 				val sTime2 = System.currentTimeMillis()
 				socket.soTimeout -= (sTime2 - sTime).toInt()
 				sTime = sTime2
-				rSize += inputStream.read(buffer, rSize, 8 - rSize)
+				val sReadSize = inputStream.read(buffer, rSize, 8 - rSize)
+				if (sReadSize <= 0) {
+					break
+				} else {
+					rSize += sReadSize
+				}
 			}
 			buffer.toLong()
 		} catch (e: SocketTimeoutException) {
 			e.timeoutException()
 		} catch (e: Exception) {
 			e.exception()
-		} finally {
-			socket.soTimeout = soTimeout
 		}
 	}
 	
-	fun recvByteArray(
+	fun recvByteArrayInTime(
 		buffer: ByteArray,
 		timeout1: Int = timeout,
 		exception: Exception.() -> Unit = { printStackTrace() },
 		timeoutException: SocketTimeoutException.() -> Unit = {}
 	): Int {
 		var readSize = 0
-		socket.soTimeout = timeout1
-		var sTime = System.currentTimeMillis()
 		
 		try {
+			socket.soTimeout = timeout1
+			var sTime = System.currentTimeMillis()
 			readSize = inputStream.read(buffer)
 			
 			while (readSize < buffer.size) {
 				val sTime2 = System.currentTimeMillis()
 				socket.soTimeout -= (sTime2 - sTime).toInt()
 				sTime = sTime2
-				readSize += inputStream.read(buffer, readSize, buffer.size - readSize)
+				val sReadSize = inputStream.read(buffer, readSize, buffer.size - readSize)
+				if (sReadSize <= 0) {
+					break
+				} else {
+					readSize += sReadSize
+				}
 			}
 			
 		} catch (e: SocketTimeoutException) {
@@ -123,12 +138,12 @@ open class BaseSocket(private val socket: Socket) {
 		return readSize
 	}
 	
-	fun recvByteArray(
+	fun recvByteArrayInTime(
 		maxsize: Int = defaultReadSize,
-		timeout1: Int = timeout,
+		timeout1: Int = timeout / 60,
 		exception: Exception.() -> Unit = { printStackTrace() },
 		timeoutException: SocketTimeoutException.() -> Unit = {}
-	): ByteArray? {
+	): ByteArray {
 		val buffer = ByteArray(maxsize)
 		var readSize = 0
 		socket.soTimeout = timeout1
@@ -141,7 +156,12 @@ open class BaseSocket(private val socket: Socket) {
 				val sTime2 = System.currentTimeMillis()
 				socket.soTimeout -= (sTime2 - sTime).toInt()
 				sTime = sTime2
-				readSize += inputStream.read(buffer, readSize, buffer.size - readSize)
+				val sReadSize = inputStream.read(buffer, readSize, buffer.size - readSize)
+				if (sReadSize <= 0) {
+					break
+				} else {
+					readSize += sReadSize
+				}
 			}
 			
 		} catch (e: SocketTimeoutException) {
@@ -153,12 +173,30 @@ open class BaseSocket(private val socket: Socket) {
 		return buffer.copyOf(readSize)
 	}
 	
-	fun readByteArray(
+	fun recvByteArray(
+		buffer: ByteArray,
+		timeout1: Int = timeout,
+		exception: Exception.() -> Unit = { printStackTrace() },
+		timeoutException: SocketTimeoutException.() -> Unit = {}
+	): Int {
+		var readSize = 0
+		socket.soTimeout = timeout1
+		try {
+			readSize = inputStream.read(buffer)
+		} catch (e: SocketTimeoutException) {
+			e.timeoutException()
+		} catch (e: Exception) {
+			e.exception()
+		}
+		return readSize
+	}
+	
+	fun recvByteArray(
 		maxsize: Int = defaultReadSize,
 		timeout1: Int = timeout,
 		exception: Exception.() -> Unit = { printStackTrace() },
 		timeoutException: SocketTimeoutException.() -> Unit = {}
-	): ByteArray? {
+	): ByteArray {
 		val buffer = ByteArray(maxsize)
 		var readSize = 0
 		socket.soTimeout = timeout1
@@ -170,6 +208,70 @@ open class BaseSocket(private val socket: Socket) {
 			e.exception()
 		}
 		return buffer.copyOf(readSize)
+	}
+	
+	fun smartRecvByteArray(
+		maxsize: Int = defaultReadSize,
+		readTimeout: Int = 100,
+		firstTimeout: Int = timeout,
+		exception: Exception.() -> Unit = { printStackTrace() },
+		timeoutException: SocketTimeoutException.() -> Unit = {}
+	): ByteArray {
+		val buffer = ByteArray(maxsize)
+		var readSize = 0
+		socket.soTimeout = firstTimeout
+		
+		try {
+			readSize = inputStream.read(buffer)
+			
+			socket.soTimeout = readTimeout
+			while (readSize < buffer.size) {
+				val sReadSize = inputStream.read(buffer, readSize, buffer.size - readSize)
+				if (sReadSize <= 0) {
+					break
+				} else {
+					readSize += sReadSize
+				}
+			}
+		} catch (e: SocketTimeoutException) {
+			e.timeoutException()
+		} catch (e: Exception) {
+			e.exception()
+		}
+		println(readSize)
+		return buffer.copyOf(readSize)
+	}
+	
+	fun smartRecvByteArray(
+		buffer: ByteArray,
+		readTimeout: Int = 100,
+		firstTimeout: Int = timeout,
+		exception: Exception.() -> Unit = { printStackTrace() },
+		timeoutException: SocketTimeoutException.() -> Unit = {}
+	): Int {
+		var readSize = 0
+		socket.soTimeout = firstTimeout
+		
+		try {
+			readSize = inputStream.read(buffer)
+			
+			socket.soTimeout = readTimeout
+			while (readSize < buffer.size) {
+				val sReadSize = inputStream.read(buffer, readSize, buffer.size - readSize)
+				if (sReadSize <= 0) {
+					break
+				} else {
+					readSize += sReadSize
+				}
+			}
+			
+		} catch (e: SocketTimeoutException) {
+			e.timeoutException()
+		} catch (e: Exception) {
+			e.exception()
+		}
+		
+		return readSize
 	}
 	
 	protected fun closeSocket() {
@@ -275,6 +377,28 @@ open class BaseSocket(private val socket: Socket) {
 				}
 			}
 			return if (this shr pos != 0L) pos else pos - 1
+		}
+		
+		
+		/**
+		 * 序列化
+		 */
+		fun serialize(`object`: Any): ByteArray? = try {
+			val baos = ByteArrayOutputStream()
+			val oos = ObjectOutputStream(baos)
+			oos.writeObject(`object`)
+			baos.toByteArray()
+		} catch (e: Exception) {
+			null
+		}
+		
+		/**
+		 * 反序列化
+		 */
+		fun unSerialize(bytes: ByteArray): Any? = try {
+			ObjectInputStream(ByteArrayInputStream(bytes)).readObject()
+		} catch (e: Exception) {
+			null
 		}
 	}
 }
