@@ -1,3 +1,5 @@
+@file:Suppress("SqlDialectInspection", "SqlNoDataSourceInspection")
+
 package cn.tursom.database
 
 import java.sql.Connection
@@ -101,7 +103,7 @@ class ConnectionPool
 	 * @return 返回一个可用的数据库连接
 	 */
 	private fun findFreeConnection(): Connection? {
-		var conn: Connection? = null
+		var conn: Connection?
 		connections.forEach {
 			if (!it.isBusy) {
 				// 如果此对象不忙，则获得它的数据库连接并把它设为忙
@@ -198,7 +200,7 @@ class ConnectionPool
 	@Synchronized
 	@Throws(SQLException::class)
 	fun closeConnectionPool() {
-		var pConn: PooledConnection? = null
+		var pConn: PooledConnection
 		val enumerate = connections.elements()
 		while (enumerate.hasMoreElements()) {
 			pConn = enumerate.nextElement() as PooledConnection

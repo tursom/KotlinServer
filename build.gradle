@@ -1,12 +1,12 @@
 buildscript {
-    ext.kotlin_version = '1.2.61'
+	ext.kotlin_version = '1.3.21'
 
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
+	repositories {
+		jcenter()
+	}
+	dependencies {
+		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+	}
 }
 
 //noinspection GroovyAssignabilityCheck
@@ -20,24 +20,24 @@ apply plugin: 'kotlin'
 sourceCompatibility = 1.8
 
 repositories {
-    jcenter()
+	jcenter()
 }
 
 dependencies {
-    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    compile 'org.xerial:sqlite-jdbc:3.21.0.1'
-    compile "com.google.code.gson:gson:2.8.2"
-    compile "org.json:json:+"
-    compile 'org.apache.httpcomponents:httpclient:4.5'
+	compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+	compile 'org.xerial:sqlite-jdbc:3.21.0.1'
+	compile "com.google.code.gson:gson:2.8.2"
+	compile "org.json:json:+"
+	compile 'org.apache.httpcomponents:httpclient:4.5'
 	compile group: 'dom4j', name: 'dom4j', version: '1.6.1'
-    compile 'org.apache.commons:commons-lang3:3.5'
+	compile 'org.apache.commons:commons-lang3:3.5'
 	compile group: 'mysql', name: 'mysql-connector-java', version: '+'
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+	testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+	kotlinOptions.jvmTarget = "1.8"
 }
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+	kotlinOptions.jvmTarget = "1.8"
 }
