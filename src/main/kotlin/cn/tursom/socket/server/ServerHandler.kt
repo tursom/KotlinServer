@@ -11,9 +11,11 @@ import java.net.Socket
  * 通拥有较好的异常处理体系，可通过异常实现基本的逻辑
  * 可以处理异常的同时给客户端发送异常信息，通过重载ServerException.code的getter实现
  */
-abstract class ServerHandler(
+ class ServerHandler(
 	socket: Socket,
-	timeout: Int = BaseSocket.timeout
+	val serverError: ByteArray=Companion.serverError,
+	timeout: Int = BaseSocket.timeout,
+	val handler:BaseSocket.()->Unit
 ) : Runnable, BaseSocket(socket, timeout) {
 	init {
 		if (socket.isClosed) {
@@ -21,9 +23,9 @@ abstract class ServerHandler(
 		}
 	}
 	
-	final override fun run() {
+	 override fun run() {
 		try {
-			handle()
+			handler()
 		} catch (e: ServerException) {
 			if (e.message == null)
 				e.printStackTrace()
@@ -47,11 +49,6 @@ abstract class ServerHandler(
 		closeSocket()
 		println("$address: connection closed")
 	}
-	
-	abstract fun handle()
-	
-	open val serverError: ByteArray
-		get() = Companion.serverError
 	
 	open class ServerException(s: String? = null) : Exception(s) {
 		open val code: ByteArray?

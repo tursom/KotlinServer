@@ -15,7 +15,7 @@ class SocketClient(
 	
 	init {
 		func?.let {
-			use(null, it)
+			use(it)
 		}
 	}
 	
@@ -28,27 +28,24 @@ class SocketClient(
 		func: (SocketClient.() -> Unit)? = null
 	) : this(Socket(host, port), timeout, ioException, exception, func)
 	
-	fun <T> execute(default: T? = null, func: SocketClient.() -> T?): T? {
-		return try {
+	fun execute(func: SocketClient.() -> Unit) {
+		try {
 			func()
 		} catch (io: IOException) {
 			io.ioException()
-			default
 		} catch (e: SocketException) {
 			if (e.message == null) {
 				e.printStackTrace()
 			} else {
 				System.err.println("$address: ${e::class.java}: ${e.message}")
 			}
-			default
 		} catch (e: Exception) {
 			e.exception()
-			default
 		}
 	}
 	
-	fun <T> use(default: T? = null, func: SocketClient.() -> T): T? {
-		val ret = execute(default, func)
+	fun use(func: SocketClient.() -> Unit) {
+		val ret = execute(func)
 		closeSocket()
 		return ret
 	}
