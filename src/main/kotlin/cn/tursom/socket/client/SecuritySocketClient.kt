@@ -35,6 +35,6 @@ class SecuritySocketClient(host: String, port: Int, use: (SecuritySocketClient.(
 	
 	fun sSend(data: ByteArray) = send(encrypt.doFinal(data))
 	fun sRecv() = decrypt.doFinal(recv())!!
-	fun sGzSend(data: ByteArray) = send(Gzip.compress(encrypt.doFinal(data)))
-	fun sGzRecv() = decrypt.doFinal(Gzip.uncompress(recv()))
+	fun sGzSend(data: ByteArray) = send(encrypt.doFinal(Gzip.compress(data)))
+	fun sGzRecv() = Gzip.uncompress(decrypt.doFinal(recv()))
 }
