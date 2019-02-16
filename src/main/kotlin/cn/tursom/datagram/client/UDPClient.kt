@@ -9,8 +9,7 @@ import java.net.InetAddress
 class UdpClient(
 	private val host: String,
 	private val port: Int,
-	private val packageSize: Int = defaultLen,
-	private val exception: Exception.() -> Unit = { printStackTrace() }
+	private val packageSize: Int = defaultLen
 ) : Closeable {
 	
 	private val socket = DatagramSocket()
