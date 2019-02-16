@@ -7,6 +7,7 @@ import java.security.interfaces.RSAPublicKey
 import java.security.spec.X509EncodedKeySpec
 import javax.crypto.Cipher
 
+
 class RSA {
 	val publicKey: RSAPublicKey
 	private val privateKey: RSAPrivateKey?
@@ -31,7 +32,21 @@ class RSA {
 	 */
 	fun encrypt(data: ByteArray): ByteArray {
 		cipher.init(Cipher.ENCRYPT_MODE, publicKey)
-		return cipher.doFinal(data)
+		return if (data.size < 117)
+			cipher.doFinal(data)
+		else {
+			val buffer = ByteArray(data.size / 117 * 128 + 128)
+			var i1 = 0
+			var decodeIndex = 0
+			
+			while (i1 + 117 < data.size) {
+				decodeIndex += cipher.doFinal(data, i1, 117, buffer, decodeIndex)
+				i1 += 117
+			}
+			decodeIndex += cipher.doFinal(data, i1, data.size - i1, buffer, decodeIndex)
+			
+			buffer.copyOf(decodeIndex)
+		}
 	}
 	
 	/**
@@ -39,7 +54,20 @@ class RSA {
 	 */
 	fun decrypt(data: ByteArray): ByteArray {
 		cipher.init(Cipher.DECRYPT_MODE, privateKey ?: throw NoPrivateKeyException())
-		return cipher.doFinal(data)
+		return if (data.size < 128) {
+			cipher.doFinal(data)
+		} else {
+			val buffer = ByteArray(data.size / 128 * 117 + 11)
+			var i1 = 0
+			var decodeIndex = 0
+			
+			while (i1 + 128 < data.size) {
+				decodeIndex += cipher.doFinal(data, i1, 128, buffer, decodeIndex)
+				i1 += 128
+			}
+			decodeIndex += cipher.doFinal(data, i1, data.size - i1, buffer, decodeIndex)
+			buffer.copyOf(decodeIndex)
+		}
 	}
 	
 	class NoPrivateKeyException(message: String? = null) : Exception(message)
