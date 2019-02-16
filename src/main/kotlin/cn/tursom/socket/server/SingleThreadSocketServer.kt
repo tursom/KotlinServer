@@ -1,19 +1,19 @@
 package cn.tursom.socket.server
 
+import cn.tursom.socket.BaseSocket
 import java.net.ServerSocket
-import java.net.Socket
 import java.net.SocketException
 
 class SingleThreadSocketServer(
 	private val serverSocket: ServerSocket,
 	val exception: Exception.() -> Unit = { printStackTrace() },
-	handler: Socket.() -> Unit
+	handler: BaseSocket.() -> Unit
 ) : SocketServer(handler) {
 	
 	constructor(
 		port: Int,
 		exception: Exception.() -> Unit = { printStackTrace() },
-		handler: Socket.() -> Unit
+		handler: BaseSocket.() -> Unit
 	) : this(ServerSocket(port), exception, handler)
 	
 	override fun run() {
@@ -21,7 +21,7 @@ class SingleThreadSocketServer(
 			try {
 				serverSocket.accept().use {
 					try {
-						it.handler()
+						BaseSocket(it).handler()
 					} catch (e: Exception) {
 						e.exception()
 					}

@@ -1,10 +1,7 @@
 package cn.tursom.socket
 
 import cn.tursom.tools.toUTF8String
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
+import java.io.*
 import java.net.Socket
 import java.net.SocketTimeoutException
 
@@ -12,7 +9,11 @@ import java.net.SocketTimeoutException
  * 对基础的Socket做了些许封装
  */
 @Suppress("unused")
-open class BaseSocket(private val socket: Socket, private val timeout: Int = Companion.timeout) {
+open class BaseSocket(
+	private val socket: Socket,
+	private val timeout: Int = Companion.timeout
+) : Closeable {
+	
 	val address = socket.inetAddress?.toString()?.drop(1) ?: "0.0.0.0"
 	val port by lazy { socket.port }
 	val localPort by lazy { socket.localPort }
@@ -179,6 +180,10 @@ open class BaseSocket(private val socket: Socket, private val timeout: Int = Com
 		}
 		
 		return readSize
+	}
+	
+	override fun close() {
+		closeSocket()
 	}
 	
 	protected fun closeSocket() {

@@ -1,15 +1,15 @@
 package cn.tursom.socket.server
 
+import cn.tursom.socket.BaseSocket
 import java.net.ServerSocket
-import java.net.Socket
 
 class MultithreadingSocketServer(
-	val serverSocket: ServerSocket,
-	val threadNumber: Int = cpuNumber,
+	private val serverSocket: ServerSocket,
+	private val threadNumber: Int = cpuNumber,
 	val exception: Exception.() -> Unit = {
 		printStackTrace()
 	},
-	handler: Socket.() -> Unit
+	handler: BaseSocket.() -> Unit
 ) : SocketServer(handler) {
 	
 	constructor(
@@ -18,7 +18,7 @@ class MultithreadingSocketServer(
 		exception: Exception.() -> Unit = {
 			printStackTrace()
 		},
-		handler: Socket.() -> Unit
+		handler: BaseSocket.() -> Unit
 	) : this(ServerSocket(port), threadNumber, exception, handler)
 	
 	private val threadList = ArrayList<Thread>()
@@ -29,7 +29,7 @@ class MultithreadingSocketServer(
 				while (true) {
 					serverSocket.accept().use {
 						try {
-							it.handler()
+							BaseSocket(it).handler()
 						} catch (e: Exception) {
 							e.exception()
 						}

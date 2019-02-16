@@ -1,9 +1,9 @@
 package cn.tursom.socket.server
 
+import cn.tursom.socket.BaseSocket
 import cn.tursom.socket.utils.parseXmlAttribute
 import cn.tursom.tools.getTAG
 import org.dom4j.io.SAXReader
-import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.net.ServerSocket
@@ -56,7 +56,7 @@ open class ThreadPoolSocketServer : SocketServer {
 		timeout: Long = 0L,
 		timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
 		startImmediately: Boolean = false,
-		handler: Socket.() -> Unit
+		handler: BaseSocket.() -> Unit
 	) : super(handler) {
 		pool = ThreadPoolExecutor(threads, threads, timeout, timeUnit, LinkedBlockingQueue(queueSize))
 		serverSocket = ServerSocket(port)
@@ -79,7 +79,7 @@ open class ThreadPoolSocketServer : SocketServer {
 	 */
 	constructor(
 		configPath: String,
-		handler: Socket.() -> Unit
+		handler: BaseSocket.() -> Unit
 	) : super(handler) {
 		val configData = ServerConfigData()
 		
@@ -114,7 +114,7 @@ open class ThreadPoolSocketServer : SocketServer {
 				println("$TAG: run(): get connect: $socket")
 				pool.execute {
 					socket.use {
-						it.handler()
+						BaseSocket(it).handler()
 					}
 				}
 			} catch (e: IOException) {
