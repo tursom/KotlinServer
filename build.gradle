@@ -25,12 +25,20 @@ repositories {
 
 dependencies {
 	compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-	compile 'org.xerial:sqlite-jdbc:3.21.0.1'
 	compile "com.google.code.gson:gson:2.8.2"
-	compile "org.json:json:+"
+//	compile 'org.apache.commons:commons-lang3:3.5'
+
+	// 解析XML
 	compile group: 'dom4j', name: 'dom4j', version: '1.6.1'
-	compile 'org.apache.commons:commons-lang3:3.5'
+
+	// database.sqlite 依赖的库
+	compile 'org.xerial:sqlite-jdbc:3.21.0.1'
+	// database.mysql 依赖的库
 	compile group: 'mysql', name: 'mysql-connector-java', version: '+'
+
+	// socket.server.nio 需要的netty
+	compile group: "io.netty", name: "netty-all", version: "4.1.33.Final"
+
 	testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
