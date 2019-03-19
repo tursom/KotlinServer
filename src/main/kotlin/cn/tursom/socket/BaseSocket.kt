@@ -1,3 +1,5 @@
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package cn.tursom.socket
 
 import cn.tursom.tools.toUTF8String
@@ -50,81 +52,77 @@ open class BaseSocket(
 	}
 	
 	fun recvString(
-		maxsize: Int = defaultReadSize,
 		readTimeout: Int = 100,
-		firstTimeout: Int = timeout,
-		exception: Exception.() -> Unit = { printStackTrace() },
-		timeoutException: SocketTimeoutException.() -> Unit = {}
+		firstTimeout: Int = timeout
 	): String {
-		return recv(maxsize, readTimeout, firstTimeout, exception, timeoutException).toUTF8String()
+		return recv(readTimeout, firstTimeout).toUTF8String()
+	}
+	
+	fun recvString(
+		maxsize: Int,
+		readTimeout: Int = 100,
+		firstTimeout: Int = timeout
+	): String {
+		return recv(maxsize, readTimeout, firstTimeout).toUTF8String()
 	}
 	
 	fun recvInt(
-		timeout1: Int = timeout,
-		exception: Exception.() -> Int? = { printStackTrace();null },
-		timeoutException: SocketTimeoutException.() -> Int? = { null }
+		timeout1: Int = timeout
 	): Int? {
-		return try {
-			val buffer = ByteArray(4)
-			socket.soTimeout = timeout1
-			var sTime = System.currentTimeMillis()
-			//读取数据
-			var rSize = inputStream.read(buffer, 0, 4)
-			while (rSize < 4) {
-				val sTime2 = System.currentTimeMillis()
-				socket.soTimeout -= (sTime2 - sTime).toInt()
-				sTime = sTime2
-				val sReadSize = inputStream.read(buffer, rSize, 8 - rSize)
-				if (sReadSize <= 0) {
-					break
-				} else {
-					rSize += sReadSize
-				}
+		val buffer = ByteArray(4)
+		socket.soTimeout = timeout1
+		var sTime = System.currentTimeMillis()
+		//读取数据
+		var rSize = inputStream.read(buffer, 0, 4)
+		while (rSize < 4) {
+			val sTime2 = System.currentTimeMillis()
+			socket.soTimeout -= (sTime2 - sTime).toInt()
+			sTime = sTime2
+			val sReadSize = inputStream.read(buffer, rSize, 8 - rSize)
+			if (sReadSize <= 0) {
+				break
+			} else {
+				rSize += sReadSize
 			}
-			buffer.toInt()
-		} catch (e: SocketTimeoutException) {
-			e.timeoutException()
-		} catch (e: Exception) {
-			e.exception()
 		}
+		return buffer.toInt()
 	}
 	
 	fun recvLong(
-		timeout1: Int = timeout,
-		exception: Exception.() -> Long? = { printStackTrace();null },
-		timeoutException: SocketTimeoutException.() -> Long? = { null }
+		timeout1: Int = timeout
 	): Long? {
-		return try {
-			val buffer = ByteArray(8)
-			socket.soTimeout = timeout1
-			var sTime = System.currentTimeMillis()
-			//读取数据
-			var rSize = inputStream.read(buffer, 0, 8)
-			while (rSize < 4) {
-				val sTime2 = System.currentTimeMillis()
-				socket.soTimeout -= (sTime2 - sTime).toInt()
-				sTime = sTime2
-				val sReadSize = inputStream.read(buffer, rSize, 8 - rSize)
-				if (sReadSize <= 0) {
-					break
-				} else {
-					rSize += sReadSize
-				}
+		val buffer = ByteArray(8)
+		socket.soTimeout = timeout1
+		var sTime = System.currentTimeMillis()
+		//读取数据
+		var rSize = inputStream.read(buffer, 0, 8)
+		while (rSize < 4) {
+			val sTime2 = System.currentTimeMillis()
+			socket.soTimeout -= (sTime2 - sTime).toInt()
+			sTime = sTime2
+			val sReadSize = inputStream.read(buffer, rSize, 8 - rSize)
+			if (sReadSize <= 0) {
+				break
+			} else {
+				rSize += sReadSize
 			}
-			buffer.toLong()
-		} catch (e: SocketTimeoutException) {
-			e.timeoutException()
-		} catch (e: Exception) {
-			e.exception()
 		}
+		return buffer.toLong()
 	}
 	
 	fun recv(
-		maxsize: Int = defaultReadSize,
 		readTimeout: Int = 100,
-		firstTimeout: Int = timeout,
-		exception: Exception.() -> Unit = { printStackTrace() },
-		timeoutException: SocketTimeoutException.() -> Unit = {}
+		firstTimeout: Int = timeout
+	): ByteArray {
+		val outputStream = ByteArrayOutputStream()
+		recv(outputStream, readTimeout, firstTimeout)
+		return outputStream.toByteArray()
+	}
+	
+	fun recv(
+		maxsize: Int,
+		readTimeout: Int = 100,
+		firstTimeout: Int = timeout
 	): ByteArray {
 		val buffer = ByteArray(maxsize)
 		var readSize = 0
@@ -143,43 +141,32 @@ open class BaseSocket(
 				}
 			}
 		} catch (e: SocketTimeoutException) {
-			e.timeoutException()
-		} catch (e: Exception) {
-			e.exception()
 		}
 		return buffer.copyOf(readSize)
 	}
 	
 	fun recv(
-		buffer: ByteArray,
+		outputStream: OutputStream,
 		readTimeout: Int = 100,
-		firstTimeout: Int = timeout,
-		exception: Exception.() -> Unit = { printStackTrace() },
-		timeoutException: SocketTimeoutException.() -> Unit = {}
-	): Int {
-		var readSize = 0
+		firstTimeout: Int = timeout
+	) {
+		val buffer = ByteArray(1024)
 		socket.soTimeout = firstTimeout
 		
 		try {
-			readSize = inputStream.read(buffer)
-			
+			val readSize = inputStream.read(buffer)
+			outputStream.write(buffer, 0, readSize)
 			socket.soTimeout = readTimeout
-			while (readSize < buffer.size) {
-				val sReadSize = inputStream.read(buffer, readSize, buffer.size - readSize)
+			while (true) {
+				val sReadSize = inputStream.read(buffer)
 				if (sReadSize <= 0) {
 					break
 				} else {
-					readSize += sReadSize
+					outputStream.write(buffer, 0, readSize)
 				}
 			}
-			
 		} catch (e: SocketTimeoutException) {
-			e.timeoutException()
-		} catch (e: Exception) {
-			e.exception()
 		}
-		
-		return readSize
 	}
 	
 	override fun close() {

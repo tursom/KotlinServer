@@ -4,20 +4,12 @@ import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.text.SimpleDateFormat
 import java.util.ArrayList
+import kotlin.collections.HashSet
+import kotlin.collections.contains
+import kotlin.collections.forEach
 
-open class SQLAdapter<T : Any>(val clazz: Class<T>) : ArrayList<T>() {
-	//获取Unsafe
-	private val field: Field by lazy {
-		val field = Unsafe::class.java.getDeclaredField("theUnsafe")
-		//允许通过反射设置属性的值
-		field.isAccessible = true
-		field
-	}
-	//利用Unsafe绕过构造函数获取变量
-	private val unsafe = field.get(null) as Unsafe
-	
+open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
 	open fun adapt(resultSet: ResultSet) {
 		clear() //清空已储存的数据
 		try {
@@ -49,8 +41,7 @@ open class SQLAdapter<T : Any>(val clazz: Class<T>) : ArrayList<T>() {
 			it.isAccessible = true
 			// 这里是获取bean属性的类型
 			val beanType = it.type
-			// 根据 rs 列名 ，组装javaBean里边的其中一个set方法，object 就是数据库第一行第一列的数据了
-			var value: Any?
+			val value: Any?
 			try {
 				value = resultSet.getObject(it.name)
 			} catch (e: SQLException) {
@@ -59,23 +50,49 @@ open class SQLAdapter<T : Any>(val clazz: Class<T>) : ArrayList<T>() {
 			}
 			if (value != null) {
 				val dbType = value.javaClass // 这里是获取数据库字段的类型
-				// 处理类型不匹配问题
-				if (beanType == java.util.Date::class.java) {
-					if (dbType == java.sql.Timestamp::class.java) {
-						value = java.util.Date((value as java.sql.Timestamp).time)
-					} else if (dbType == String::class.java) {
-						value = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S").parse(value as String)
+				//让我们把数据喂进去
+				it.set(t, if (beanType == java.lang.Float::class.java) {
+					if (dbType == java.lang.Double::class.java) {
+						(value as Double).toFloat()
+					} else {
+						//检查是否可以为空
+						if (it.getAnnotation(NotNullField::class.java) != null) {
+							value.toString().toFloat()
+						} else {
+							value.toString().toFloatOrNull()
+						}
 					}
-				} else if (beanType == java.lang.Float::class.java && dbType == java.lang.Double::class.java) {
-					value = (value as Double).toFloat()
 				} else if (beanType == java.lang.String::class.java && dbType != java.lang.String::class.java) {
-					value = value.toString()
-				} else if (beanType == java.lang.Boolean::class.java && dbType == java.lang.String::class.java) {
-					value = value.toString().toBoolean()
-				}
-				it.set(t, value)
+					value.toString()
+				} else if (beanType == java.lang.Boolean::class.java) {
+					if (it.getAnnotation(NotNullField::class.java) != null) {
+						value.toString().toBoolean()
+					} else {
+						try {
+							value.toString().toBoolean()
+						} catch (e: Exception) {
+							null
+						}
+					}
+				} else if (beanType.interfaces.contains(SqlField::class.java)) {
+					val field = beanType.newInstance() as SqlField<*>
+					field.adapt(value)
+					field
+				} else {
+					value
+				})
 			}
 		}
 		add(t)
+	}
+	
+	companion object {
+		//利用Unsafe绕过构造函数获取变量
+		private val unsafe by lazy {
+			val field = Unsafe::class.java.getDeclaredField("theUnsafe")
+			//允许通过反射设置属性的值
+			field.isAccessible = true
+			field.get(null) as Unsafe
+		}
 	}
 }

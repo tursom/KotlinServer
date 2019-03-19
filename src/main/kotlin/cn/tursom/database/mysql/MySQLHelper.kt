@@ -1,26 +1,60 @@
 package cn.tursom.database.mysql
 
-import cn.tursom.database.SQLAdapter
-import cn.tursom.database.SQLHelper
+import cn.tursom.database.*
 import java.sql.Connection
 import java.sql.DriverManager
+import java.text.DateFormat
+import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
-import java.text.SimpleDateFormat
-import java.text.DateFormat
-
 
 /*
  * MySQLHelper，SQLite辅助使用类
  * 实现创建表格、查询、插入和更新功能
  */
+@Suppress("unused", "SqlNoDataSourceInspection", "SqlDialectInspection")
 class MySQLHelper(val connection: Connection) : SQLHelper {
+	init {
+		connection.autoCommit = false
+	}
+	
+	constructor(url: String, user: String, password: String)
+		: this(DriverManager.getConnection("jdbc:mysql://$url?characterEncoding=utf-8", user, password))
+	
+	private val basename: String by lazy {
+		val resultSet = connection.createStatement().executeQuery("SELECT database()")
+		resultSet.next()
+		resultSet.getString(1)
+	}
+	
+	/*
+	 * 创建表格
+	 * table: 表格名
+	 * keys: 属性列表
+	 */
+	override fun createTable(table: String, keys: Array<String>) {
+		val statement = connection.createStatement()
+		statement.executeUpdate("CREATE TABLE if not exists `$table` ( ${toColumn(keys)} ) ENGINE = InnoDB DEFAULT CHARSET=utf8;")
+		connection.commit()
+	}
+	
+	/**
+	 * 根据提供的class对象自动化创建表格
+	 */
+	@ExperimentalUnsignedTypes
+	override fun <T> createTable(table: String, keys: Class<T>) {
+		createTable(table, keys, null, "InnoDB", "utf8")
+	}
+	
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 * 但是有诸多缺陷，所以不是很建议使用
 	 */
-	override fun <T> createTable(table: String, keys: Class<T>) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	@ExperimentalUnsignedTypes
+	fun <T> createTable(table: String, keys: Class<T>, primaryKey: String?, engine: String = "InnoDB", charset: String = "utf8") {
+		val statement = connection.createStatement()
+		statement.executeUpdate(createTableStr(table, keys, engine, charset))
+		connection.commit()
 	}
 	
 	/**
@@ -36,91 +70,55 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	 * 删除表格
 	 */
 	override fun dropTable(table: String) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		deleteTable(table)
 	}
 	
 	/**
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
 	 * @param table 表名
-	 * @param name 查询字段
+	 * @param column 查询字段
 	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 * @param maxCount 最大查询数量
 	 */
-	override fun <T : Any> select(adapter: SQLAdapter<T>, table: String, name: Array<String>, where: Map<String, String>?, maxCount: Int?) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-	
-	/**
-	 * 查询
-	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
-	 * @param table 表名
-	 * @param name 查询字段
-	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
-	 * @param maxCount 最大查询数量
-	 */
-	override fun <T : Any> select(adapter: SQLAdapter<T>, table: String, where: Pair<String, String>, maxCount: Int?, name: Array<String>) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-	
-	override fun <T : Any> select(adapter: SQLAdapter<T>, table: String, name: String, where: String?, maxCount: Int?) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-	
-	override fun <T : Any> reverseSelect(adapter: SQLAdapter<T>, table: String, name: Array<String>, where: Pair<String, String>, index: String, maxCount: Int?) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-	
-	override fun <T : Any> reverseSelect(adapter: SQLAdapter<T>, table: String, name: String, where: String?, index: String, maxCount: Int?) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-	
-	override fun update(table: String, set: Map<String, String>, where: Map<String, String>) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-	
-	override fun delete(table: String, where: Pair<String, String>) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-	
-	override fun commit() {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-	
-	init {
-		connection.autoCommit = false
-	}
-	
-	constructor(url: String, user: String, password: String)
-		: this(DriverManager.getConnection("jdbc:mysql://$url?characterEncoding=utf-8", user, password))
-	
-	private val basename: String
-		get() {
-			val resultSet = connection.createStatement().executeQuery("SELECT database()")
-			resultSet.next()
-			return resultSet.getString(1)
+	override fun <T : Any> select(
+		adapter: SQLAdapter<T>,
+		table: String,
+		column: Array<String>,
+		where: Array<Where>,
+		maxCount: Int?
+	) {
+		val whereStringBuilder = StringBuilder()
+		where.forEach {
+			whereStringBuilder.append(it.sqlStr)
+			whereStringBuilder.append(',')
 		}
+		whereStringBuilder.deleteCharAt(whereStringBuilder.length - 1)
+		
+		val columnStringBuilder = StringBuilder()
+		column.forEach {
+			columnStringBuilder.append("$it,")
+		}
+		columnStringBuilder.deleteCharAt(whereStringBuilder.length - 1)
+		select(adapter, table, columnStringBuilder.toString(), whereStringBuilder.toString(), maxCount)
+	}
 	
-	/*
-	 * 创建表格
-	 * table: 表格名
-	 * keys: 属性列表
-	 */
-	override fun createTable(table: String, keys: Array<String>) {
+	override fun <T : Any> select(
+		adapter: SQLAdapter<T>,
+		table: String,
+		column: String,
+		where: String?,
+		maxCount: Int?
+	) {
 		val statement = connection.createStatement()
-		statement.executeUpdate("CREATE TABLE if not exists `$table` ( ${toColumn(keys)} ) ENGINE = InnoDB DEFAULT CHARSET=utf8;")
-		connection.commit()
+		adapter.adapt(
+			statement.executeQuery("SELECT $column FROM $table${if (where != null) " WHERE $where" else ""
+			}${if (maxCount != null) " limit 0,$maxCount" else ""};")
+		)
+		statement.closeOnCompletion()
 	}
 	
-	fun createTable(table: String, keys: Map<String, String>) {
-		val keysArray = ArrayList<String>()
-		keys.forEach {
-			keysArray.add("`${it.key}` ${it.value}")
-		}
-		createTable(table, keysArray.toTypedArray())
-	}
-	
-	/*
+	/**
 	 * 查询
 	 * adapter: 用于保存查询结果的数据类，由SQLAdapter继承而来
 	 * table: 表名
@@ -128,8 +126,10 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	 * where: 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 */
 	inline fun <reified T : Any> select(
-		table: String, name: Array<String> = arrayOf("*"),
-		where: Map<String, String>): SQLAdapter<T> {
+		table: String,
+		name: Array<String> = arrayOf("*"),
+		where: Array<Where>
+	): SQLAdapter<T> {
 		val adapter = SQLAdapter(T::class.java)
 		select(adapter, table, name, where)
 		return adapter
@@ -137,25 +137,19 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	
 	inline fun <reified T : Any> select(
 		table: String, name: String = "*",
-		where: String? = null): SQLAdapter<T> {
+		where: String? = null
+	): SQLAdapter<T> {
 		val adapter = SQLAdapter(T::class.java)
 		select(adapter, table, name, where)
 		return adapter
 	}
 	
-	fun <T : Any> select(
-		adapter: SQLAdapter<T>, table: String,
-		name: String = "*", where: String? = null
-	) {
-		val statement = connection.createStatement()
-		val resultSet =
-			if (where == null || where.isEmpty())
-				statement.executeQuery("SELECT $name FROM $table ;")
-			else
-				statement.executeQuery("SELECT $name FROM $table WHERE $where;")
-		adapter.adapt(resultSet)
-		resultSet.close()
-		statement.closeOnCompletion()
+	override fun update(table: String, set: Map<String, String>, where: Array<Where>) {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+	
+	override fun commit() {
+		connection.commit()
 	}
 	
 	/**
@@ -238,15 +232,10 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	/**
 	 * 同上，但是where限定为=
 	 */
-	override fun <T : Any> update(table: String, value: T, where: Map<String, String>) {
+	override fun <T : Any> update(table: String, value: T, where: Array<Where>) {
 		val whereArray = ArrayList<String>()
 		where.forEach {
-			when (it.value.javaClass) {
-				String::class.java ->
-					whereArray.add("${it.key}='${it.value.toString().replace("'", "''")}'")
-				else ->
-					whereArray.add("${it.key}=${it.value}")
-			}
+			whereArray.add(it.sqlStr)
 		}
 		update(table, value, whereArray.toTypedArray())
 	}
@@ -258,15 +247,10 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: Map<String, String>) {
+	override fun delete(table: String, where: Array<Where>) {
 		val whereArray = StringBuilder()
 		where.forEach {
-			when (it.value.javaClass) {
-				String::class.java ->
-					whereArray.append("${it.key}='${it.value.toString().replace("'", "''")}',")
-				else ->
-					whereArray.append("${it.key}=${it.value},")
-			}
+			whereArray.append("${it.sqlStr},")
 		}
 		if (whereArray.isNotEmpty())
 			whereArray.delete(whereArray.length - 1, whereArray.length)
@@ -416,5 +400,67 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 			Pair(Double::class.java, "DOUBLE"),
 			Pair(Date::class.java, "TIMESTAMP ")
 		)
+		
+		fun <T> createTableStr(table: String, keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8"): String {
+			val fieldSet = keys.declaredFields
+			val valueStrBuilder = StringBuilder()
+			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS `$table`(")
+			val primaryKeySet = HashSet<String>()
+			fieldSet.forEach {
+				when (it.type) {
+					Byte::class.java -> valueStrBuilder.append("`${it.name}` TINYINT")
+					Char::class.java -> valueStrBuilder.append("`${it.name}` TINYINT UNSIGNED")
+					//UByte::class.java -> valueStrBuilder.append("`${it.name}` TINYINT UNSIGNED")
+					Short::class.java -> valueStrBuilder.append("`${it.name}` SMALLINT")
+					//UShort::class.java -> valueStrBuilder.append("`${it.name}` SMALLINT UNSIGNED")
+					Int::class.java -> valueStrBuilder.append("`${it.name}` INT")
+					//UInt::class.java -> valueStrBuilder.append("`${it.name}` INT UNSIGNED")
+					Long::class.java -> valueStrBuilder.append("`${it.name}` BIGINT")
+					//ULong::class.java -> valueStrBuilder.append("`${it.name}` BIGINT UNSIGNED")
+					Float::class.java -> valueStrBuilder.append("`${it.name}` FLOAT")
+					Double::class.java -> valueStrBuilder.append("`${it.name}` DOUBLE")
+					String::class.java -> valueStrBuilder.append("`${it.name}` VARCHAR")
+					else -> {
+						if (it.type.interfaces.contains(SqlField::class.java)) {
+							valueStrBuilder.append("`${it.name}` ${it.type.getAnnotation(SqlFieldType::class.java)
+								?.name ?: it.type.name.split('.').last()}")
+						} else {
+							return@forEach
+						}
+					}
+				}
+				
+				//检查是否可以为空
+				it.getAnnotation(NotNullField::class.java)?.let {
+					valueStrBuilder.append(" NOT NULL")
+				}
+				it.getAnnotation(AutoIncrement::class.java)?.let {
+					valueStrBuilder.append(" AUTO_INCREMENT")
+				}
+				it.getAnnotation(PrimaryKey::class.java)?.run {
+					primaryKeySet.add(it.name)
+				}
+				it.getAnnotation(Unique::class.java)?.let {
+					valueStrBuilder.append(" UNIQUE")
+				}
+				val annotation = it.getAnnotation(ExtraAttribute::class.java) ?: run {
+					valueStrBuilder.append(",")
+					return@forEach
+				}
+				valueStrBuilder.append(" ${annotation.attributes},")
+			}
+			if (primaryKeySet.isNotEmpty()) {
+				valueStrBuilder.append("PRIMARY KEY(")
+				primaryKeySet.forEach {
+					valueStrBuilder.append("`$it`,")
+				}
+				valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
+				valueStrBuilder.append(")")
+			} else {
+				valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
+			}
+			valueStrBuilder.append(")ENGINE=$engine DEFAULT CHARSET=$charset;")
+			return valueStrBuilder.toString()
+		}
 	}
 }

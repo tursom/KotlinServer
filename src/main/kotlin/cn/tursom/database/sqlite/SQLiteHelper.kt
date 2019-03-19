@@ -1,7 +1,6 @@
 package cn.tursom.database.sqlite
 
-import cn.tursom.database.SQLAdapter
-import cn.tursom.database.SQLHelper
+import cn.tursom.database.*
 import org.sqlite.SQLiteException
 import java.io.File
 import java.sql.Connection
@@ -9,6 +8,14 @@ import java.sql.DriverManager
 import java.sql.SQLException
 import java.util.logging.Logger
 
+
+@MustBeDocumented
+@Target(AnnotationTarget.FIELD)
+annotation class Default(val default: String)
+
+@MustBeDocumented
+@Target(AnnotationTarget.FIELD)
+annotation class Check(val func: String)
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -44,9 +51,10 @@ class SQLiteHelper
 	 * @param keys: 属性列表
 	 */
 	override fun createTable(table: String, keys: Array<String>) {
-		println("CREATE TABLE if not exists $table (${toColumn(keys)})")
+		val sql = "CREATE TABLE if not exists $table (${toColumn(keys)})"
+		println(sql)
 		val statement = connection.createStatement()
-		statement.executeUpdate("CREATE TABLE if not exists $table (${toColumn(keys)})")
+		statement.executeUpdate(sql)
 		commit()
 	}
 	
@@ -55,11 +63,11 @@ class SQLiteHelper
 	 * 但是有诸多缺陷，所以不是很建议使用
 	 */
 	override fun <T> createTable(table: String, keys: Class<T>) {
-		val keysArray = ArrayList<String>()
-		keys.declaredFields.forEach {
-			keysArray.add("${it.name} ${it.type.toString().split(".").last().toUpperCase()}")
-		}
-		createTable(table, keysArray.toTypedArray())
+		val sql = createTableStr(table, keys)
+		println(sql)
+		val statement = connection.createStatement()
+		statement.executeUpdate(sql)
+		commit()
 	}
 	
 	/**
@@ -82,45 +90,25 @@ class SQLiteHelper
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
 	 * @param table 表名
-	 * @param name 查询字段
+	 * @param column 查询字段
 	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 * @param maxCount 最大查询数量
 	 */
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String,
-		name: Array<String>, where: Map<String, String>?, maxCount: Int?) {
-		if (where != null) {
-			select(adapter, table, toColumn(name), toWhere(where), maxCount)
-		} else {
-			select(adapter, table, toColumn(name), maxCount = maxCount)
-		}
-	}
-	
-	/**
-	 * 查询
-	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
-	 * @param table 表名
-	 * @param name 查询字段
-	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
-	 * @param maxCount 最大查询数量
-	 */
-	override fun <T : Any> select(
-		adapter: SQLAdapter<T>, table: String,
-		where: Pair<String, String>, maxCount: Int?, name: Array<String>) {
-		select(adapter, table, name, mapOf(where), maxCount)
+		column: Array<String>, where: Array<Where>, maxCount: Int?) {
+		select(adapter, table, toColumn(column), toWhere(where), maxCount)
 	}
 	
 	override fun <T : Any> select(
-		adapter: SQLAdapter<T>, table: String, name: String, where: String?, maxCount: Int?
+		adapter: SQLAdapter<T>, table: String, column: String, where: String?, maxCount: Int?
 	) {
 		val statement = connection.createStatement()
 		try {
 			@Suppress("SqlResolve", "SqlIdentifier")
 			adapter.adapt(
-				if (where == null)
-					statement.executeQuery("SELECT $name FROM $table limit 0,${maxCount ?: Int.MAX_VALUE};")
-				else
-					statement.executeQuery("SELECT $name FROM $table WHERE $where limit 0,${maxCount ?: Int.MAX_VALUE};")
+				statement.executeQuery("SELECT $column FROM $table ${if (where != null) "WHERE $where" else ""
+				} limit 0,${maxCount ?: Int.MAX_VALUE};")
 			)
 		} catch (e: SQLiteException) {
 			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") throw e
@@ -128,35 +116,34 @@ class SQLiteHelper
 		statement.closeOnCompletion()
 	}
 	
-	override fun <T : Any> reverseSelect(
-		adapter: SQLAdapter<T>, table: String,
-		name: Array<String>, where: Map<String, String>?, index: String, maxCount: Int?) {
+	fun <T : Any> reverseSelect(
+		adapter: SQLAdapter<T>,
+		table: String,
+		name: Array<String>,
+		where: Array<Where>?,
+		index: String,
+		maxCount: Int?) {
 		if (where != null) {
 			reverseSelect(adapter, table, toColumn(name), toWhere(where), index, maxCount)
 		} else {
-			reverseSelect(adapter, table, toColumn(name), index = index, maxCount = maxCount)
+			reverseSelect(adapter, table, toColumn(name), null, index, maxCount)
 		}
 	}
 	
-	override fun <T : Any> reverseSelect(
-		adapter: SQLAdapter<T>, table: String,
-		name: Array<String>, where: Pair<String, String>, index: String, maxCount: Int?) {
-		reverseSelect(adapter, table, name, mapOf(where), index, maxCount)
-	}
-	
-	override fun <T : Any> reverseSelect(
-		adapter: SQLAdapter<T>, table: String, name: String, where: String?, index: String, maxCount: Int?
+	fun <T : Any> reverseSelect(
+		adapter: SQLAdapter<T>,
+		table: String,
+		name: String,
+		where: String?,
+		index: String,
+		maxCount: Int?
 	) {
 		val statement = connection.createStatement()
 		try {
 			@Suppress("SqlResolve", "SqlIdentifier")
 			adapter.adapt(
-				if (where == null)
-					statement.executeQuery("SELECT $name FROM $table ORDER BY $index DESC limit 0,${maxCount
-						?: Int.MAX_VALUE};")
-				else
-					statement.executeQuery("SELECT $name FROM $table WHERE $where ORDER BY $index DESC limit 0,${maxCount
-						?: Int.MAX_VALUE};")
+				statement.executeQuery("SELECT $name FROM $table ${if (where == null) "WHERE $where" else ""
+				} ORDER BY $index DESC limit 0,${maxCount ?: Int.MAX_VALUE};")
 			)
 		} catch (e: SQLiteException) {
 			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") throw e
@@ -172,13 +159,11 @@ class SQLiteHelper
 	override fun <T : Any> insert(table: String, value: T) {
 		val valueMap = HashMap<String, String>()
 		value.javaClass.declaredFields.forEach {
-			if (getFieldValueByName(it.name, value) == null) {
-				return@forEach
-			}
-			if (it.type == java.util.Date::class.java) {
-				valueMap[it.name] = java.sql.Timestamp((getFieldValueByName(it.name, value) as java.util.Date).time).toString()
+			val field = getFieldValueByName(it.name, value) ?: return@forEach
+			if (it.type.interfaces.contains(SqlField::class.java)) {
+				valueMap[it.name] = (field as SqlField<*>).sqlValue
 			} else {
-				valueMap[it.name] = getFieldValueByName(it.name, value).toString()
+				valueMap[it.name] = field.toString()
 			}
 		}
 		try {
@@ -209,7 +194,7 @@ class SQLiteHelper
 	override fun update(
 		table: String,
 		set: Map<String, String>,
-		where: Map<String, String>) {
+		where: Array<Where>) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("UPDATE $table SET ${toValue(set)} WHERE ${toWhere(where)};")
 		commit()
@@ -217,7 +202,7 @@ class SQLiteHelper
 	}
 	
 	override fun <T : Any> update(
-		table: String, value: T, where: Map<String, String>
+		table: String, value: T, where: Array<Where>
 	) {
 		val set = HashMap<String, String>()
 		value.javaClass.declaredFields.forEach {
@@ -240,12 +225,8 @@ class SQLiteHelper
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: Map<String, String>) {
+	override fun delete(table: String, where: Array<Where>) {
 		delete(table, toWhere(where))
-	}
-	
-	override fun delete(table: String, where: Pair<String, String>) {
-		delete(table, mapOf(where))
 	}
 	
 	override fun commit() {
@@ -300,11 +281,10 @@ class SQLiteHelper
 		return stringBuilder.toString()
 	}
 	
-	private fun toWhere(where: Map<String, String>): String {
+	private fun toWhere(where: Array<Where>): String {
 		val stringBuilder = StringBuilder()
 		where.forEach {
-			if (it.key.isNotEmpty() && it.value.isNotEmpty())
-				stringBuilder.append("${it.key}='${it.value.replace("'", "''")}' AND ")
+			stringBuilder.append("${it.sqlStr} AND ")
 		}
 		if (stringBuilder.isNotEmpty())
 			stringBuilder.delete(stringBuilder.length - 5, stringBuilder.length)
@@ -316,10 +296,9 @@ class SQLiteHelper
 	 */
 	private fun getFieldValueByName(fieldName: String, o: Any): Any? {
 		return try {
-			val firstLetter = fieldName.substring(0, 1).toUpperCase()
-			val getter = "get" + firstLetter + fieldName.substring(1)
-			val method = o.javaClass.getMethod(getter)
-			method.invoke(o)
+			val field = o.javaClass.getDeclaredField(fieldName)
+			field.isAccessible = true
+			field.get(o)
 		} catch (e: Exception) {
 			e.printStackTrace()
 			logger.warning("${e.message}: $fieldName")
@@ -338,5 +317,63 @@ class SQLiteHelper
 			HashMap<String, Connection>()
 		}
 		private var connectionCount = HashMap<String, Int>()
+		
+		fun <T> createTableStr(table: String, keys: Class<T>): String {
+			val fieldSet = keys.declaredFields
+			val valueStrBuilder = StringBuilder()
+			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS $table(")
+			fieldSet.forEach {
+				when (it.type) {
+					Byte::class.java -> valueStrBuilder.append("${it.name} INTEGER")
+					Char::class.java -> valueStrBuilder.append("${it.name} INTEGER")
+					Short::class.java -> valueStrBuilder.append("${it.name} INTEGER")
+					Int::class.java -> valueStrBuilder.append("${it.name} INTEGER")
+					Long::class.java -> valueStrBuilder.append("${it.name} INTEGER")
+					Float::class.java -> valueStrBuilder.append("${it.name} REAL")
+					Double::class.java -> valueStrBuilder.append("${it.name} REAL")
+					String::class.java -> {
+						val length = it.getAnnotation(TextLength::class.java)
+						valueStrBuilder.append("${it.name} ${if (length != null) "CHAR(${length.length})" else "TEXT"}")
+					}
+					else -> {
+						if (it.type.interfaces.contains(SqlField::class.java)) {
+							valueStrBuilder.append("${it.name} ${it.type.getAnnotation(SqlFieldType::class.java)
+								?.name ?: it.type.name.split('.').last()}")
+						} else {
+							return@forEach
+						}
+					}
+				}
+				
+				//检查是否可以为空
+				it.getAnnotation(NotNullField::class.java)?.let {
+					valueStrBuilder.append(" NOT NULL")
+				}
+				it.getAnnotation(AutoIncrement::class.java)?.let {
+					valueStrBuilder.append(" AUTO_INCREMENT")
+				}
+				it.getAnnotation(PrimaryKey::class.java)?.run {
+					valueStrBuilder.append(" PRIMARY KEY")
+				}
+				it.getAnnotation(Unique::class.java)?.let {
+					valueStrBuilder.append(" UNIQUE")
+				}
+				it.getAnnotation(Default::class.java)?.let {
+					valueStrBuilder.append(" DEFAULT ${it.default}")
+				}
+				it.getAnnotation(Check::class.java)?.let {
+					valueStrBuilder.append(" CHECK(${it.func})")
+				}
+				
+				val annotation = it.getAnnotation(ExtraAttribute::class.java) ?: run {
+					valueStrBuilder.append(",")
+					return@forEach
+				}
+				valueStrBuilder.append(" ${annotation.attributes},")
+			}
+			valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
+			valueStrBuilder.append(");")
+			return valueStrBuilder.toString()
+		}
 	}
 }

@@ -11,10 +11,4 @@ kotlin_server.iml
 build/
 gradle/
 KotlinServer.iml
-src/test/
-将删除 KotlinServer.iml
-将删除 src/test/
-src/main/kotlin/cn/tursom/test.kt
-将删除 classes/
-将删除 src/main/kotlin/META-INF/
 src/main/kotlin/META-INF/
