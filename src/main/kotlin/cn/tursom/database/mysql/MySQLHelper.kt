@@ -1,19 +1,20 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.*
+import java.lang.reflect.Field
 import java.sql.Connection
 import java.sql.DriverManager
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
 
 /*
  * MySQLHelper，SQLite辅助使用类
  * 实现创建表格、查询、插入和更新功能
  */
 @Suppress("unused", "SqlNoDataSourceInspection", "SqlDialectInspection")
-class MySQLHelper(val connection: Connection) : SQLHelper {
+class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Connection) : SQLHelper {
+	
 	init {
 		connection.autoCommit = false
 	}
@@ -32,7 +33,7 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	 * table: 表格名
 	 * keys: 属性列表
 	 */
-	override fun createTable(table: String, keys: Array<String>) {
+	override fun createTable(table: String, keys: List<String>) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("CREATE TABLE if not exists `$table` ( ${toColumn(keys)} ) ENGINE = InnoDB DEFAULT CHARSET=utf8;")
 		connection.commit()
@@ -43,15 +44,14 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	 */
 	@ExperimentalUnsignedTypes
 	override fun <T> createTable(table: String, keys: Class<T>) {
-		createTable(table, keys, null, "InnoDB", "utf8")
+		createTable(table, keys, "InnoDB", "utf8")
 	}
 	
 	/**
 	 * 根据提供的class对象自动化创建表格
-	 * 但是有诸多缺陷，所以不是很建议使用
 	 */
 	@ExperimentalUnsignedTypes
-	fun <T> createTable(table: String, keys: Class<T>, primaryKey: String?, engine: String = "InnoDB", charset: String = "utf8") {
+	fun <T> createTable(table: String, keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8") {
 		val statement = connection.createStatement()
 		statement.executeUpdate(createTableStr(table, keys, engine, charset))
 		connection.commit()
@@ -84,24 +84,24 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
 		table: String,
-		column: Array<String>,
-		where: Array<Where>,
+		column: List<String>,
+		where: List<SQLHelper.Where>,
 		maxCount: Int?
-	) {
-		val whereStringBuilder = StringBuilder()
-		where.forEach {
-			whereStringBuilder.append(it.sqlStr)
-			whereStringBuilder.append(',')
-		}
-		whereStringBuilder.deleteCharAt(whereStringBuilder.length - 1)
-		
-		val columnStringBuilder = StringBuilder()
-		column.forEach {
-			columnStringBuilder.append("$it,")
-		}
-		columnStringBuilder.deleteCharAt(whereStringBuilder.length - 1)
-		select(adapter, table, columnStringBuilder.toString(), whereStringBuilder.toString(), maxCount)
-	}
+	) = select(
+		adapter = adapter,
+		table = table,
+		column = if (column.isEmpty()) "*" else {
+			val columnStringBuilder = StringBuilder()
+			column.forEach {
+				columnStringBuilder.append("$it,")
+			}
+			columnStringBuilder.deleteCharAt(columnStringBuilder.length - 1)
+			columnStringBuilder.toString()
+		},
+		where = where.toWhere(),
+		maxCount = maxCount
+	)
+	
 	
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
@@ -127,8 +127,8 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	 */
 	inline fun <reified T : Any> select(
 		table: String,
-		name: Array<String> = arrayOf("*"),
-		where: Array<Where>
+		name: List<String> = listOf("*"),
+		where: List<SQLHelper.Where>
 	): SQLAdapter<T> {
 		val adapter = SQLAdapter(T::class.java)
 		select(adapter, table, name, where)
@@ -144,12 +144,79 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 		return adapter
 	}
 	
-	override fun update(table: String, set: Map<String, String>, where: Array<Where>) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	private fun update(
+		table: String,
+		set: String,
+		where: String) {
+		val statement = connection.createStatement()
+		statement.executeUpdate("UPDATE $table SET $set WHERE $where;")
+		connection.commit()
+		statement.closeOnCompletion()
 	}
 	
-	override fun commit() {
+	override fun update(table: String, set: Map<String, String>, where: List<SQLHelper.Where>) {
+		val setStringBuilder = StringBuilder()
+		set.forEach { field, value ->
+			setStringBuilder.append("$field=$value,")
+		}
+		setStringBuilder.deleteCharAt(setStringBuilder.length - 1)
+		update(table, setStringBuilder.toString(), where.toWhere()!!)
+	}
+	
+	/**
+	 * 更新数据库数据
+	 * @param table 表名
+	 * @param value 用来存储数据的bean对象
+	 * @param where SQL语句的一部分，用来限定查找的条件。每一条String储存一个条件
+	 */
+	override fun <T : Any> update(table: String, value: T, where: List<SQLHelper.Where>) {
+		val sb = StringBuilder()
+		value.javaClass.declaredFields.forEach {
+			getFieldValueByName(it.name, value)?.let { instance ->
+				sb.append(it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name)
+				sb.append("=")
+				sb.append(when (instance) {
+					is SQLHelper.SqlField<*> -> instance.sqlValue
+					is String -> "'${instance.replace("'", "''")}'"
+					else -> instance.toString()
+				})
+				sb.append(",")
+			}
+		}
+		if (sb.isNotEmpty())
+			sb.delete(sb.length - 1, sb.length)
+		update(table, sb.toString(), where.toWhere()!!)
+	}
+	
+	/**
+	 * 更新数据库数据
+	 * @param table 表名
+	 * @param values 用来存储数据的bean对象与限定条件
+	 */
+	@Suppress("NestedLambdaShadowedImplicitParameter")
+	fun <T : Any> updateArray(table: String, values: List<Pair<T, List<SQLHelper.Where>>>) {
+		val statement = connection.createStatement()
+		values.forEach {
+			val sb = StringBuilder()
+			val value = it.first
+			value.javaClass.declaredFields.forEach {
+				getFieldValueByName(it.name, value)?.let { instance ->
+					sb.append(it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name)
+					sb.append("=")
+					sb.append(when (instance) {
+						is SQLHelper.SqlField<*> -> instance.sqlValue
+						is String -> "'${instance.replace("'", "''")}'"
+						else -> instance.toString()
+					})
+					sb.append(",")
+				}
+			}
+			if (sb.isNotEmpty())
+				sb.delete(sb.length - 1, sb.length)
+			statement.executeUpdate("UPDATE $table SET $sb WHERE ${it.second.toWhere()};")
+		}
 		connection.commit()
+		statement.closeOnCompletion()
 	}
 	
 	/**
@@ -170,74 +237,25 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 	}
 	
 	override fun <T : Any> insert(table: String, value: T) {
-		val valueMap = HashMap<String, String>()
-		value.javaClass.declaredFields.forEach {
-			if (it.type == Date::class.java) {
-				valueMap[it.name] = java.sql.Date((getFieldValueByName(it.name, value) as Date).time).toString()
-			} else
-				valueMap[it.name] = getFieldValueByName(it.name, value).toString()
-		}
-		
 		val column = StringBuilder()
 		val values = StringBuilder()
 		value.javaClass.declaredFields.forEach {
-			column.append("${it.name},")
-			values.append(when (it.type) {
-				String::class.java -> "'${getFieldValueByName(it.name, value).toString().replace("'", "''")}'"
-				Date::class.java -> "'${dateFoemat.format(getFieldValueByName(it.name, value) as Date)}'"
-				else -> getFieldValueByName(it.name, value).toString()
-			})
-			values.append(',')
+			
+			getFieldValueByName(it.name, value)?.let { instance ->
+				column.append("${it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name},")
+				values.append(when (instance) {
+					is SQLHelper.SqlField<*> -> instance.sqlValue
+					is String -> "'${instance.replace("'", "''")}'"
+					else -> instance.toString()
+				})
+				values.append(',')
+			}
 		}
 		if (column.isNotEmpty())
 			column.delete(column.length - 1, column.length)
 		if (values.isNotEmpty())
 			values.delete(values.length - 1, values.length)
 		insert(table, column.toString(), values.toString())
-	}
-	
-	private fun update(
-		table: String,
-		set: String,
-		where: String) {
-		val statement = connection.createStatement()
-		statement.executeUpdate("UPDATE $table SET $set WHERE $where;")
-		connection.commit()
-		statement.closeOnCompletion()
-	}
-	
-	/**
-	 * 更新数据库数据
-	 * @param table 表名
-	 * @param value 用来存储数据的bean对象
-	 * @param where SQL语句的一部分，用来限定查找的条件。每一条String储存一个条件
-	 */
-	fun <T : Any> update(table: String, value: T, where: Array<String>) {
-		val sb = StringBuilder()
-		value.javaClass.declaredFields.forEach {
-			sb.append(it.name)
-			sb.append("=")
-			sb.append(when (it.type) {
-				String::class.java -> "'${getFieldValueByName(it.name, value).toString().replace("'", "''")}'"
-				Date::class.java -> "'${dateFoemat.format(getFieldValueByName(it.name, value) as Date)}'"
-				else -> getFieldValueByName(it.name, value).toString()
-			})
-			sb.append(",")
-		}
-		if (sb.isNotEmpty())
-			sb.delete(sb.length - 1, sb.length)
-		update(table, sb.toString(), toWhere(where))
-	}
-	
-	/**
-	 * 同上，但是where限定为=
-	 */
-	override fun <T : Any> update(table: String, value: T, where: Array<Where>) {
-		val whereArray = ArrayList<String>()
-		where.forEach {
-			whereArray.add(it.sqlStr)
-		}
-		update(table, value, whereArray.toTypedArray())
 	}
 	
 	override fun delete(table: String, where: String) {
@@ -247,7 +265,7 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: Array<Where>) {
+	override fun delete(table: String, where: List<SQLHelper.Where>) {
 		val whereArray = StringBuilder()
 		where.forEach {
 			whereArray.append("${it.sqlStr},")
@@ -257,28 +275,22 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 		delete(table, whereArray.toString())
 	}
 	
-	fun <T : Any> insertArray(table: String, values: Array<T>) {
+	fun <T : Any> insertList(table: String, values: List<T>) {
 		val statement = connection.createStatement()
 		
 		values.forEach { valueObject ->
-			val valueMap = HashMap<String, String>()
-			valueObject.javaClass.declaredFields.forEach {
-				if (it.type == Date::class.java) {
-					valueMap[it.name] = java.sql.Date((getFieldValueByName(it.name, valueObject) as Date).time).toString()
-				} else
-					valueMap[it.name] = getFieldValueByName(it.name, valueObject).toString()
-			}
-			
 			val column = StringBuilder()
 			val value = StringBuilder()
 			valueObject.javaClass.declaredFields.forEach {
-				column.append("${it.name},")
-				value.append(when (it.type) {
-					String::class.java -> "'${getFieldValueByName(it.name, valueObject).toString().replace("'", "''")}'"
-					Date::class.java -> "'${dateFoemat.format(getFieldValueByName(it.name, valueObject) as Date)}'"
-					else -> getFieldValueByName(it.name, valueObject).toString()
-				})
-				value.append(',')
+				getFieldValueByName(it.name, valueObject)?.let { instance ->
+					column.append("${it.fieldName},")
+					value.append(when (instance) {
+						is SQLHelper.SqlField<*> -> instance.sqlValue
+						is String -> "'${instance.replace("'", "''")}'"
+						else -> instance.toString()
+					})
+					value.append(',')
+				}
 			}
 			if (column.isNotEmpty())
 				column.delete(column.length - 1, column.length)
@@ -291,82 +303,12 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 		statement.closeOnCompletion()
 	}
 	
-	/**
-	 * 更新数据库数据
-	 * @param table 表名
-	 * @param values 用来存储数据的bean对象与限定条件
-	 */
-	fun <T : Any> updateArray(table: String, values: Array<Pair<T, Array<String>>>) {
-		val statement = connection.createStatement()
-		values.forEach {
-			val sb = StringBuilder()
-			val value = it.first
-			value.javaClass.declaredFields.forEach {
-				sb.append(it.name)
-				sb.append("=")
-				sb.append(when (it.type) {
-					String::class.java -> "'${getFieldValueByName(it.name, value).toString().replace("'", "''")}'"
-					Date::class.java -> "'${dateFoemat.format(getFieldValueByName(it.name, value) as Date)}'"
-					else -> getFieldValueByName(it.name, value).toString()
-				})
-				sb.append(",")
-			}
-			if (sb.isNotEmpty())
-				sb.delete(sb.length - 1, sb.length)
-			statement.executeUpdate("UPDATE $table SET $sb WHERE ${toWhere(it.second)};")
-		}
-		connection.commit()
-		statement.closeOnCompletion()
-	}
-	
-	private fun toKeys(columns: Map<String, String>): Pair<String, String> {
-		val column = StringBuffer()
-		val value = StringBuffer()
-		columns.forEach {
-			if (it.key.isNotEmpty() && it.value.isNotEmpty()) {
-				column.append("${it.key},")
-				value.append("'${it.value.replace("'", "''")}',")
-			}
-		}
-		column.delete(column.length - 1, column.length)
-		value.delete(value.length - 1, value.length)
-		return Pair(column.toString(), value.toString())
-	}
-	
-	private fun toColumn(column: Array<String>): String {
-		val stringBuffer = StringBuffer()
-		column.forEach {
-			if (it.isNotEmpty())
-				stringBuffer.append("$it,")
-		}
-		stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
-		return stringBuffer.toString()
-	}
-	
-	private fun toWhere(where: Map<String, String>): String {
-		val stringBuffer = StringBuffer()
-		where.forEach {
-			if (it.key.isNotEmpty() && it.value.isNotEmpty())
-				stringBuffer.append("${it.key}='${it.value.replace("'", "''")}',")
-		}
-		if (stringBuffer.isNotEmpty())
-			stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
-		return stringBuffer.toString()
-	}
-	
-	private fun toWhere(where: Array<String>): String {
-		val stringBuffer = StringBuffer()
-		where.forEach {
-			if (it.isNotEmpty())
-				stringBuffer.append("$it,")
-		}
-		if (stringBuffer.isNotEmpty())
-			stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
-		return stringBuffer.toString()
-	}
-	
 	override fun close() {
 		connection.close()
+	}
+	
+	override fun commit() {
+		connection.commit()
 	}
 	
 	/**
@@ -383,6 +325,17 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 			null
 		}
 		
+	}
+	
+	private fun List<SQLHelper.Where>.toWhere(): String? = if (isEmpty()) null else {
+		val whereStringBuilder = StringBuilder()
+		val iterator = iterator()
+		whereStringBuilder.append(iterator.next().sqlStr)
+		for (it in iterator) {
+			whereStringBuilder.append(" and ")
+			whereStringBuilder.append(it.sqlStr)
+		}
+		whereStringBuilder.toString()
 	}
 	
 	companion object {
@@ -407,43 +360,22 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS `$table`(")
 			val primaryKeySet = HashSet<String>()
 			fieldSet.forEach {
-				when (it.type) {
-					Byte::class.java -> valueStrBuilder.append("`${it.name}` TINYINT")
-					Char::class.java -> valueStrBuilder.append("`${it.name}` TINYINT UNSIGNED")
-					//UByte::class.java -> valueStrBuilder.append("`${it.name}` TINYINT UNSIGNED")
-					Short::class.java -> valueStrBuilder.append("`${it.name}` SMALLINT")
-					//UShort::class.java -> valueStrBuilder.append("`${it.name}` SMALLINT UNSIGNED")
-					Int::class.java -> valueStrBuilder.append("`${it.name}` INT")
-					//UInt::class.java -> valueStrBuilder.append("`${it.name}` INT UNSIGNED")
-					Long::class.java -> valueStrBuilder.append("`${it.name}` BIGINT")
-					//ULong::class.java -> valueStrBuilder.append("`${it.name}` BIGINT UNSIGNED")
-					Float::class.java -> valueStrBuilder.append("`${it.name}` FLOAT")
-					Double::class.java -> valueStrBuilder.append("`${it.name}` DOUBLE")
-					String::class.java -> valueStrBuilder.append("`${it.name}` VARCHAR")
-					else -> {
-						if (it.type.interfaces.contains(SqlField::class.java)) {
-							valueStrBuilder.append("`${it.name}` ${it.type.getAnnotation(SqlFieldType::class.java)
-								?.name ?: it.type.name.split('.').last()}")
-						} else {
-							return@forEach
-						}
-					}
-				}
+				valueStrBuilder.append("`${it.fieldName}` ${it.fieldType}")
 				
 				//检查是否可以为空
-				it.getAnnotation(NotNullField::class.java)?.let {
+				it.getAnnotation(SQLHelper.NotNullField::class.java)?.let {
 					valueStrBuilder.append(" NOT NULL")
 				}
-				it.getAnnotation(AutoIncrement::class.java)?.let {
+				it.getAnnotation(SQLHelper.AutoIncrement::class.java)?.let {
 					valueStrBuilder.append(" AUTO_INCREMENT")
 				}
-				it.getAnnotation(PrimaryKey::class.java)?.run {
+				it.getAnnotation(SQLHelper.PrimaryKey::class.java)?.run {
 					primaryKeySet.add(it.name)
 				}
-				it.getAnnotation(Unique::class.java)?.let {
+				it.getAnnotation(SQLHelper.Unique::class.java)?.let {
 					valueStrBuilder.append(" UNIQUE")
 				}
-				val annotation = it.getAnnotation(ExtraAttribute::class.java) ?: run {
+				val annotation = it.getAnnotation(SQLHelper.ExtraAttribute::class.java) ?: run {
 					valueStrBuilder.append(",")
 					return@forEach
 				}
@@ -461,6 +393,41 @@ class MySQLHelper(val connection: Connection) : SQLHelper {
 			}
 			valueStrBuilder.append(")ENGINE=$engine DEFAULT CHARSET=$charset;")
 			return valueStrBuilder.toString()
+		}
+		
+		private fun toKeys(columns: Map<String, String>): Pair<String, String> {
+			val column = StringBuffer()
+			val value = StringBuffer()
+			columns.forEach {
+				if (it.key.isNotEmpty() && it.value.isNotEmpty()) {
+					column.append("${it.key},")
+					value.append("'${it.value.replace("'", "''")}',")
+				}
+			}
+			column.delete(column.length - 1, column.length)
+			value.delete(value.length - 1, value.length)
+			return Pair(column.toString(), value.toString())
+		}
+		
+		private fun toColumn(column: List<String>): String {
+			val stringBuffer = StringBuffer()
+			column.forEach {
+				if (it.isNotEmpty())
+					stringBuffer.append("$it,")
+			}
+			stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
+			return stringBuffer.toString()
+		}
+		
+		private fun toWhere(where: Map<String, String>): String {
+			val stringBuffer = StringBuffer()
+			where.forEach {
+				if (it.key.isNotEmpty() && it.value.isNotEmpty())
+					stringBuffer.append("${it.key}='${it.value.replace("'", "''")}',")
+			}
+			if (stringBuffer.isNotEmpty())
+				stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
+			return stringBuffer.toString()
 		}
 	}
 }

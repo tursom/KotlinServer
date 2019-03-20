@@ -50,7 +50,7 @@ class SQLiteHelper
 	 * @param table: 表格名
 	 * @param keys: 属性列表
 	 */
-	override fun createTable(table: String, keys: Array<String>) {
+	override fun createTable(table: String, keys: List<String>) {
 		val sql = "CREATE TABLE if not exists $table (${toColumn(keys)})"
 		println(sql)
 		val statement = connection.createStatement()
@@ -96,7 +96,7 @@ class SQLiteHelper
 	 */
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>, table: String,
-		column: Array<String>, where: Array<Where>, maxCount: Int?) {
+		column: List<String>, where: List<SQLHelper.Where>, maxCount: Int?) {
 		select(adapter, table, toColumn(column), toWhere(where), maxCount)
 	}
 	
@@ -119,8 +119,8 @@ class SQLiteHelper
 	fun <T : Any> reverseSelect(
 		adapter: SQLAdapter<T>,
 		table: String,
-		name: Array<String>,
-		where: Array<Where>?,
+		name: List<String>,
+		where: List<SQLHelper.Where>?,
 		index: String,
 		maxCount: Int?) {
 		if (where != null) {
@@ -160,8 +160,8 @@ class SQLiteHelper
 		val valueMap = HashMap<String, String>()
 		value.javaClass.declaredFields.forEach {
 			val field = getFieldValueByName(it.name, value) ?: return@forEach
-			if (it.type.interfaces.contains(SqlField::class.java)) {
-				valueMap[it.name] = (field as SqlField<*>).sqlValue
+			if (it.type.interfaces.contains(SQLHelper.SqlField::class.java)) {
+				valueMap[it.name] = (field as SQLHelper.SqlField<*>).sqlValue
 			} else {
 				valueMap[it.name] = field.toString()
 			}
@@ -194,7 +194,7 @@ class SQLiteHelper
 	override fun update(
 		table: String,
 		set: Map<String, String>,
-		where: Array<Where>) {
+		where: List<SQLHelper.Where>) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("UPDATE $table SET ${toValue(set)} WHERE ${toWhere(where)};")
 		commit()
@@ -202,7 +202,7 @@ class SQLiteHelper
 	}
 	
 	override fun <T : Any> update(
-		table: String, value: T, where: Array<Where>
+		table: String, value: T, where: List<SQLHelper.Where>
 	) {
 		val set = HashMap<String, String>()
 		value.javaClass.declaredFields.forEach {
@@ -225,7 +225,7 @@ class SQLiteHelper
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: Array<Where>) {
+	override fun delete(table: String, where: List<SQLHelper.Where>) {
 		delete(table, toWhere(where))
 	}
 	
@@ -260,7 +260,7 @@ class SQLiteHelper
 		return Pair(column.toString(), value.toString())
 	}
 	
-	private fun toColumn(column: Array<out String>): String {
+	private fun toColumn(column: List<String>): String {
 		val stringBuilder = StringBuilder()
 		column.forEach {
 			if (it.isNotEmpty())
@@ -281,7 +281,7 @@ class SQLiteHelper
 		return stringBuilder.toString()
 	}
 	
-	private fun toWhere(where: Array<Where>): String {
+	private fun toWhere(where: List<SQLHelper.Where>): String {
 		val stringBuilder = StringBuilder()
 		where.forEach {
 			stringBuilder.append("${it.sqlStr} AND ")
@@ -332,12 +332,12 @@ class SQLiteHelper
 					Float::class.java -> valueStrBuilder.append("${it.name} REAL")
 					Double::class.java -> valueStrBuilder.append("${it.name} REAL")
 					String::class.java -> {
-						val length = it.getAnnotation(TextLength::class.java)
+						val length = it.getAnnotation(SQLHelper.TextLength::class.java)
 						valueStrBuilder.append("${it.name} ${if (length != null) "CHAR(${length.length})" else "TEXT"}")
 					}
 					else -> {
-						if (it.type.interfaces.contains(SqlField::class.java)) {
-							valueStrBuilder.append("${it.name} ${it.type.getAnnotation(SqlFieldType::class.java)
+						if (it.type.interfaces.contains(SQLHelper.SqlField::class.java)) {
+							valueStrBuilder.append("${it.name} ${it.type.getAnnotation(SQLHelper.FieldType::class.java)
 								?.name ?: it.type.name.split('.').last()}")
 						} else {
 							return@forEach
@@ -346,16 +346,16 @@ class SQLiteHelper
 				}
 				
 				//检查是否可以为空
-				it.getAnnotation(NotNullField::class.java)?.let {
+				it.getAnnotation(SQLHelper.NotNullField::class.java)?.let {
 					valueStrBuilder.append(" NOT NULL")
 				}
-				it.getAnnotation(AutoIncrement::class.java)?.let {
+				it.getAnnotation(SQLHelper.AutoIncrement::class.java)?.let {
 					valueStrBuilder.append(" AUTO_INCREMENT")
 				}
-				it.getAnnotation(PrimaryKey::class.java)?.run {
+				it.getAnnotation(SQLHelper.PrimaryKey::class.java)?.run {
 					valueStrBuilder.append(" PRIMARY KEY")
 				}
-				it.getAnnotation(Unique::class.java)?.let {
+				it.getAnnotation(SQLHelper.Unique::class.java)?.let {
 					valueStrBuilder.append(" UNIQUE")
 				}
 				it.getAnnotation(Default::class.java)?.let {
@@ -365,7 +365,7 @@ class SQLiteHelper
 					valueStrBuilder.append(" CHECK(${it.func})")
 				}
 				
-				val annotation = it.getAnnotation(ExtraAttribute::class.java) ?: run {
+				val annotation = it.getAnnotation(SQLHelper.ExtraAttribute::class.java) ?: run {
 					valueStrBuilder.append(",")
 					return@forEach
 				}

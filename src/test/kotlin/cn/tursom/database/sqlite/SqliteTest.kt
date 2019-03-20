@@ -1,10 +1,11 @@
 package cn.tursom.database.sqlite
 
 import cn.tursom.database.*
+import cn.tursom.database.SQLHelper.*
 import org.junit.Test
 import java.util.*
 
-@SqlFieldType("DATE")
+@FieldType("DATE")
 class TDate : SqlField<String> {
 	override val sqlValue: String
 		get() = obj
@@ -25,7 +26,7 @@ class TDate : SqlField<String> {
 data class TestClass(
 	@Default("1")
 	@NotNullField @Check("ele1 > 0") val ele1: Int,
-	@NotNullField val ele2: TDate,
+	@NotNullField @FieldType("DATE") val ele2: TDate,
 	@NotNullField @TextLength(50) val text: String
 )
 

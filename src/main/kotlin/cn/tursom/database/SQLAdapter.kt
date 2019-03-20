@@ -56,7 +56,7 @@ open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
 						(value as Double).toFloat()
 					} else {
 						//检查是否可以为空
-						if (it.getAnnotation(NotNullField::class.java) != null) {
+						if (it.getAnnotation(SQLHelper.NotNullField::class.java) != null) {
 							value.toString().toFloat()
 						} else {
 							value.toString().toFloatOrNull()
@@ -65,7 +65,7 @@ open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
 				} else if (beanType == java.lang.String::class.java && dbType != java.lang.String::class.java) {
 					value.toString()
 				} else if (beanType == java.lang.Boolean::class.java) {
-					if (it.getAnnotation(NotNullField::class.java) != null) {
+					if (it.getAnnotation(SQLHelper.NotNullField::class.java) != null) {
 						value.toString().toBoolean()
 					} else {
 						try {
@@ -74,8 +74,8 @@ open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
 							null
 						}
 					}
-				} else if (beanType.interfaces.contains(SqlField::class.java)) {
-					val field = beanType.newInstance() as SqlField<*>
+				} else if (beanType.interfaces.contains(SQLHelper.SqlField::class.java)) {
+					val field = beanType.newInstance() as SQLHelper.SqlField<*>
 					field.adapt(value)
 					field
 				} else {

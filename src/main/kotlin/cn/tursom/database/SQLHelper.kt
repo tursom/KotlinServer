@@ -1,50 +1,7 @@
 package cn.tursom.database
 
-import kotlin.reflect.KCallable
-
-@MustBeDocumented
-@Target(AnnotationTarget.FIELD)
-annotation class ExtraAttribute(val attributes: String)
-
-@MustBeDocumented
-@Target(AnnotationTarget.FIELD)
-annotation class NotNullField
-
-@MustBeDocumented
-@Target(AnnotationTarget.FIELD)
-annotation class AutoIncrement
-
-@MustBeDocumented
-@Target(AnnotationTarget.FIELD)
-annotation class PrimaryKey
-
-@MustBeDocumented
-@Target(AnnotationTarget.FIELD)
-annotation class Unique
-
-@MustBeDocumented
-@Target(AnnotationTarget.FIELD)
-annotation class TextLength(val length: Int)
-
-@MustBeDocumented
-@Target(AnnotationTarget.CLASS)
-annotation class SqlFieldType(val name: String)
-
-interface SqlField<T> {
-	fun adapt(obj: Any)
-	fun get(): T
-	val sqlValue: String
-}
-
-interface Where {
-	val sqlStr: String
-}
-
-class EqualWhere<T>(field: KCallable<T>, private val value: String) : Where {
-	private val first: String = field.name
-	override val sqlStr: String
-		get() = "$first=$value"
-}
+import jdk.nashorn.internal.objects.annotations.Where
+import java.lang.reflect.Field
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -57,7 +14,7 @@ interface SQLHelper {
 	 * @param table: 表格名
 	 * @param keys: 属性列表
 	 */
-	fun createTable(table: String, keys: Array<String>)
+	fun createTable(table: String, keys: List<String>)
 	
 	/**
 	 * 根据提供的class对象自动化创建表格
@@ -86,8 +43,8 @@ interface SQLHelper {
 	fun <T : Any> select(
 		adapter: SQLAdapter<T>,
 		table: String,
-		column: Array<String> = arrayOf("*"),
-		where: Array<Where>,
+		column: List<String> = listOf("*"),
+		where: List<Where>,
 		maxCount: Int? = null
 	)
 	
@@ -116,15 +73,80 @@ interface SQLHelper {
 	fun update(
 		table: String,
 		set: Map<String, String> = mapOf(),
-		where: Array<Where> = arrayOf())
+		where: List<Where> = listOf())
 	
-	fun <T : Any> update(table: String, value: T, where: Array<Where>)
+	fun <T : Any> update(table: String, value: T, where: List<Where>)
 	
 	fun delete(table: String, where: String)
 	
-	fun delete(table: String, where: Array<Where>)
+	fun delete(table: String, where: List<Where>)
 	
 	fun commit()
 	
 	fun close()
+	
+	
+	interface SqlField<T> {
+		fun adapt(obj: Any)
+		fun get(): T
+		val sqlValue: String
+	}
+	
+	interface Where {
+		val sqlStr: String
+	}
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class ExtraAttribute(val attributes: String)
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class NotNullField
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class AutoIncrement
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class PrimaryKey
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class Unique
+	
+	/**
+	 * only for string
+	 */
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class TextLength(val length: Int)
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class FieldName(val name: String)
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.CLASS, AnnotationTarget.FIELD)
+	annotation class FieldType(val name: String)
 }
+
+val Field.fieldName: String
+	get() = getAnnotation(SQLHelper.FieldName::class.java)?.name ?: name
+
+val Field.fieldType: String?
+	get() = getAnnotation(SQLHelper.FieldType::class.java)?.name ?: when (type) {
+		Byte::class.java -> "TINYINT"
+		Short::class.java -> "SMALLINT"
+		Int::class.java -> "INT"
+		Long::class.java -> "BIGINT"
+		Float::class.java -> "FLOAT"
+		Double::class.java -> "DOUBLE"
+		String::class.java -> getAnnotation(SQLHelper.TextLength::class.java)?.let { "CHAR(${it.length})" } ?: "TEXT"
+		else -> if (type.interfaces.contains(SQLHelper.SqlField::class.java)) {
+			type.getAnnotation(SQLHelper.FieldType::class.java)?.name ?: type.name.split('.').last()
+		} else {
+			null
+		}
+	}
