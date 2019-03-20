@@ -56,7 +56,7 @@ open class SQLAdapter<T : Any>(@Suppress("MemberVisibilityCanBePrivate") val cla
 						(value as Double).toFloat()
 					} else {
 						//检查是否可以为空
-						if (it.getAnnotation(SQLHelper.NotNullField::class.java) != null) {
+						if (it.getAnnotation(SQLHelper.NotNull::class.java) != null) {
 							value.toString().toFloat()
 						} else {
 							value.toString().toFloatOrNull()
@@ -65,7 +65,7 @@ open class SQLAdapter<T : Any>(@Suppress("MemberVisibilityCanBePrivate") val cla
 				} else if (beanType == java.lang.String::class.java && dbType != java.lang.String::class.java) {
 					value.toString()
 				} else if (beanType == java.lang.Boolean::class.java) {
-					if (it.getAnnotation(SQLHelper.NotNullField::class.java) != null) {
+					if (it.getAnnotation(SQLHelper.NotNull::class.java) != null) {
 						value.toString().toBoolean()
 					} else {
 						try {

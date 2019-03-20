@@ -95,7 +95,7 @@ interface SQLHelper : Closeable {
 	
 	@MustBeDocumented
 	@Target(AnnotationTarget.FIELD)
-	annotation class NotNullField
+	annotation class NotNull
 	
 	@MustBeDocumented
 	@Target(AnnotationTarget.FIELD)

@@ -3,8 +3,6 @@ package cn.tursom.database.sqlite
 import cn.tursom.database.*
 import cn.tursom.database.SQLHelper.*
 import org.junit.Test
-import java.io.File
-import java.nio.file.Files
 import java.util.*
 
 @FieldType("DATE")
@@ -29,9 +27,9 @@ class TDate : SqlField<String> {
 
 @TableName("Test")
 data class TestClass(
-	@Default("1") @NotNullField @Check("id > 0") val id: Int,
-	@NotNullField @FieldType("DATE") val ele2: TDate,
-	@NotNullField @TextLength(50) val text: String
+	@Default("1") @NotNull @Check("id > 0") val id: Int,
+	@NotNull @FieldType("DATE") val ele2: TDate,
+	@NotNull @TextLength(50) val text: String
 )
 
 class SqliteTest {

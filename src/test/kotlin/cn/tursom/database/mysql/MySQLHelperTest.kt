@@ -5,9 +5,9 @@ import org.junit.Test
 
 @TableName("TestTable")
 data class TableStruckTestClass(
-	@NotNullField @AutoIncrement @PrimaryKey @FieldName("field1") @FieldType("INTEGER") val tele1: Int,
-	@NotNullField @Unique val ele2: Double,
-	@NotNullField @TextLength(50) val text: String
+	@NotNull @AutoIncrement @PrimaryKey @FieldName("field1") @FieldType("INTEGER") val tele1: Int,
+	@NotNull @Unique val ele2: Double,
+	@NotNull @TextLength(50) val text: String
 )
 
 class MySQLHelperTest {

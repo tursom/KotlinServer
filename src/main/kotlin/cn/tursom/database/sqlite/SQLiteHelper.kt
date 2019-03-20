@@ -361,7 +361,7 @@ class SQLiteHelper
 				}")
 				
 				//检查是否可以为空
-				it.getAnnotation(SQLHelper.NotNullField::class.java)?.let {
+				it.getAnnotation(SQLHelper.NotNull::class.java)?.let {
 					valueStrBuilder.append(" NOT NULL")
 				}
 				it.getAnnotation(SQLHelper.AutoIncrement::class.java)?.let {
