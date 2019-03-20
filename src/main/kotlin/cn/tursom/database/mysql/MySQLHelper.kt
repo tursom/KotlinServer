@@ -14,7 +14,6 @@ import java.util.*
  */
 @Suppress("unused", "SqlNoDataSourceInspection", "SqlDialectInspection")
 class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Connection) : SQLHelper {
-	
 	init {
 		connection.autoCommit = false
 	}
@@ -42,16 +41,15 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 */
-	@ExperimentalUnsignedTypes
-	override fun <T> createTable(fields: Class<T>) {
+	override fun createTable(fields: Class<*>) {
 		createTable(fields.tableName, fields, "InnoDB", "utf8")
 	}
 	
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 */
-	@ExperimentalUnsignedTypes
-	fun <T> createTable(table: String, keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8") {
+	@Suppress("MemberVisibilityCanBePrivate")
+	fun createTable(table: String, keys: Class<*>, engine: String = "InnoDB", charset: String = "utf8") {
 		val statement = connection.createStatement()
 		statement.executeUpdate(createTableStr(table, keys, engine, charset))
 		connection.commit()
@@ -150,15 +148,6 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		statement.closeOnCompletion()
 	}
 	
-	override fun update(table: String, set: Map<String, String>, where: List<SQLHelper.Where>) {
-		val setStringBuilder = StringBuilder()
-		set.forEach { field, value ->
-			setStringBuilder.append("$field=$value,")
-		}
-		setStringBuilder.deleteCharAt(setStringBuilder.length - 1)
-		update(table, setStringBuilder.toString(), where.toWhere()!!)
-	}
-	
 	/**
 	 * 更新数据库数据
 	 * @param value 用来存储数据的bean对象
@@ -205,16 +194,6 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		statement.closeOnCompletion()
 	}
 	
-	/**
-	 * 插入
-	 * @param table 表名
-	 * @param column
-	 */
-	override fun insert(table: String, column: Map<String, String>) {
-		val columns = toKeys(column)
-		insert(table, columns.first, columns.second)
-	}
-	
 	override fun insert(table: String, column: String, values: String) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("INSERT INTO $table ($column) VALUES ($values);")
@@ -244,7 +223,35 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		insert(value.tableName, column.toString(), values.toString())
 	}
 	
-	override fun delete(table: String, where: String) {
+	override fun insert(valueList: List<*>) {
+		val statement = connection.createStatement()
+		val table = (valueList.firstOrNull() ?: return).tableName
+		valueList.forEach { value ->
+			value ?: return@forEach
+			val column = StringBuilder()
+			val values = StringBuilder()
+			value.javaClass.declaredFields.forEach {
+				getFieldValueByName(it.name, value)?.let { instance ->
+					column.append("${it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name},")
+					values.append(when (instance) {
+						is SQLHelper.SqlField<*> -> instance.sqlValue
+						is String -> "'${instance.replace("'", "''")}'"
+						else -> instance.toString()
+					})
+					values.append(',')
+				}
+			}
+			if (column.isNotEmpty())
+				column.delete(column.length - 1, column.length)
+			if (values.isNotEmpty())
+				values.delete(values.length - 1, values.length)
+			statement.executeUpdate("INSERT INTO $table ($column) VALUES ($values);")
+		}
+		connection.commit()
+		statement.closeOnCompletion()
+	}
+	
+	override fun delete(table: String, where: String?) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("DELETE FROM `$table` WHERE $where;")
 		connection.commit()
@@ -259,30 +266,6 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		if (whereArray.isNotEmpty())
 			whereArray.delete(whereArray.length - 1, whereArray.length)
 		delete(table, whereArray.toString())
-	}
-	
-	fun <T : Any> insertList(table: String, values: List<T>) {
-		val statement = connection.createStatement()
-		
-		values.forEach { valueObject ->
-			val column = StringBuilder()
-			val value = StringBuilder()
-			valueObject.javaClass.declaredFields.forEach {
-				getFieldValueByName(it.name, valueObject)?.let { instance ->
-					column.append("${it.fieldName},")
-					value.append(instance.fieldValue)
-					value.append(',')
-				}
-			}
-			if (column.isNotEmpty())
-				column.delete(column.length - 1, column.length)
-			if (value.isNotEmpty())
-				value.delete(value.length - 1, value.length)
-			statement.executeUpdate("INSERT INTO $table ($column) VALUES ($value);")
-		}
-		
-		connection.commit()
-		statement.closeOnCompletion()
 	}
 	
 	override fun close() {

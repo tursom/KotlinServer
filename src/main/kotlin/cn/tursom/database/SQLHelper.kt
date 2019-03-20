@@ -20,7 +20,7 @@ interface SQLHelper : Closeable {
 	 * 根据提供的class对象自动化创建表格
 	 * 但是有诸多缺陷，所以不是很建议使用
 	 */
-	fun <T> createTable(fields: Class<T>)
+	fun createTable(fields: Class<*>)
 	
 	/**
 	 * 删除表格
@@ -62,18 +62,13 @@ interface SQLHelper : Closeable {
 	 */
 	fun <T : Any> insert(value: T)
 	
-	fun insert(table: String, column: Map<String, String>)
+	fun insert(valueList: List<*>)
 	
 	fun insert(table: String, column: String, values: String)
 	
-	fun update(
-		table: String,
-		set: Map<String, String> = mapOf(),
-		where: List<Where> = listOf())
-	
 	fun <T : Any> update(value: T, where: List<Where>)
 	
-	fun delete(table: String, where: String)
+	fun delete(table: String, where: String? = null)
 	
 	fun delete(table: String, where: List<Where>)
 	

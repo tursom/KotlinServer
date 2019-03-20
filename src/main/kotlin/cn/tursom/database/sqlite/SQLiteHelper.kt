@@ -1,17 +1,13 @@
 package cn.tursom.database.sqlite
 
-import cn.tursom.database.SQLAdapter
-import cn.tursom.database.SQLHelper
-import cn.tursom.database.getAnnotation
-import cn.tursom.database.tableName
-import com.sun.xml.internal.fastinfoset.alphabet.BuiltInRestrictedAlphabets.table
+import cn.tursom.database.*
 import org.sqlite.SQLiteException
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
-import java.util.logging.Logger
 import cn.tursom.tools.simplifyPath
+import java.lang.reflect.Field
 
 @MustBeDocumented
 @Target(AnnotationTarget.FIELD)
@@ -72,7 +68,7 @@ class SQLiteHelper
 	 * 根据提供的class对象自动化创建表格
 	 * 但是有诸多缺陷，所以不是很建议使用
 	 */
-	override fun <T> createTable(fields: Class<T>) {
+	override fun createTable(fields: Class<*>) {
 		val sql = createTableStr(fields)
 		println(sql)
 		val statement = connection.createStatement()
@@ -122,7 +118,7 @@ class SQLiteHelper
 				} ${if (maxCount != null) "limit 0,$maxCount" else ""} ;")
 			)
 		} catch (e: SQLiteException) {
-			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") throw e
+			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: ${adapter.clazz.tableName})") throw e
 		}
 		statement.closeOnCompletion()
 		return adapter
@@ -166,30 +162,43 @@ class SQLiteHelper
 	
 	override fun <T : Any> insert(value: T) {
 		val table = value.tableName
-		val valueMap = HashMap<String, String>()
-		value.javaClass.declaredFields.forEach {
-			val field = getFieldValueByName(it.name, value) ?: return@forEach
-			if (it.type.interfaces.contains(SQLHelper.SqlField::class.java)) {
-				valueMap[it.name] = (field as SQLHelper.SqlField<*>).sqlValue
-			} else {
-				valueMap[it.name] = field.toString()
-			}
-		}
+		
+		val (column, values) = value.javaClass.declaredFields.columnAndValue(value)
+		
 		try {
-			insert(table, valueMap)
+			insert(table, column, values)
 		} catch (e: SQLiteException) {
 			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
 				createTable(value.javaClass)
-				insert(table, valueMap)
+				insert(table, column, values)
 			} else {
 				e.printStackTrace()
 			}
 		}
 	}
 	
-	override fun insert(table: String, column: Map<String, String>) {
-		val columns = toKeys(column)
-		insert(table, columns.first, columns.second)
+	override fun insert(valueList: List<*>) {
+		val statement = connection.createStatement()
+		val first = valueList.firstOrNull() ?: return
+		val table = first.tableName
+		val field = first.javaClass.declaredFields
+		valueList.forEach { value ->
+			value ?: return@forEach
+			val (column, values) = field.columnAndValue(value)
+			val sql = "INSERT INTO $table ($column) VALUES ($values)"
+			try {
+				statement.executeUpdate(sql)
+			} catch (e: SQLiteException) {
+				if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
+					createTable(value.javaClass)
+					statement.executeUpdate(sql)
+				} else {
+					e.printStackTrace()
+				}
+			}
+		}
+		commit()
+		statement.closeOnCompletion()
 	}
 	
 	override fun insert(table: String, column: String, values: String) {
@@ -200,36 +209,31 @@ class SQLiteHelper
 		statement.closeOnCompletion()
 	}
 	
-	override fun update(
-		table: String,
-		set: Map<String, String>,
-		where: List<SQLHelper.Where>) {
+	override fun <T : Any> update(
+		value: T, where: List<SQLHelper.Where>
+	) {
+		val set = StringBuilder()
+		value.javaClass.declaredFields.forEach {
+			it.isAccessible = true
+			it.get(value)?.let { value ->
+				set.append("${it.name}=${value.fieldValue},")
+			}
+		}
+		if (set.isNotEmpty()) {
+			set.delete(set.length - 1, set.length)
+		}
+		
+		val sql = "UPDATE ${value.tableName} SET $set WHERE ${toWhere(where)};"
+		
 		val statement = connection.createStatement()
-		statement.executeUpdate("UPDATE $table SET ${toValue(set)} WHERE ${toWhere(where)};")
+		statement.executeUpdate(sql)
 		commit()
 		statement.closeOnCompletion()
 	}
 	
-	override fun <T : Any> update(
-		value: T, where: List<SQLHelper.Where>
-	) {
-		val set = HashMap<String, String>()
-		value.javaClass.declaredFields.forEach {
-			if (getFieldValueByName(it.name, value) == null) {
-				return@forEach
-			}
-			if (it.type == java.util.Date::class.java) {
-				set[it.name] = java.sql.Timestamp((getFieldValueByName(it.name, value) as java.util.Date).time).toString()
-			} else {
-				set[it.name] = getFieldValueByName(it.name, value).toString()
-			}
-		}
-		update(value.tableName, set, where)
-	}
-	
-	override fun delete(table: String, where: String) {
+	override fun delete(table: String, where: String?) {
 		val statement = connection.createStatement()
-		statement.executeUpdate("DELETE FROM $table WHERE $where;")
+		statement.executeUpdate("DELETE FROM $table${if (where?.isNotEmpty() == true) " WHERE $where" else ""};")
 		commit()
 		statement.closeOnCompletion()
 	}
@@ -255,20 +259,6 @@ class SQLiteHelper
 		}
 	}
 	
-	private fun toKeys(columns: Map<String, String>): Pair<String, String> {
-		val column = StringBuilder()
-		val value = StringBuilder()
-		columns.forEach {
-			if (it.key.isNotEmpty() && it.value.isNotEmpty()) {
-				column.append("${it.key},")
-				value.append("'${it.value.replace("'", "''")}',")
-			}
-		}
-		column.delete(column.length - 1, column.length)
-		value.delete(value.length - 1, value.length)
-		return Pair(column.toString(), value.toString())
-	}
-	
 	private fun toColumn(column: List<String>): String {
 		val stringBuilder = StringBuilder()
 		column.forEach {
@@ -276,17 +266,6 @@ class SQLiteHelper
 				stringBuilder.append("$it,")
 		}
 		stringBuilder.delete(stringBuilder.length - 1, stringBuilder.length)
-		return stringBuilder.toString()
-	}
-	
-	private fun toValue(where: Map<String, String>): String {
-		val stringBuilder = StringBuilder()
-		where.forEach {
-			if (it.key.isNotEmpty() && it.value.isNotEmpty())
-				stringBuilder.append("${it.key}='${it.value.replace("'", "''")}',")
-		}
-		if (stringBuilder.isNotEmpty())
-			stringBuilder.delete(stringBuilder.length - 1, stringBuilder.length)
 		return stringBuilder.toString()
 	}
 	
@@ -300,39 +279,39 @@ class SQLiteHelper
 		return stringBuilder.toString()
 	}
 	
-	/**
-	 * 根据属性名获取属性值
-	 */
-	private fun getFieldValueByName(fieldName: String, o: Any): Any? {
-		return try {
-			val field = o.javaClass.getDeclaredField(fieldName)
-			field.isAccessible = true
-			field.get(o)
-		} catch (e: Exception) {
-			e.printStackTrace()
-			logger.warning("${e.message}: $fieldName")
-			null
-		}
-		
-	}
-	
 	override fun hashCode(): Int {
 		var result = connection.hashCode()
 		result = 31 * result + path.hashCode()
 		return result
 	}
 	
-	
 	class CantConnectDataBase(s: String? = null) : SQLException(s)
 	
 	companion object {
-		private val logger = Logger.getLogger("sqlite")!!
-		
 		private val connectionMap by lazy {
 			Class.forName("org.sqlite.JDBC")
 			HashMap<String, Connection>()
 		}
 		private var connectionCount = HashMap<String, Int>()
+		
+		private fun Array<Field>.columnAndValue(value: Any): Pair<String, String> {
+			val column = StringBuilder()
+			val values = StringBuilder()
+			forEach field@{ field ->
+				field.isAccessible = true
+				val fieldValue = field.get(value) ?: return@field
+				values.append(if (field.type.interfaces.contains(SQLHelper.SqlField::class.java)) {
+					(fieldValue as SQLHelper.SqlField<*>).sqlValue
+				} else {
+					fieldValue.toString()
+				}.replace("'", "''"))
+				values.append(',')
+				column.append("${field.name},")
+			}
+			column.deleteCharAt(column.length - 1)
+			values.deleteCharAt(values.length - 1)
+			return column.toString() to values.toString()
+		}
 		
 		@Suppress("NestedLambdaShadowedImplicitParameter")
 		fun <T> createTableStr(keys: Class<T>): String {
