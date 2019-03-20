@@ -43,8 +43,8 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 	 * 根据提供的class对象自动化创建表格
 	 */
 	@ExperimentalUnsignedTypes
-	override fun <T> createTable(table: String, keys: Class<T>) {
-		createTable(table, keys, "InnoDB", "utf8")
+	override fun <T> createTable(fields: Class<T>) {
+		createTable(fields.tableName, fields, "InnoDB", "utf8")
 	}
 	
 	/**
@@ -76,20 +76,17 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 	/**
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
-	 * @param table 表名
 	 * @param column 查询字段
 	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 * @param maxCount 最大查询数量
 	 */
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
-		table: String,
 		column: List<String>,
 		where: List<SQLHelper.Where>,
 		maxCount: Int?
-	) = select(
+	): SQLAdapter<T> = select(
 		adapter = adapter,
-		table = table,
 		column = if (column.isEmpty()) "*" else {
 			val columnStringBuilder = StringBuilder()
 			column.forEach {
@@ -105,17 +102,17 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 	
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
-		table: String,
 		column: String,
 		where: String?,
 		maxCount: Int?
-	) {
+	): SQLAdapter<T> {
 		val statement = connection.createStatement()
 		adapter.adapt(
-			statement.executeQuery("SELECT $column FROM $table${if (where != null) " WHERE $where" else ""
+			statement.executeQuery("SELECT $column FROM ${adapter.clazz.tableName}${if (where != null) " WHERE $where" else ""
 			}${if (maxCount != null) " limit 0,$maxCount" else ""};")
 		)
 		statement.closeOnCompletion()
+		return adapter
 	}
 	
 	/**
@@ -126,21 +123,20 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 	 * where: 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 */
 	inline fun <reified T : Any> select(
-		table: String,
 		name: List<String> = listOf("*"),
 		where: List<SQLHelper.Where>
 	): SQLAdapter<T> {
 		val adapter = SQLAdapter(T::class.java)
-		select(adapter, table, name, where)
+		select(adapter, name, where)
 		return adapter
 	}
 	
 	inline fun <reified T : Any> select(
-		table: String, name: String = "*",
+		name: String = "*",
 		where: String? = null
 	): SQLAdapter<T> {
 		val adapter = SQLAdapter(T::class.java)
-		select(adapter, table, name, where)
+		select(adapter, name, where)
 		return adapter
 	}
 	
@@ -165,36 +161,26 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 	
 	/**
 	 * 更新数据库数据
-	 * @param table 表名
 	 * @param value 用来存储数据的bean对象
 	 * @param where SQL语句的一部分，用来限定查找的条件。每一条String储存一个条件
 	 */
-	override fun <T : Any> update(table: String, value: T, where: List<SQLHelper.Where>) {
+	override fun <T : Any> update(value: T, where: List<SQLHelper.Where>) {
 		val sb = StringBuilder()
 		value.javaClass.declaredFields.forEach {
-			getFieldValueByName(it.name, value)?.let { instance ->
-				sb.append(it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name)
-				sb.append("=")
-				sb.append(when (instance) {
-					is SQLHelper.SqlField<*> -> instance.sqlValue
-					is String -> "'${instance.replace("'", "''")}'"
-					else -> instance.toString()
-				})
-				sb.append(",")
-			}
+			sb.append("${it.fieldName}=${getFieldValueByName(it.name, value)?.fieldValue ?: return@forEach},")
 		}
 		if (sb.isNotEmpty())
 			sb.delete(sb.length - 1, sb.length)
-		update(table, sb.toString(), where.toWhere()!!)
+		update(value.tableName, sb.toString(), where.toWhere()!!)
 	}
 	
 	/**
 	 * 更新数据库数据
-	 * @param table 表名
 	 * @param values 用来存储数据的bean对象与限定条件
 	 */
 	@Suppress("NestedLambdaShadowedImplicitParameter")
-	fun <T : Any> updateArray(table: String, values: List<Pair<T, List<SQLHelper.Where>>>) {
+	fun <T : Any> updateArray(values: List<Pair<T, List<SQLHelper.Where>>>) {
+		val table = values.first().first.tableName
 		val statement = connection.createStatement()
 		values.forEach {
 			val sb = StringBuilder()
@@ -236,7 +222,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		statement.closeOnCompletion()
 	}
 	
-	override fun <T : Any> insert(table: String, value: T) {
+	override fun <T : Any> insert(value: T) {
 		val column = StringBuilder()
 		val values = StringBuilder()
 		value.javaClass.declaredFields.forEach {
@@ -255,7 +241,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 			column.delete(column.length - 1, column.length)
 		if (values.isNotEmpty())
 			values.delete(values.length - 1, values.length)
-		insert(table, column.toString(), values.toString())
+		insert(value.tableName, column.toString(), values.toString())
 	}
 	
 	override fun delete(table: String, where: String) {
@@ -284,11 +270,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 			valueObject.javaClass.declaredFields.forEach {
 				getFieldValueByName(it.name, valueObject)?.let { instance ->
 					column.append("${it.fieldName},")
-					value.append(when (instance) {
-						is SQLHelper.SqlField<*> -> instance.sqlValue
-						is String -> "'${instance.replace("'", "''")}'"
-						else -> instance.toString()
-					})
+					value.append(instance.fieldValue)
 					value.append(',')
 				}
 			}
@@ -354,6 +336,9 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 			Pair(Date::class.java, "TIMESTAMP ")
 		)
 		
+		fun <T> createTableStr(keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8"): String =
+			createTableStr(keys.tableName, keys, engine, charset)
+		
 		fun <T> createTableStr(table: String, keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8"): String {
 			val fieldSet = keys.declaredFields
 			val valueStrBuilder = StringBuilder()
@@ -375,7 +360,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 				it.getAnnotation(SQLHelper.Unique::class.java)?.let {
 					valueStrBuilder.append(" UNIQUE")
 				}
-				val annotation = it.getAnnotation(SQLHelper.ExtraAttribute::class.java) ?: run {
+				val annotation = it.getAnnotation<SQLHelper.ExtraAttribute>() ?: run {
 					valueStrBuilder.append(",")
 					return@forEach
 				}
@@ -429,5 +414,21 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 				stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
 			return stringBuffer.toString()
 		}
+		
+		private val Field.fieldType: String?
+			get() = getAnnotation(SQLHelper.FieldType::class.java)?.name ?: when (type) {
+				Byte::class.java -> "TINYINT"
+				Short::class.java -> "SMALLINT"
+				Int::class.java -> "INT"
+				Long::class.java -> "BIGINT"
+				Float::class.java -> "FLOAT"
+				Double::class.java -> "DOUBLE"
+				String::class.java -> getAnnotation(SQLHelper.TextLength::class.java)?.let { "CHAR(${it.length})" } ?: "TEXT"
+				else -> if (type.interfaces.contains(SQLHelper.SqlField::class.java)) {
+					type.getAnnotation(SQLHelper.FieldType::class.java)?.name ?: type.name.split('.').last()
+				} else {
+					null
+				}
+			}
 	}
 }

@@ -9,7 +9,7 @@ import kotlin.collections.HashSet
 import kotlin.collections.contains
 import kotlin.collections.forEach
 
-open class SQLAdapter<T : Any>(private val clazz: Class<T>) : ArrayList<T>() {
+open class SQLAdapter<T : Any>(@Suppress("MemberVisibilityCanBePrivate") val clazz: Class<T>) : ArrayList<T>() {
 	open fun adapt(resultSet: ResultSet) {
 		clear() //清空已储存的数据
 		try {

@@ -32,6 +32,29 @@ import java.util.*
 
 val cpuNumber = Runtime.getRuntime().availableProcessors()
 
+fun String.simplifyPath(): String {
+	if (isEmpty()) {
+		return "/"
+	}
+	val strs = split("/".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+	val list = LinkedList<String>()
+	for (str in strs) {
+		if (str.isEmpty() || "." == str) {
+			continue
+		}
+		if (".." == str) {
+			list.pollLast()
+			continue
+		}
+		list.addLast(str)
+	}
+	var result = ""
+	while (list.size > 0) {
+		result += "/" + list.pollFirst()!!
+	}
+	return if (result.isNotEmpty()) result else "/"
+}
+
 fun ByteArray.md5(): ByteArray? {
 	return try {
 		//获取md5加密对象

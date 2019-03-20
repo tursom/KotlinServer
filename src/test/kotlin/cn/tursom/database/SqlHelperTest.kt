@@ -1,9 +1,35 @@
 package cn.tursom.database
 
 import org.junit.Test
-import java.util.*
+import cn.tursom.database.SQLHelper.*
 
-data class TestClass(val ele1: Int)
+@FieldType("LONG")
+class TTime : SqlField<Long> {
+	private var time: Long = System.currentTimeMillis()
+	
+	override fun adapt(obj: Any) {
+		time = when (obj) {
+			is Long -> obj
+			is Int -> obj.toLong()
+			is Short -> obj.toLong()
+			is Byte -> obj.toLong()
+			else -> obj.toString().toLong()
+		}
+	}
+	
+	override fun get(): Long {
+		return time
+	}
+	
+	override val sqlValue: String
+		get() = time.toString()
+}
+
+data class TestClass(
+	@FieldName("field1") val ele1: Int,
+	val field2: Float,
+	val time: TTime
+)
 
 class SqlHelperTest {
 	@Test
@@ -14,14 +40,9 @@ class SqlHelperTest {
 	}
 	
 	@Test
-	fun testWhere() {
-		val where = object : SQLHelper.Where {
-			override val sqlStr: String
-				get() = "a=`1`"
-		}
-		when (where) {
-			is SQLHelper.Where -> println("yes")
-			else -> println("no")
-		}
+	fun fieldValueTest() {
+		println(1.fieldValue)
+		println("123'123".fieldValue)
+		println(TTime().fieldValue)
 	}
 }
