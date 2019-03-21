@@ -9,23 +9,22 @@ import kotlin.collections.forEach
 
 open class SQLAdapter<T : Any>(
 	@Suppress("MemberVisibilityCanBePrivate") val clazz: Class<T>,
-	private val adapter: (
-	SQLAdapter<T>.(
+	private val adapter: (SQLAdapter<T>.(
 		resultSet: ResultSet,
-		fieldData: List<FieldData>
+		fieldList: List<FieldData>
 	) -> Unit)? = null
 ) : ArrayList<T>() {
 	open fun adapt(resultSet: ResultSet) {
 		clear() //清空已储存的数据
 		try {
-			val fieldSet = ArrayList<FieldData>()
+			val fieldList = ArrayList<FieldData>()
 			if (resultSet.next()) {
 				clazz.declaredFields.forEach {
 					try {
 						val fieldName = it.fieldName
 						resultSet.getObject(fieldName)
 						it.isAccessible = true
-						fieldSet.add(FieldData(
+						fieldList.add(FieldData(
 							it,
 							fieldName,
 							it.type,
@@ -35,11 +34,11 @@ open class SQLAdapter<T : Any>(
 					} catch (e: SQLException) {
 					}
 				}
-				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldSet)
+				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldList)
 			}
 			// 遍历ResultSet
 			while (resultSet.next()) {
-				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldSet)
+				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldList)
 			}
 		} catch (e: Exception) {
 			e.printStackTrace()
@@ -47,16 +46,16 @@ open class SQLAdapter<T : Any>(
 	}
 	
 	@Suppress("UNCHECKED_CAST")
-	open fun adaptOnce(resultSet: ResultSet, fieldSet: List<FieldData>) {
+	open fun adaptOnce(resultSet: ResultSet, fieldList: List<FieldData>) {
 		//绕过构造函数获取变量0
 		val bean = unsafe.allocateInstance(clazz) as T
-		fieldSet.forEach { (
-			                   field,
-			                   fieldName,
-			                   beanType,
-			                   resultSetReadable,
-			                   adaptable
-		                   ) ->
+		fieldList.forEach { (
+			                    field,
+			                    fieldName,
+			                    beanType,
+			                    resultSetReadable,
+			                    adaptable
+		                    ) ->
 			try {
 				if (resultSetReadable) {
 					//如果你有能力直接从ResultSet里面取出数据,那就随君便
