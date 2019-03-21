@@ -128,7 +128,6 @@ interface SQLHelper : Closeable {
 val Field.fieldName: String
 	get() = getAnnotation(SQLHelper.FieldName::class.java)?.name ?: name
 
-
 val <T : Any>T.tableName: String
 	get() = javaClass.tableName
 
