@@ -1,7 +1,11 @@
 package cn.tursom.database.mysql
 
+import cn.tursom.database.EqualWhere
 import cn.tursom.database.SQLHelper.*
+import cn.tursom.database.tableName
 import org.junit.Test
+import java.lang.Exception
+import kotlin.reflect.jvm.javaField
 
 @TableName("TestTable")
 data class TableStruckTestClass(
@@ -20,8 +24,29 @@ class MySQLHelperTest {
 	@Test
 	fun mysqlHelpertest() {
 		val helper = MySQLHelper("127.0.0.1", "test", "test", "test")
-		helper.insert(TableStruckTestClass())
-		println(helper.select<TableStruckTestClass>())
+		//清空表
+		try {
+			helper.delete(TableStruckTestClass::class.java.tableName)
+		} catch (e: Exception) {
+		}
+		
+		val id2 = listOf(EqualWhere(TableStruckTestClass::ele2.javaField!!, "20.0"))
+		
+		val fieldList = ArrayList<TableStruckTestClass>()
+		for (i in 1..10000) {
+			fieldList.add(TableStruckTestClass(null, i.toDouble(), "233"))
+		}
+		
+		println("insert: ${System.currentTimeMillis()}")
+		helper.insert(fieldList)
+		println("update: ${System.currentTimeMillis()}")
+		helper.update(TableStruckTestClass(null, 20.toDouble(), "还行"), id2)
+		println("select: ${System.currentTimeMillis()}")
+		println(helper.select<TableStruckTestClass>().size)
+		println("select: ${System.currentTimeMillis()}")
+		println(helper.select<TableStruckTestClass>(where = id2))
+		println("end: ${System.currentTimeMillis()}")
+		
 	}
 	
 	@Test

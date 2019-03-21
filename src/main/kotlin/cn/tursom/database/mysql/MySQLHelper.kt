@@ -258,7 +258,7 @@ class MySQLHelper(
 	
 	override fun delete(table: String, where: String?) {
 		val statement = connection.createStatement()
-		statement.executeUpdate("DELETE FROM `$table` WHERE $where;")
+		statement.executeUpdate("DELETE FROM `$table`${if (where != null) " WHERE $where" else ""};")
 		connection.commit()
 		statement.closeOnCompletion()
 	}
