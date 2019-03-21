@@ -182,7 +182,7 @@ fun SQLHelper.delete(
 	where: String? = null
 ) = delete(clazz.tableName, where)
 
-fun Array<Field>.fieldStr(): String {
+fun Array<out Field>.fieldStr(): String {
 	val fields = StringBuilder()
 	forEach field@{ field ->
 		field.isAccessible = true
