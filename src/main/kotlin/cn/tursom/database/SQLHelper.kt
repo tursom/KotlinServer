@@ -1,9 +1,7 @@
 package cn.tursom.database
 
-import org.sqlite.SQLiteException
 import java.io.Closeable
 import java.lang.reflect.Field
-import java.sql.Connection
 
 /**
  * MySQLHelper，SQLite辅助使用类

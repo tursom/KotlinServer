@@ -56,7 +56,6 @@ class SQLiteHelper
 	 */
 	override fun createTable(table: String, keys: List<String>) {
 		val sql = "CREATE TABLE if not exists $table (${toColumn(keys)})"
-		println(sql)
 		val statement = connection.createStatement()
 		statement.executeUpdate(sql)
 		commit()
@@ -68,7 +67,6 @@ class SQLiteHelper
 	 */
 	override fun createTable(fields: Class<*>) {
 		val sql = createTableStr(fields)
-		println(sql)
 		val statement = connection.createStatement()
 		statement.executeUpdate(sql)
 		commit()

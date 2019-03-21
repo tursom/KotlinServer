@@ -9,7 +9,7 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-/*
+/**
  * MySQLHelper，SQLite辅助使用类
  * 实现创建表格、查询、插入和更新功能
  */
@@ -19,6 +19,7 @@ class MySQLHelper(
 	base: String? = null
 ) : SQLHelper {
 	
+	@Suppress("MemberVisibilityCanBePrivate")
 	var basename: String? = null
 		get() = synchronized(this) {
 			return field
@@ -241,7 +242,6 @@ class MySQLHelper(
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${fields.sqlFieldMap().valueStr(value)});"
-		println(sql)
 		insert(connection, sql, clazz)
 	}
 	
