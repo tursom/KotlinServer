@@ -59,7 +59,9 @@ open class SQLAdapter<T : Any>(
 			try {
 				if (resultSetReadable) {
 					//如果你有能力直接从ResultSet里面取出数据,那就随君便
-					(unsafe.allocateInstance(beanType) as ResultSetReadable).adapt(fieldName, resultSet)
+					val value = (unsafe.allocateInstance(beanType) as ResultSetReadable)
+					value.adapt(fieldName, resultSet)
+					field.set(bean, value)
 				} else {
 					resultSet.getObject(fieldName)?.let { value ->
 						//让我们把数据喂进去

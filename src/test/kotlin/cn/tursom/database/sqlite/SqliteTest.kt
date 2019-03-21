@@ -7,7 +7,7 @@ import java.sql.ResultSet
 import kotlin.reflect.jvm.javaField
 
 @FieldType("DATE")
-class TTime(private var obj: Long = System.currentTimeMillis()) : SqlField<Long>, SQLAdapter.ResultSetReadable {
+data class TTime(private var obj: Long = System.currentTimeMillis()) : SqlField<Long>, SQLAdapter.ResultSetReadable {
 	override val sqlValue: String
 		get() = obj.toString()
 	
@@ -16,8 +16,6 @@ class TTime(private var obj: Long = System.currentTimeMillis()) : SqlField<Long>
 	}
 	
 	override fun get() = obj
-	
-	override fun toString() = sqlValue
 }
 
 @TableName("Test")
