@@ -159,6 +159,22 @@ class SQLiteHelper
 		return adapter
 	}
 	
+	fun insert(connection: Connection, sql: String, table: Class<*>) {
+		val statement = connection.createStatement()
+		try {
+			statement.executeUpdate(sql)
+		} catch (e: SQLiteException) {
+			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
+				createTable(table)
+				statement.executeUpdate(sql)
+			} else {
+				e.printStackTrace()
+			}
+		}
+		connection.commit()
+		statement.closeOnCompletion()
+	}
+	
 	override fun <T : Any> insert(value: T) {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
@@ -288,7 +304,7 @@ class SQLiteHelper
 					java.lang.String::class.java -> it.getAnnotation<SQLHelper.TextLength>()?.let { "CHAR(${it.length})" }
 						?: "TEXT"
 					else -> {
-						if (it.type.interfaces.contains(SQLHelper.SqlField::class.java)) {
+						if (it.type.isSqlField) {
 							it.type.getAnnotation<SQLHelper.FieldType>()?.name ?: it.type.name.split('.').last()
 						} else {
 							return@forEach

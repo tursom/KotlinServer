@@ -1,10 +1,10 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.*
-import org.sqlite.SQLiteException
 import java.lang.reflect.Field
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.SQLSyntaxErrorException
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -13,20 +13,39 @@ import java.util.*
  * MySQLHelper，SQLite辅助使用类
  * 实现创建表格、查询、插入和更新功能
  */
-@Suppress("unused", "SqlNoDataSourceInspection", "SqlDialectInspection")
-class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Connection) : SQLHelper {
+@Suppress("SqlNoDataSourceInspection", "SqlDialectInspection")
+class MySQLHelper(
+	@Suppress("MemberVisibilityCanBePrivate") val connection: Connection,
+	base: String? = null
+) : SQLHelper {
+	
+	var basename: String? = null
+		get() = synchronized(this) {
+			return field
+		}
+		set(value) = synchronized(this) {
+			value?.let { base ->
+				val statement = connection.createStatement()
+				statement.executeQuery("USE $base")
+				field = base
+				statement.closeOnCompletion()
+			}
+		}
+	
 	init {
 		connection.autoCommit = false
+		basename = base
 	}
 	
-	constructor(url: String, user: String, password: String)
-		: this(DriverManager.getConnection("jdbc:mysql://$url?characterEncoding=utf-8", user, password))
-	
-	private val basename: String by lazy {
-		val resultSet = connection.createStatement().executeQuery("SELECT database()")
-		resultSet.next()
-		resultSet.getString(1)
-	}
+	constructor(url: String, user: String, password: String, base: String? = null)
+		: this(
+		DriverManager.getConnection(
+			"jdbc:mysql://$url?characterEncoding=utf-8",
+			user,
+			password
+		),
+		base
+	)
 	
 	/*
 	 * 创建表格
@@ -195,6 +214,22 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		statement.closeOnCompletion()
 	}
 	
+	private fun insert(connection: Connection, sql: String, table: Class<*>) {
+		val statement = connection.createStatement()
+		try {
+			statement.executeUpdate(sql)
+		} catch (e: SQLSyntaxErrorException) {
+			if (e.message == "Table '$basename.${table.tableName}' doesn't exist") {
+				createTable(table)
+				statement.executeUpdate(sql)
+			} else {
+				e.printStackTrace()
+			}
+		}
+		connection.commit()
+		statement.closeOnCompletion()
+	}
+	
 	override fun insert(table: String, fields: String, values: String) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("INSERT INTO $table ($fields) VALUES $values;")
@@ -206,6 +241,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${fields.sqlFieldMap().valueStr(value)});"
+		println(sql)
 		insert(connection, sql, clazz)
 	}
 	
@@ -287,7 +323,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS `$table`(")
 			val primaryKeySet = HashSet<String>()
 			fieldSet.forEach {
-				valueStrBuilder.append("`${it.fieldName}` ${it.fieldType}")
+				valueStrBuilder.append("`${it.fieldName}` ${it.fieldType ?: return@forEach}")
 				
 				//检查是否可以为空
 				it.getAnnotation(SQLHelper.NotNull::class.java)?.let {
@@ -297,7 +333,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 					valueStrBuilder.append(" AUTO_INCREMENT")
 				}
 				it.getAnnotation(SQLHelper.PrimaryKey::class.java)?.run {
-					primaryKeySet.add(it.name)
+					primaryKeySet.add(it.fieldName)
 				}
 				it.getAnnotation(SQLHelper.Unique::class.java)?.let {
 					valueStrBuilder.append(" UNIQUE")
@@ -366,9 +402,18 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 				java.lang.Long::class.java -> "BIGINT"
 				java.lang.Float::class.java -> "FLOAT"
 				java.lang.Double::class.java -> "DOUBLE"
+				
+				Byte::class.java -> "TINYINT"
+				Char::class.java -> "TINYINT"
+				Short::class.java -> "SMALLINT"
+				Int::class.java -> "INT"
+				Long::class.java -> "BIGINT"
+				Float::class.java -> "FLOAT"
+				Double::class.java -> "Double"
+				
 				java.lang.String::class.java -> getAnnotation(SQLHelper.TextLength::class.java)?.let { "CHAR(${it.length})" }
 					?: "TEXT"
-				else -> if (type.interfaces.contains(SQLHelper.SqlField::class.java)) {
+				else -> if (type.isSqlField) {
 					type.getAnnotation(SQLHelper.FieldType::class.java)?.name ?: type.name.split('.').last()
 				} else {
 					null

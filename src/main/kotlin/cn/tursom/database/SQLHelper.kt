@@ -141,24 +141,27 @@ val <T : Any>T.fieldValue: String
 		else -> toString()
 	}
 
+val Class<*>.isSqlField
+	get() = interfaces.contains(SQLHelper.SqlField::class.java)
+
+/**
+ * 用于支持灵活查询
+ */
+inline fun <reified T : Any> SQLHelper.select(
+	fields: String = "*",
+	where: String? = null,
+	maxCount: Int? = null
+): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, maxCount)
+
+inline fun <reified T : Any> SQLHelper.select(
+	fields: List<String> = listOf("*"),
+	where: List<SQLHelper.Where>,
+	maxCount: Int? = null
+): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, maxCount)
+
 inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T::class.java)
 inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation(T::class.java)
 
-inline fun <reified T : Any> SQLHelper.select(
-	fields: List<String> = listOf("*"),
-	where: List<SQLHelper.Where>,
-	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, maxCount)
-
-/**
- * 用于支持灵活查询
- */
-inline fun <reified T : Any> SQLHelper.select(
-	fields: String = "*",
-	where: String? = null,
-	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, maxCount)
-
 fun <T : Any> SQLHelper.select(
 	clazz: Class<T>,
 	fields: List<String> = listOf("*"),
@@ -176,9 +179,10 @@ fun <T : Any> SQLHelper.select(
 	maxCount: Int? = null
 ): SQLAdapter<T> = select(SQLAdapter(clazz), fields, where, maxCount)
 
-fun SQLHelper.delete(clazz: Class<*>, where: String? = null) {
-	delete(clazz.tableName, where)
-}
+fun SQLHelper.delete(
+	clazz: Class<*>,
+	where: String? = null
+) = delete(clazz.tableName, where)
 
 fun Array<Field>.fieldStr(): String {
 	val fields = StringBuilder()
@@ -190,7 +194,7 @@ fun Array<Field>.fieldStr(): String {
 	return fields.toString()
 }
 
-fun Map<Field, Boolean>.valueStr(value: Any): String {
+fun List<Pair<Field, Boolean>>.valueStr(value: Any): String {
 	val values = StringBuilder()
 	forEach field@{ (field, isSqlField) ->
 		field.isAccessible = true
@@ -199,7 +203,7 @@ fun Map<Field, Boolean>.valueStr(value: Any): String {
 			fieldValue == null -> "null"
 			isSqlField -> (fieldValue as SQLHelper.SqlField<*>).sqlValue
 			field.type == String::class.java -> "'${(fieldValue as String).replace("'", "''")}'"
-			else -> fieldValue
+			else -> fieldValue.toString()
 		})
 		values.append(',')
 	}
@@ -207,15 +211,15 @@ fun Map<Field, Boolean>.valueStr(value: Any): String {
 	return values.toString()
 }
 
-fun Array<out Field>.sqlFieldMap(): Map<Field, Boolean> {
-	val sqlFieldMap = java.util.HashMap<Field, Boolean>()
+fun Array<out Field>.sqlFieldMap(): List<Pair<Field, Boolean>> {
+	val sqlFieldMap = ArrayList<Pair<Field, Boolean>>()
 	forEach {
-		sqlFieldMap[it] = it.type.interfaces.contains(SQLHelper.SqlField::class.java)
+		sqlFieldMap.add(it to it.type.isSqlField)
 	}
 	return sqlFieldMap
 }
 
-fun List<*>.valueStr(sqlFieldMap: Map<Field, Boolean>): String {
+fun List<*>.valueStr(sqlFieldMap: List<Pair<Field, Boolean>>): String {
 	val values = StringBuilder()
 	forEach { value ->
 		value ?: return@forEach
@@ -225,20 +229,4 @@ fun List<*>.valueStr(sqlFieldMap: Map<Field, Boolean>): String {
 		values.deleteCharAt(values.length - 1)
 	}
 	return values.toString()
-}
-
-fun SQLHelper.insert(connection: Connection, sql: String, table: Class<*>) {
-	val statement = connection.createStatement()
-	try {
-		statement.executeUpdate(sql)
-	} catch (e: SQLiteException) {
-		if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
-			createTable(table)
-			statement.executeUpdate(sql)
-		} else {
-			e.printStackTrace()
-		}
-	}
-	connection.commit()
-	statement.closeOnCompletion()
 }
