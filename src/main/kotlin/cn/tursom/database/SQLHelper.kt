@@ -1,7 +1,9 @@
 package cn.tursom.database
 
+import org.sqlite.SQLiteException
 import java.io.Closeable
 import java.lang.reflect.Field
+import java.sql.Connection
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -224,4 +226,20 @@ fun List<*>.valueStr(sqlFieldMap: Map<Field, Boolean>): String {
 		values.deleteCharAt(values.length - 1)
 	}
 	return values.toString()
+}
+
+fun SQLHelper.insert(connection: Connection, sql: String, table: Class<*>) {
+	val statement = connection.createStatement()
+	try {
+		statement.executeUpdate(sql)
+	} catch (e: SQLiteException) {
+		if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
+			createTable(table)
+			statement.executeUpdate(sql)
+		} else {
+			e.printStackTrace()
+		}
+	}
+	connection.commit()
+	statement.closeOnCompletion()
 }

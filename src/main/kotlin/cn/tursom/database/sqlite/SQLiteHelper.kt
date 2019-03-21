@@ -159,29 +159,13 @@ class SQLiteHelper
 		return adapter
 	}
 	
-	private fun insert(sql: String, table: Class<*>) {
-		val statement = connection.createStatement()
-		try {
-			statement.executeUpdate(sql)
-		} catch (e: SQLiteException) {
-			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
-				createTable(table)
-				statement.executeUpdate(sql)
-			} else {
-				e.printStackTrace()
-			}
-		}
-		connection.commit()
-		statement.closeOnCompletion()
-	}
-	
 	override fun <T : Any> insert(value: T) {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val column = fields.fieldStr()
 		val valueStr = fields.sqlFieldMap().valueStr(value)
 		val sql = "INSERT INTO ${value.tableName} ($column) VALUES ($valueStr);"
-		insert(sql, clazz)
+		insert(connection, sql, clazz)
 	}
 	
 	override fun insert(valueList: List<*>) {
@@ -191,7 +175,7 @@ class SQLiteHelper
 		val values = valueList.valueStr(field.sqlFieldMap())
 		if (values.isEmpty()) return
 		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
-		insert(sql, clazz)
+		insert(connection, sql, clazz)
 	}
 	
 	override fun insert(table: String, fields: String, values: String) {

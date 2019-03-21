@@ -195,22 +195,6 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		statement.closeOnCompletion()
 	}
 	
-	private fun insert(sql: String, table: Class<*>) {
-		val statement = connection.createStatement()
-		try {
-			statement.executeUpdate(sql)
-		} catch (e: SQLiteException) {
-			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
-				createTable(table)
-				statement.executeUpdate(sql)
-			} else {
-				e.printStackTrace()
-			}
-		}
-		connection.commit()
-		statement.closeOnCompletion()
-	}
-	
 	override fun insert(table: String, fields: String, values: String) {
 		val statement = connection.createStatement()
 		statement.executeUpdate("INSERT INTO $table ($fields) VALUES $values;")
@@ -222,7 +206,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${fields.sqlFieldMap().valueStr(value)});"
-		insert(sql, clazz)
+		insert(connection, sql, clazz)
 	}
 	
 	override fun insert(valueList: List<*>) {
@@ -232,7 +216,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		val values = valueList.valueStr(field.sqlFieldMap())
 		if (values.isEmpty()) return
 		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
-		insert(sql, clazz)
+		insert(connection, sql, clazz)
 	}
 	
 	override fun delete(table: String, where: String?) {
