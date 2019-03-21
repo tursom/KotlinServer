@@ -278,15 +278,6 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		
 		var dateFoemat: DateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 		
-		val typeMap = mapOf(
-			Pair(Char::class.java, "TINYINT"),
-			Pair(Short::class.java, "SMALLINT"),
-			Pair(Int::class.java, "INT"),
-			Pair(Float::class.java, "FLOAT"),
-			Pair(Double::class.java, "DOUBLE"),
-			Pair(Date::class.java, "TIMESTAMP ")
-		)
-		
 		fun <T> createTableStr(keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8"): String =
 			createTableStr(keys.tableName, keys, engine, charset)
 		
@@ -369,6 +360,7 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		private val Field.fieldType: String?
 			get() = getAnnotation(SQLHelper.FieldType::class.java)?.name ?: when (type) {
 				java.lang.Byte::class.java -> "TINYINT"
+				java.lang.Character::class.java -> "TINYINT"
 				java.lang.Short::class.java -> "SMALLINT"
 				java.lang.Integer::class.java -> "INT"
 				java.lang.Long::class.java -> "BIGINT"
