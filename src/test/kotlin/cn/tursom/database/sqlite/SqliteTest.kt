@@ -20,9 +20,9 @@ data class TTime(private var obj: Long = System.currentTimeMillis()) : SqlField<
 
 @TableName("Test")
 data class TestClass(
-	@Default("1") @NotNull @Check("id > 0") @FieldName("id") val o: Int?,
+	@Default("1") @NotNull @Check("id > 0") @FieldName("id") val _id: Int?,
 	@NotNull @FieldType("DATE") val ele2: TTime,
-	@NotNull @TextLength(50) val text: String = ""
+	@TextLength(50) val text: String? = ""
 )
 
 class SqliteTest {
@@ -35,7 +35,7 @@ class SqliteTest {
 				println(sqLiteHelper == sqLiteHelper2)
 			}
 			
-			val id2 = listOf(EqualWhere(TestClass::o.javaField!!, "20"))
+			val id2 = listOf(EqualWhere(TestClass::_id.javaField!!, "20"))
 			
 			val fieldList = ArrayList<TestClass>()
 			for (i in 1..10000) {

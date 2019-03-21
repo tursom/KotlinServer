@@ -35,13 +35,13 @@ interface SQLHelper : Closeable {
 	/**
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
-	 * @param column 查询字段
+	 * @param fields 查询字段
 	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 * @param maxCount 最大查询数量
 	 */
 	fun <T : Any> select(
 		adapter: SQLAdapter<T>,
-		column: List<String> = listOf("*"),
+		fields: List<String> = listOf("*"),
 		where: List<Where>,
 		maxCount: Int? = null
 	): SQLAdapter<T>
@@ -51,7 +51,7 @@ interface SQLHelper : Closeable {
 	 */
 	fun <T : Any> select(
 		adapter: SQLAdapter<T>,
-		column: String = "*",
+		fields: String = "*",
 		where: String? = null,
 		maxCount: Int? = null
 	): SQLAdapter<T>
@@ -64,7 +64,7 @@ interface SQLHelper : Closeable {
 	
 	fun insert(valueList: List<*>)
 	
-	fun insert(table: String, column: String, values: String)
+	fun insert(table: String, fields: String, values: String)
 	
 	fun <T : Any> update(value: T, where: List<Where>)
 	
@@ -144,37 +144,84 @@ inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T:
 inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation(T::class.java)
 
 inline fun <reified T : Any> SQLHelper.select(
-	column: List<String> = listOf("*"),
+	fields: List<String> = listOf("*"),
 	where: List<SQLHelper.Where>,
 	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(T::class.java), column, where, maxCount)
+): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, maxCount)
 
 /**
  * 用于支持灵活查询
  */
 inline fun <reified T : Any> SQLHelper.select(
-	column: String = "*",
+	fields: String = "*",
 	where: String? = null,
 	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(T::class.java), column, where, maxCount)
+): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, maxCount)
 
 fun <T : Any> SQLHelper.select(
 	clazz: Class<T>,
-	column: List<String> = listOf("*"),
+	fields: List<String> = listOf("*"),
 	where: List<SQLHelper.Where>,
 	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(clazz), column, where, maxCount)
+): SQLAdapter<T> = select(SQLAdapter(clazz), fields, where, maxCount)
 
 /**
  * 用于支持灵活查询
  */
 fun <T : Any> SQLHelper.select(
 	clazz: Class<T>,
-	column: String = "*",
+	fields: String = "*",
 	where: String? = null,
 	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(clazz), column, where, maxCount)
+): SQLAdapter<T> = select(SQLAdapter(clazz), fields, where, maxCount)
 
 fun SQLHelper.delete(clazz: Class<*>, where: String? = null) {
 	delete(clazz.tableName, where)
+}
+
+fun Array<Field>.fieldStr(): String {
+	val fields = StringBuilder()
+	forEach field@{ field ->
+		field.isAccessible = true
+		fields.append("${field.fieldName},")
+	}
+	fields.deleteCharAt(fields.length - 1)
+	return fields.toString()
+}
+
+fun Map<Field, Boolean>.valueStr(value: Any): String {
+	val values = StringBuilder()
+	forEach field@{ (field, isSqlField) ->
+		field.isAccessible = true
+		val fieldValue = field.get(value) //?: return@field
+		values.append(when {
+			fieldValue == null -> "null"
+			isSqlField -> (fieldValue as SQLHelper.SqlField<*>).sqlValue
+			field.type == String::class.java -> "'${(fieldValue as String).replace("'", "''")}'"
+			else -> fieldValue
+		})
+		values.append(',')
+	}
+	if (values.isNotEmpty()) values.deleteCharAt(values.length - 1)
+	return values.toString()
+}
+
+fun Array<out Field>.sqlFieldMap(): Map<Field, Boolean> {
+	val sqlFieldMap = java.util.HashMap<Field, Boolean>()
+	forEach {
+		sqlFieldMap[it] = it.type.interfaces.contains(SQLHelper.SqlField::class.java)
+	}
+	return sqlFieldMap
+}
+
+fun List<*>.valueStr(sqlFieldMap: Map<Field, Boolean>): String {
+	val values = StringBuilder()
+	forEach { value ->
+		value ?: return@forEach
+		values.append("(${sqlFieldMap.valueStr(value)}),")
+	}
+	if (values.isNotEmpty()) {
+		values.deleteCharAt(values.length - 1)
+	}
+	return values.toString()
 }

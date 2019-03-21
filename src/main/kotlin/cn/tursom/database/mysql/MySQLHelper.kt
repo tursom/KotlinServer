@@ -1,6 +1,7 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.*
+import org.sqlite.SQLiteException
 import java.lang.reflect.Field
 import java.sql.Connection
 import java.sql.DriverManager
@@ -74,20 +75,20 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 	/**
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
-	 * @param column 查询字段
+	 * @param fields 查询字段
 	 * @param where 指定从一个表或多个表中获取数据的条件,Pair左边为字段名，右边为限定的值
 	 * @param maxCount 最大查询数量
 	 */
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
-		column: List<String>,
+		fields: List<String>,
 		where: List<SQLHelper.Where>,
 		maxCount: Int?
 	): SQLAdapter<T> = select(
 		adapter = adapter,
-		column = if (column.isEmpty()) "*" else {
+		fields = if (fields.isEmpty()) "*" else {
 			val columnStringBuilder = StringBuilder()
-			column.forEach {
+			fields.forEach {
 				columnStringBuilder.append("$it,")
 			}
 			columnStringBuilder.deleteCharAt(columnStringBuilder.length - 1)
@@ -100,13 +101,13 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 	
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
-		column: String,
+		fields: String,
 		where: String?,
 		maxCount: Int?
 	): SQLAdapter<T> {
 		val statement = connection.createStatement()
 		adapter.adapt(
-			statement.executeQuery("SELECT $column FROM ${adapter.clazz.tableName}${if (where != null) " WHERE $where" else ""
+			statement.executeQuery("SELECT $fields FROM ${adapter.clazz.tableName}${if (where != null) " WHERE $where" else ""
 			}${if (maxCount != null) " limit 0,$maxCount" else ""};")
 		)
 		statement.closeOnCompletion()
@@ -194,61 +195,44 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		statement.closeOnCompletion()
 	}
 	
-	override fun insert(table: String, column: String, values: String) {
+	private fun insert(sql: String, table: Class<*>) {
 		val statement = connection.createStatement()
-		statement.executeUpdate("INSERT INTO $table ($column) VALUES ($values);")
+		try {
+			statement.executeUpdate(sql)
+		} catch (e: SQLiteException) {
+			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
+				createTable(table)
+				statement.executeUpdate(sql)
+			} else {
+				e.printStackTrace()
+			}
+		}
+		connection.commit()
+		statement.closeOnCompletion()
+	}
+	
+	override fun insert(table: String, fields: String, values: String) {
+		val statement = connection.createStatement()
+		statement.executeUpdate("INSERT INTO $table ($fields) VALUES $values;")
 		connection.commit()
 		statement.closeOnCompletion()
 	}
 	
 	override fun <T : Any> insert(value: T) {
-		val column = StringBuilder()
-		val values = StringBuilder()
-		value.javaClass.declaredFields.forEach {
-			
-			getFieldValueByName(it.name, value)?.let { instance ->
-				column.append("${it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name},")
-				values.append(when (instance) {
-					is SQLHelper.SqlField<*> -> instance.sqlValue
-					is String -> "'${instance.replace("'", "''")}'"
-					else -> instance.toString()
-				})
-				values.append(',')
-			}
-		}
-		if (column.isNotEmpty())
-			column.delete(column.length - 1, column.length)
-		if (values.isNotEmpty())
-			values.delete(values.length - 1, values.length)
-		insert(value.tableName, column.toString(), values.toString())
+		val clazz = value.javaClass
+		val fields = clazz.declaredFields
+		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${fields.sqlFieldMap().valueStr(value)});"
+		insert(sql, clazz)
 	}
 	
 	override fun insert(valueList: List<*>) {
-		val statement = connection.createStatement()
-		val table = (valueList.firstOrNull() ?: return).tableName
-		valueList.forEach { value ->
-			value ?: return@forEach
-			val column = StringBuilder()
-			val values = StringBuilder()
-			value.javaClass.declaredFields.forEach {
-				getFieldValueByName(it.name, value)?.let { instance ->
-					column.append("${it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name},")
-					values.append(when (instance) {
-						is SQLHelper.SqlField<*> -> instance.sqlValue
-						is String -> "'${instance.replace("'", "''")}'"
-						else -> instance.toString()
-					})
-					values.append(',')
-				}
-			}
-			if (column.isNotEmpty())
-				column.delete(column.length - 1, column.length)
-			if (values.isNotEmpty())
-				values.delete(values.length - 1, values.length)
-			statement.executeUpdate("INSERT INTO $table ($column) VALUES ($values);")
-		}
-		connection.commit()
-		statement.closeOnCompletion()
+		val first = valueList.firstOrNull() ?: return
+		val clazz = first.javaClass
+		val field = clazz.declaredFields
+		val values = valueList.valueStr(field.sqlFieldMap())
+		if (values.isEmpty()) return
+		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
+		insert(sql, clazz)
 	}
 	
 	override fun delete(table: String, where: String?) {
@@ -400,13 +384,14 @@ class MySQLHelper(@Suppress("MemberVisibilityCanBePrivate") val connection: Conn
 		
 		private val Field.fieldType: String?
 			get() = getAnnotation(SQLHelper.FieldType::class.java)?.name ?: when (type) {
-				Byte::class.java -> "TINYINT"
-				Short::class.java -> "SMALLINT"
-				Int::class.java -> "INT"
-				Long::class.java -> "BIGINT"
-				Float::class.java -> "FLOAT"
-				Double::class.java -> "DOUBLE"
-				String::class.java -> getAnnotation(SQLHelper.TextLength::class.java)?.let { "CHAR(${it.length})" } ?: "TEXT"
+				java.lang.Byte::class.java -> "TINYINT"
+				java.lang.Short::class.java -> "SMALLINT"
+				java.lang.Integer::class.java -> "INT"
+				java.lang.Long::class.java -> "BIGINT"
+				java.lang.Float::class.java -> "FLOAT"
+				java.lang.Double::class.java -> "DOUBLE"
+				java.lang.String::class.java -> getAnnotation(SQLHelper.TextLength::class.java)?.let { "CHAR(${it.length})" }
+					?: "TEXT"
 				else -> if (type.interfaces.contains(SQLHelper.SqlField::class.java)) {
 					type.getAnnotation(SQLHelper.FieldType::class.java)?.name ?: type.name.split('.').last()
 				} else {
