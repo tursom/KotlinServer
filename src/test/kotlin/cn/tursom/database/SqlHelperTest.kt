@@ -5,6 +5,7 @@ import cn.tursom.database.SQLHelper.*
 import kotlin.reflect.jvm.javaField
 
 @FieldType("LONG")
+@StringField
 class TTime : SqlField<Long>, SQLAdapter.Adaptable {
 	private var time: Long = System.currentTimeMillis()
 	
@@ -38,6 +39,12 @@ class SqlHelperTest {
 		val a = TestClass::ele1
 		println(a.name)
 		println(EqualWhere(TestClass::ele1.javaField!!, "1").sqlStr)
+	}
+	
+	@Test
+	fun testFieldValue() {
+		println(TTime().fieldValue)
+		assert(TTime().fieldValue == "'${System.currentTimeMillis()}'")
 	}
 	
 	@Test

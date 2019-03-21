@@ -1,5 +1,6 @@
 package cn.tursom.database
 
+import jdk.nashorn.internal.objects.NativeArray.forEach
 import java.io.Closeable
 import java.lang.reflect.Field
 
@@ -103,6 +104,10 @@ interface SQLHelper : Closeable {
 	@Target(AnnotationTarget.FIELD)
 	annotation class Unique
 	
+	@MustBeDocumented
+	@Target(AnnotationTarget.CLASS)
+	annotation class StringField
+	
 	/**
 	 * only for string
 	 */
@@ -134,7 +139,9 @@ val <T> Class<T>.tableName: String
 
 val <T : Any>T.fieldValue: String
 	get() = when (this) {
-		is SQLHelper.SqlField<*> -> sqlValue
+		is SQLHelper.SqlField<*> -> this.javaClass.getAnnotation(SQLHelper.StringField::class.java)?.let {
+			"'${sqlValue.replace("'", "''")}'"
+		} ?: sqlValue
 		is String -> "'${replace("'", "''")}'"
 		else -> toString()
 	}
@@ -192,17 +199,11 @@ fun Array<out Field>.fieldStr(): String {
 	return fields.toString()
 }
 
-fun List<Pair<Field, Boolean>>.valueStr(value: Any): String? {
+fun Array<out Field>.valueStr(value: Any): String? {
 	val values = StringBuilder()
-	forEach field@{ (field, isSqlField) ->
+	forEach field@{ field ->
 		field.isAccessible = true
-		val fieldValue = field.get(value) //?: return@field
-		values.append(when {
-			fieldValue == null -> "null"
-			isSqlField -> (fieldValue as SQLHelper.SqlField<*>).sqlValue
-			field.type == String::class.java -> "'${(fieldValue as String).replace("'", "''")}'"
-			else -> fieldValue.toString()
-		})
+		values.append(field.get(value)?.fieldValue)
 		values.append(',')
 	}
 	if (values.isNotEmpty()) {
@@ -213,15 +214,7 @@ fun List<Pair<Field, Boolean>>.valueStr(value: Any): String? {
 	return values.toString()
 }
 
-fun Array<out Field>.sqlFieldMap(): List<Pair<Field, Boolean>> {
-	val sqlFieldMap = ArrayList<Pair<Field, Boolean>>()
-	forEach {
-		sqlFieldMap.add(it to it.type.isSqlField)
-	}
-	return sqlFieldMap
-}
-
-fun List<*>.valueStr(sqlFieldMap: List<Pair<Field, Boolean>>): String? {
+fun List<*>.valueStr(sqlFieldMap: Array<out Field>): String? {
 	val values = StringBuilder()
 	forEach { value ->
 		value ?: return@forEach

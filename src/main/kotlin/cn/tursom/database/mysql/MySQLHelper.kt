@@ -199,11 +199,7 @@ class MySQLHelper(
 				getFieldValueByName(it.name, value)?.let { instance ->
 					sb.append(it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name)
 					sb.append("=")
-					sb.append(when (instance) {
-						is SQLHelper.SqlField<*> -> instance.sqlValue
-						is String -> "'${instance.replace("'", "''")}'"
-						else -> instance.toString()
-					})
+					sb.append(instance.fieldValue)
 					sb.append(",")
 				}
 			}
@@ -242,7 +238,7 @@ class MySQLHelper(
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${
-		fields.sqlFieldMap().valueStr(value) ?: return});"
+		fields.valueStr(value) ?: return});"
 		insert(connection, sql, clazz)
 	}
 	
@@ -250,7 +246,7 @@ class MySQLHelper(
 		val first = valueList.firstOrNull() ?: return
 		val clazz = first.javaClass
 		val field = clazz.declaredFields
-		val values = valueList.valueStr(field.sqlFieldMap()) ?: return
+		val values = valueList.valueStr(field) ?: return
 		if (values.isEmpty()) return
 		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
 		insert(connection, sql, clazz)
