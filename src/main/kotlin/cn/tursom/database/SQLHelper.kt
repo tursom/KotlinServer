@@ -75,7 +75,6 @@ interface SQLHelper : Closeable {
 	fun commit()
 	
 	interface SqlField<T> {
-		fun adapt(obj: Any)
 		fun get(): T
 		val sqlValue: String
 	}

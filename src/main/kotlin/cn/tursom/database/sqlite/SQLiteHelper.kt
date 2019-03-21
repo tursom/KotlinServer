@@ -111,11 +111,12 @@ class SQLiteHelper
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>, column: String, where: String?, maxCount: Int?
 	): SQLAdapter<T> {
+		val sql = "SELECT $column FROM ${adapter.clazz.tableName}${if (where != null) " WHERE $where" else ""
+		}${if (maxCount != null) " limit 0,$maxCount" else ""};"
 		val statement = connection.createStatement()
 		try {
 			adapter.adapt(
-				statement.executeQuery("SELECT $column FROM ${adapter.clazz.tableName} ${if (where != null) "WHERE $where" else ""
-				} ${if (maxCount != null) "limit 0,$maxCount" else ""} ;")
+				statement.executeQuery(sql)
 			)
 		} catch (e: SQLiteException) {
 			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: ${adapter.clazz.tableName})") throw e

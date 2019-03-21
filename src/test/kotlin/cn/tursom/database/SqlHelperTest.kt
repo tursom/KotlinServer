@@ -2,9 +2,10 @@ package cn.tursom.database
 
 import org.junit.Test
 import cn.tursom.database.SQLHelper.*
+import kotlin.reflect.jvm.javaField
 
 @FieldType("LONG")
-class TTime : SqlField<Long> {
+class TTime : SqlField<Long>, SQLAdapter.Adaptable {
 	private var time: Long = System.currentTimeMillis()
 	
 	override fun adapt(obj: Any) {
@@ -36,7 +37,7 @@ class SqlHelperTest {
 	fun sqlHelperTest() {
 		val a = TestClass::ele1
 		println(a.name)
-		println(EqualWhere(TestClass::ele1, "1").sqlStr)
+		println(EqualWhere(TestClass::ele1.javaField!!, "1").sqlStr)
 	}
 	
 	@Test

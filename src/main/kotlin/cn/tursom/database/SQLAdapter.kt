@@ -4,24 +4,34 @@ import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.util.ArrayList
-import kotlin.collections.HashSet
-import kotlin.collections.contains
+import java.util.*
 import kotlin.collections.forEach
 
 open class SQLAdapter<T : Any>(
 	@Suppress("MemberVisibilityCanBePrivate") val clazz: Class<T>,
-	private val adapter: (SQLAdapter<T>.(resultSet: ResultSet, fieldSet: HashSet<Field>) -> Unit)? = null
+	private val adapter: (
+	SQLAdapter<T>.(
+		resultSet: ResultSet,
+		fieldData: List<FieldData>
+	) -> Unit)? = null
 ) : ArrayList<T>() {
 	open fun adapt(resultSet: ResultSet) {
 		clear() //清空已储存的数据
 		try {
-			val fieldSet = HashSet<Field>()
+			val fieldSet = ArrayList<FieldData>()
 			if (resultSet.next()) {
 				clazz.declaredFields.forEach {
 					try {
-						resultSet.getObject(it.name)
-						fieldSet.add(it)
+						val fieldName = it.fieldName
+						resultSet.getObject(fieldName)
+						it.isAccessible = true
+						fieldSet.add(FieldData(
+							it,
+							fieldName,
+							it.type,
+							it.type.interfaces.contains(ResultSetReadable::class.java),
+							it.type.interfaces.contains(Adaptable::class.java)
+						))
 					} catch (e: SQLException) {
 					}
 				}
@@ -37,56 +47,87 @@ open class SQLAdapter<T : Any>(
 	}
 	
 	@Suppress("UNCHECKED_CAST")
-	open fun adaptOnce(resultSet: ResultSet, fieldSet: HashSet<Field>) {
+	open fun adaptOnce(resultSet: ResultSet, fieldSet: List<FieldData>) {
 		//绕过构造函数获取变量0
-		val t = unsafe.allocateInstance(clazz) as T
-		fieldSet.forEach {
-			it.isAccessible = true
-			// 这里是获取bean属性的类型
-			val beanType = it.type
-			val value: Any?
+		val bean = unsafe.allocateInstance(clazz) as T
+		fieldSet.forEach { (
+			                   field,
+			                   fieldName,
+			                   beanType,
+			                   resultSetReadable,
+			                   adaptable
+		                   ) ->
 			try {
-				value = resultSet.getObject(it.name)
+				if (resultSetReadable) {
+					//如果你有能力直接从ResultSet里面取出数据,那就随君便
+					(unsafe.allocateInstance(beanType) as ResultSetReadable).adapt(fieldName, resultSet)
+				} else {
+					resultSet.getObject(fieldName)?.let { value ->
+						//让我们把数据喂进去
+						field.set(bean, handleCast(field, beanType, value, adaptable))
+					}
+				}
 			} catch (e: SQLException) {
 				e.printStackTrace()
 				return@forEach
 			}
-			if (value != null) {
-				val dbType = value.javaClass // 这里是获取数据库字段的类型
-				//让我们把数据喂进去
-				it.set(t, if (beanType == java.lang.Float::class.java) {
-					if (dbType == java.lang.Double::class.java) {
-						(value as Double).toFloat()
-					} else {
-						//检查是否可以为空
-						if (it.getAnnotation(SQLHelper.NotNull::class.java) != null) {
-							value.toString().toFloat()
-						} else {
-							value.toString().toFloatOrNull()
-						}
-					}
-				} else if (beanType == java.lang.String::class.java && dbType != java.lang.String::class.java) {
-					value.toString()
-				} else if (beanType == java.lang.Boolean::class.java) {
-					if (it.getAnnotation(SQLHelper.NotNull::class.java) != null) {
-						value.toString().toBoolean()
-					} else {
-						try {
-							value.toString().toBoolean()
-						} catch (e: Exception) {
-							null
-						}
-					}
-				} else if (beanType.interfaces.contains(SQLHelper.SqlField::class.java)) {
-					val field = beanType.newInstance() as SQLHelper.SqlField<*>
-					field.adapt(value)
-					field
-				} else {
-					value
-				})
-			}
 		}
-		add(t)
+		add(bean)
+	}
+	
+	private fun handleCast(
+		field: Field,
+		beanType: Class<*>,
+		value: Any,
+		adaptable: Boolean
+	): Any? {
+		val dbType = value.javaClass // 这里是获取数据库字段的类型
+		return if (adaptable) {
+			val sqlField = unsafe.allocateInstance(beanType) as Adaptable
+			sqlField.adapt(value)
+			sqlField
+		} else if (beanType == java.lang.Float::class.java) {
+			if (dbType == java.lang.Double::class.java) {
+				(value as Double).toFloat()
+			} else {
+				//检查是否可以为空
+				if (field.getAnnotation(SQLHelper.NotNull::class.java) != null) {
+					value.toString().toFloat()
+				} else {
+					value.toString().toFloatOrNull()
+				}
+			}
+		} else if (beanType == java.lang.String::class.java && dbType != java.lang.String::class.java) {
+			value.toString()
+		} else if (beanType == java.lang.Boolean::class.java) {
+			if (field.getAnnotation(SQLHelper.NotNull::class.java) != null) {
+				value.toString().toBoolean()
+			} else {
+				try {
+					value.toString().toBoolean()
+				} catch (e: Exception) {
+					null
+				}
+			}
+		} else {
+			value
+		}
+	}
+	
+	data class FieldData(
+		val field: Field,
+		val fieldName: String,
+		val beanType: Class<*>,
+		val resultSetReadable: Boolean,
+		val adaptable: Boolean
+	)
+	
+	interface Adaptable {
+		fun adapt(obj: Any)
+	}
+	
+	interface ResultSetReadable {
+		fun adapt(fieldName: String, resultSet: ResultSet)
 	}
 	
 	companion object {
