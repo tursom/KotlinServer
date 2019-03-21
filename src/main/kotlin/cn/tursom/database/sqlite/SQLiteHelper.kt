@@ -216,7 +216,7 @@ class SQLiteHelper
 		value.javaClass.declaredFields.forEach {
 			it.isAccessible = true
 			it.get(value)?.let { value ->
-				set.append("${it.name}=${value.fieldValue},")
+				set.append("${it.fieldName}=${value.fieldValue},")
 			}
 		}
 		if (set.isNotEmpty()) {
@@ -306,7 +306,7 @@ class SQLiteHelper
 					fieldValue.toString()
 				}.replace("'", "''"))
 				values.append(',')
-				column.append("${field.name},")
+				column.append("${field.fieldName},")
 			}
 			column.deleteCharAt(column.length - 1)
 			values.deleteCharAt(values.length - 1)
@@ -319,7 +319,7 @@ class SQLiteHelper
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS ${keys.tableName}(")
 			fieldSet.forEach {
-				valueStrBuilder.append("${it.name} ${
+				valueStrBuilder.append("${it.fieldName} ${
 				when (it.type) {
 					Byte::class.java -> "INTEGER"
 					Char::class.java -> "INTEGER"

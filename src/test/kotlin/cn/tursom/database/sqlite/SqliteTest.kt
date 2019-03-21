@@ -3,6 +3,7 @@ package cn.tursom.database.sqlite
 import cn.tursom.database.*
 import cn.tursom.database.SQLHelper.*
 import org.junit.Test
+import kotlin.reflect.jvm.javaField
 
 @FieldType("DATE")
 class TTime : SqlField<Long> {
@@ -28,7 +29,7 @@ class TTime : SqlField<Long> {
 
 @TableName("Test")
 data class TestClass(
-	@Default("1") @NotNull @Check("id > 0") val id: Int,
+	@Default("1") @NotNull @Check("id > 0") @FieldName("id") val o: Int,
 	@NotNull @FieldType("DATE") val ele2: TTime,
 	@NotNull @TextLength(50) val text: String = ""
 )
@@ -36,22 +37,32 @@ data class TestClass(
 class SqliteTest {
 	@Test
 	fun sqliteTest() {
+		
 		SQLiteHelper("test.db").use { sqLiteHelper ->
+			//测试同一性
 			SQLiteHelper("../KotlinServer/test.db").use { sqLiteHelper2 ->
 				println(sqLiteHelper == sqLiteHelper2)
 			}
-			sqLiteHelper.delete("Test")
-//			val fieldList = ArrayList<TestClass>()
-//			for (i in 1..1000) {
-//				fieldList.add(TestClass(i, TTime(), "233"))
-//			}
-			println(System.currentTimeMillis())
-//			sqLiteHelper.insert(fieldList)
-			val id2 = listOf(EqualWhere(TestClass::id, "2"))
+			
+			//清空表
+			sqLiteHelper.delete(TestClass::class.java)
+			
+			val id2 = listOf(EqualWhere(TestClass::o.javaField!!, "2"))
+			
+			val fieldList = ArrayList<TestClass>()
+			for (i in 1..10000) {
+				fieldList.add(TestClass(i, TTime(), "233"))
+			}
+			
+			println("insert: ${System.currentTimeMillis()}")
+			sqLiteHelper.insert(fieldList)
+			println("update: ${System.currentTimeMillis()}")
 			sqLiteHelper.update(TestClass(2, TTime(), "还行"), id2)
-			println(System.currentTimeMillis())
-			println(sqLiteHelper.select<TestClass>(where = id2).size)
-			println(System.currentTimeMillis())
+			println("select: ${System.currentTimeMillis()}")
+			println(sqLiteHelper.select<TestClass>().size)
+			println("select: ${System.currentTimeMillis()}")
+			println(sqLiteHelper.select<TestClass>(where = id2))
+			println("end: ${System.currentTimeMillis()}")
 		}
 	}
 }

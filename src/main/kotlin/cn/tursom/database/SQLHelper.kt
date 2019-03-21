@@ -112,7 +112,7 @@ interface SQLHelper : Closeable {
 	annotation class TextLength(val length: Int)
 	
 	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
+	@Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION)
 	annotation class FieldName(val name: String)
 	
 	@MustBeDocumented
@@ -175,3 +175,7 @@ fun <T : Any> SQLHelper.select(
 	where: String? = null,
 	maxCount: Int? = null
 ): SQLAdapter<T> = select(SQLAdapter(clazz), column, where, maxCount)
+
+fun SQLHelper.delete(clazz: Class<*>, where: String? = null) {
+	delete(clazz.tableName, where)
+}

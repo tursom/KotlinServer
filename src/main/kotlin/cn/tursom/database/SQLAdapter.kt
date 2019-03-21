@@ -9,7 +9,10 @@ import kotlin.collections.HashSet
 import kotlin.collections.contains
 import kotlin.collections.forEach
 
-open class SQLAdapter<T : Any>(@Suppress("MemberVisibilityCanBePrivate") val clazz: Class<T>) : ArrayList<T>() {
+open class SQLAdapter<T : Any>(
+	@Suppress("MemberVisibilityCanBePrivate") val clazz: Class<T>,
+	private val adapter: (SQLAdapter<T>.(resultSet: ResultSet, fieldSet: HashSet<Field>) -> Unit)? = null
+) : ArrayList<T>() {
 	open fun adapt(resultSet: ResultSet) {
 		clear() //清空已储存的数据
 		try {
@@ -22,11 +25,11 @@ open class SQLAdapter<T : Any>(@Suppress("MemberVisibilityCanBePrivate") val cla
 					} catch (e: SQLException) {
 					}
 				}
-				adaptOnce(resultSet, fieldSet)
+				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldSet)
 			}
 			// 遍历ResultSet
 			while (resultSet.next()) {
-				adaptOnce(resultSet, fieldSet)
+				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldSet)
 			}
 		} catch (e: Exception) {
 			e.printStackTrace()
