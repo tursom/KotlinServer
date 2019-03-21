@@ -241,7 +241,8 @@ class MySQLHelper(
 	override fun <T : Any> insert(value: T) {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
-		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${fields.sqlFieldMap().valueStr(value)});"
+		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${
+		fields.sqlFieldMap().valueStr(value) ?: return});"
 		insert(connection, sql, clazz)
 	}
 	
@@ -249,7 +250,7 @@ class MySQLHelper(
 		val first = valueList.firstOrNull() ?: return
 		val clazz = first.javaClass
 		val field = clazz.declaredFields
-		val values = valueList.valueStr(field.sqlFieldMap())
+		val values = valueList.valueStr(field.sqlFieldMap()) ?: return
 		if (values.isEmpty()) return
 		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
 		insert(connection, sql, clazz)

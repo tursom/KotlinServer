@@ -192,7 +192,7 @@ fun Array<out Field>.fieldStr(): String {
 	return fields.toString()
 }
 
-fun List<Pair<Field, Boolean>>.valueStr(value: Any): String {
+fun List<Pair<Field, Boolean>>.valueStr(value: Any): String? {
 	val values = StringBuilder()
 	forEach field@{ (field, isSqlField) ->
 		field.isAccessible = true
@@ -205,7 +205,11 @@ fun List<Pair<Field, Boolean>>.valueStr(value: Any): String {
 		})
 		values.append(',')
 	}
-	if (values.isNotEmpty()) values.deleteCharAt(values.length - 1)
+	if (values.isNotEmpty()) {
+		values.deleteCharAt(values.length - 1)
+	} else {
+		return null
+	}
 	return values.toString()
 }
 
@@ -217,14 +221,16 @@ fun Array<out Field>.sqlFieldMap(): List<Pair<Field, Boolean>> {
 	return sqlFieldMap
 }
 
-fun List<*>.valueStr(sqlFieldMap: List<Pair<Field, Boolean>>): String {
+fun List<*>.valueStr(sqlFieldMap: List<Pair<Field, Boolean>>): String? {
 	val values = StringBuilder()
 	forEach { value ->
 		value ?: return@forEach
-		values.append("(${sqlFieldMap.valueStr(value)}),")
+		values.append("(${sqlFieldMap.valueStr(value) ?: return@forEach}),")
 	}
 	if (values.isNotEmpty()) {
 		values.deleteCharAt(values.length - 1)
+	} else {
+		return null
 	}
 	return values.toString()
 }
