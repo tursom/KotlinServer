@@ -103,7 +103,6 @@ class SQLiteHelper
 	): SQLAdapter<T> =
 		select(adapter, fields?.fieldStr() ?: "*", where.sqlStr, order?.fieldName, reverse, maxCount)
 	
-	
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
 	): SQLAdapter<T> {

@@ -117,7 +117,7 @@ class MySQLHelper(
 		fields = fields?.fieldStr() ?: "*",
 		where = where.sqlStr,
 		order = order?.fieldName,
-		reverse = false,
+		reverse = reverse,
 		maxCount = maxCount
 	)
 	
@@ -135,7 +135,6 @@ class MySQLHelper(
 		}${if (order != null) " ORDER BY $order ${if (reverse) "DESC" else "ASC"}" else ""
 		}${if (maxCount != null) " limit $maxCount" else ""
 		};"
-		println(sql)
 		val statement = connection.createStatement()
 		adapter.adapt(statement.executeQuery(sql))
 		statement.closeOnCompletion()

@@ -1,5 +1,6 @@
 package cn.tursom.database
 
+import cn.tursom.database.annotation.NotNull
 import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.sql.ResultSet
@@ -92,7 +93,7 @@ open class SQLAdapter<T : Any>(
 				(value as Double).toFloat()
 			} else {
 				//检查是否可以为空
-				if (field.getAnnotation(SQLHelper.NotNull::class.java) != null) {
+				if (field.getAnnotation(NotNull::class.java) != null) {
 					value.toString().toFloat()
 				} else {
 					value.toString().toFloatOrNull()
@@ -101,7 +102,7 @@ open class SQLAdapter<T : Any>(
 		} else if (beanType == java.lang.String::class.java && dbType != java.lang.String::class.java) {
 			value.toString()
 		} else if (beanType == java.lang.Boolean::class.java) {
-			if (field.getAnnotation(SQLHelper.NotNull::class.java) != null) {
+			if (field.getAnnotation(NotNull::class.java) != null) {
 				value.toString().toBoolean()
 			} else {
 				try {
