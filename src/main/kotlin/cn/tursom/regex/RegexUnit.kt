@@ -10,7 +10,7 @@ val RegexUnit.onceMore
 val RegexUnit.anyTime
 	get() = UnitRegexUnit(unit?.let { "$it*" } ?: "")
 
-val RegexUnit.noneOrOnce
+val RegexUnit.onceBelow
 	get() = UnitRegexUnit(unit?.let { "$it?" } ?: "")
 
 infix fun RegexUnit.repeat(times: Int) = UnitRegexUnit(unit?.let { "$it{$times}" } ?: "")
