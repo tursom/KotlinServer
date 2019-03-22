@@ -1,8 +1,8 @@
 package cn.tursom.database
 
-import jdk.nashorn.internal.objects.NativeArray.forEach
 import java.io.Closeable
 import java.lang.reflect.Field
+import kotlin.collections.forEach
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -15,7 +15,7 @@ interface SQLHelper : Closeable {
 	 * @param table: 表格名
 	 * @param keys: 属性列表
 	 */
-	fun createTable(table: String, keys: List<String>)
+	fun createTable(table: String, keys: Iterable<String>)
 	
 	/**
 	 * 根据提供的class对象自动化创建表格
@@ -42,8 +42,10 @@ interface SQLHelper : Closeable {
 	 */
 	fun <T : Any> select(
 		adapter: SQLAdapter<T>,
-		fields: List<String> = listOf("*"),
-		where: List<Where>,
+		fields: Iterable<String>? = null,
+		where: Iterable<Where>,
+		order: Field? = null,
+		reverse: Boolean = false,
 		maxCount: Int? = null
 	): SQLAdapter<T>
 	
@@ -54,6 +56,8 @@ interface SQLHelper : Closeable {
 		adapter: SQLAdapter<T>,
 		fields: String = "*",
 		where: String? = null,
+		order: String? = null,
+		reverse: Boolean = false,
 		maxCount: Int? = null
 	): SQLAdapter<T>
 	
@@ -63,15 +67,15 @@ interface SQLHelper : Closeable {
 	 */
 	fun <T : Any> insert(value: T)
 	
-	fun insert(valueList: List<*>)
+	fun insert(valueList: Iterable<*>)
 	
 	fun insert(table: String, fields: String, values: String)
 	
-	fun <T : Any> update(value: T, where: List<Where>)
+	fun <T : Any> update(value: T, where: Iterable<Where>)
 	
 	fun delete(table: String, where: String? = null)
 	
-	fun delete(table: String, where: List<Where>)
+	fun delete(table: String, where: Iterable<Where>)
 	
 	fun commit()
 	
@@ -126,6 +130,18 @@ interface SQLHelper : Closeable {
 	@MustBeDocumented
 	@Target(AnnotationTarget.CLASS)
 	annotation class TableName(val name: String)
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class Default(val default: String)
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD)
+	annotation class Check(val func: String)
+	
+	@MustBeDocumented
+	@Target(AnnotationTarget.FIELD, AnnotationTarget.CLASS)
+	annotation class ForeignKey(val target: String = "")
 }
 
 val Field.fieldName: String
@@ -135,14 +151,14 @@ val <T : Any>T.tableName: String
 	get() = javaClass.tableName
 
 val <T> Class<T>.tableName: String
-	get() = getAnnotation<SQLHelper.TableName>()?.name ?: name.split('.').last()
+	get() = (getAnnotation<SQLHelper.TableName>()?.name ?: name.split('.').last()).toLowerCase()
 
 val <T : Any>T.fieldValue: String
 	get() = when (this) {
 		is SQLHelper.SqlField<*> -> this.javaClass.getAnnotation(SQLHelper.StringField::class.java)?.let {
-			"'${sqlValue.replace("'", "''")}'"
+			sqlValue.sqlStr
 		} ?: sqlValue
-		is String -> "'${replace("'", "''")}'"
+		is String -> sqlStr
 		else -> toString()
 	}
 
@@ -155,24 +171,30 @@ val Class<*>.isSqlField
 inline fun <reified T : Any> SQLHelper.select(
 	fields: String = "*",
 	where: String? = null,
+	order: String? = null,
+	reverse: Boolean = false,
 	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, maxCount)
+): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, order, reverse, maxCount)
 
 inline fun <reified T : Any> SQLHelper.select(
-	fields: List<String> = listOf("*"),
-	where: List<SQLHelper.Where>,
+	fields: Iterable<String> = listOf("*"),
+	where: Iterable<SQLHelper.Where>,
+	order: Field? = null,
+	reverse: Boolean = false,
 	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, maxCount)
+): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, order, reverse, maxCount)
 
 inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T::class.java)
 inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation(T::class.java)
 
 fun <T : Any> SQLHelper.select(
 	clazz: Class<T>,
-	fields: List<String> = listOf("*"),
-	where: List<SQLHelper.Where>,
+	fields: Iterable<String> = listOf("*"),
+	where: Iterable<SQLHelper.Where>,
+	order: Field? = null,
+	reverse: Boolean = false,
 	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(clazz), fields, where, maxCount)
+): SQLAdapter<T> = select(SQLAdapter(clazz), fields, where, order, reverse, maxCount)
 
 /**
  * 用于支持灵活查询
@@ -181,8 +203,10 @@ fun <T : Any> SQLHelper.select(
 	clazz: Class<T>,
 	fields: String = "*",
 	where: String? = null,
+	order: String? = null,
+	reverse: Boolean = false,
 	maxCount: Int? = null
-): SQLAdapter<T> = select(SQLAdapter(clazz), fields, where, maxCount)
+): SQLAdapter<T> = select(SQLAdapter(clazz), fields, where, order, reverse, maxCount)
 
 fun SQLHelper.delete(
 	clazz: Class<*>,
@@ -197,6 +221,17 @@ fun Array<out Field>.fieldStr(): String {
 	}
 	fields.deleteCharAt(fields.length - 1)
 	return fields.toString()
+}
+
+
+fun Iterable<String>.fieldStr(): String {
+	val stringBuffer = StringBuffer()
+	forEach {
+		if (it.isNotEmpty())
+			stringBuffer.append("$it,")
+	}
+	stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
+	return stringBuffer.toString()
 }
 
 fun Array<out Field>.valueStr(value: Any): String? {
@@ -214,7 +249,7 @@ fun Array<out Field>.valueStr(value: Any): String? {
 	return values.toString()
 }
 
-fun List<*>.valueStr(sqlFieldMap: Array<out Field>): String? {
+fun Iterable<*>.valueStr(sqlFieldMap: Array<out Field>): String? {
 	val values = StringBuilder()
 	forEach { value ->
 		value ?: return@forEach
@@ -227,3 +262,29 @@ fun List<*>.valueStr(sqlFieldMap: Array<out Field>): String? {
 	}
 	return values.toString()
 }
+
+
+fun Iterable<SQLHelper.Where>.whereStr(): String {
+	val stringBuilder = StringBuilder()
+	forEach {
+		stringBuilder.append("${it.sqlStr} AND ")
+	}
+	if (stringBuilder.isNotEmpty())
+		stringBuilder.delete(stringBuilder.length - 5, stringBuilder.length)
+	return stringBuilder.toString()
+}
+
+fun List<Pair<String, String>>.fieldStr(): Pair<String, String> {
+	val first = StringBuilder()
+	val second = StringBuilder()
+	forEach { (f, s) ->
+		first.append("$f,")
+		second.append("$s,")
+	}
+	if (first.isNotEmpty()) first.deleteCharAt(first.length - 1)
+	if (second.isNotEmpty()) second.deleteCharAt(second.length - 1)
+	return first.toString() to second.toString()
+}
+
+val String.sqlStr
+	get() = "'${replace("'", "''")}'"

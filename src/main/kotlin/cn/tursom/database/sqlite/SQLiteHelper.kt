@@ -1,20 +1,14 @@
 package cn.tursom.database.sqlite
 
 import cn.tursom.database.*
+import cn.tursom.tools.simplifyPath
 import org.sqlite.SQLiteException
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
-import cn.tursom.tools.simplifyPath
+import java.lang.reflect.Field
 
-@MustBeDocumented
-@Target(AnnotationTarget.FIELD)
-annotation class Default(val default: String)
-
-@MustBeDocumented
-@Target(AnnotationTarget.FIELD)
-annotation class Check(val func: String)
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -54,8 +48,8 @@ class SQLiteHelper
 	 * @param table: 表格名
 	 * @param keys: 属性列表
 	 */
-	override fun createTable(table: String, keys: List<String>) {
-		val sql = "CREATE TABLE if not exists $table (${toColumn(keys)})"
+	override fun createTable(table: String, keys: Iterable<String>) {
+		val sql = "CREATE TABLE if not exists $table (${keys.fieldStr()})"
 		val statement = connection.createStatement()
 		statement.executeUpdate(sql)
 		commit()
@@ -97,18 +91,24 @@ class SQLiteHelper
 	 */
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
-		fields: List<String>,
-		where: List<SQLHelper.Where>,
+		fields: Iterable<String>?,
+		where: Iterable<SQLHelper.Where>,
+		order: Field?,
+		reverse: Boolean,
 		maxCount: Int?
 	): SQLAdapter<T> =
-		select(adapter, toColumn(fields), toWhere(where), maxCount)
+		select(adapter, fields?.fieldStr()?:"*", where.whereStr(), order?.fieldName, reverse, maxCount)
 	
 	
 	override fun <T : Any> select(
-		adapter: SQLAdapter<T>, fields: String, where: String?, maxCount: Int?
+		adapter: SQLAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
 	): SQLAdapter<T> {
-		val sql = "SELECT $fields FROM ${adapter.clazz.tableName}${if (where != null) " WHERE $where" else ""
-		}${if (maxCount != null) " limit 0,$maxCount" else ""};"
+		val sql = "SELECT $fields FROM ${adapter.clazz.tableName
+		}${if (where != null) " WHERE $where" else ""
+		}${if (order != null) " ORDER BY $order ${if (reverse) "DESC" else "ASC"}" else ""
+		}${if (maxCount != null) " limit 0,$maxCount" else ""
+		};"
+		
 		val statement = connection.createStatement()
 		try {
 			adapter.adapt(
@@ -121,43 +121,7 @@ class SQLiteHelper
 		return adapter
 	}
 	
-	fun <T : Any> reverseSelect(
-		adapter: SQLAdapter<T>,
-		table: String,
-		name: List<String>,
-		where: List<SQLHelper.Where>?,
-		index: String,
-		maxCount: Int?
-	): SQLAdapter<T> =
-		if (where != null) {
-			reverseSelect(adapter, table, toColumn(name), toWhere(where), index, maxCount)
-		} else {
-			reverseSelect(adapter, table, toColumn(name), null, index, maxCount)
-		}
-	
-	fun <T : Any> reverseSelect(
-		adapter: SQLAdapter<T>,
-		table: String,
-		name: String,
-		where: String?,
-		index: String,
-		maxCount: Int?
-	): SQLAdapter<T> {
-		val statement = connection.createStatement()
-		try {
-			@Suppress("SqlResolve", "SqlIdentifier")
-			adapter.adapt(
-				statement.executeQuery("SELECT $name FROM $table ${if (where == null) "WHERE $where" else ""
-				} ORDER BY $index DESC limit 0,${maxCount ?: Int.MAX_VALUE};")
-			)
-		} catch (e: SQLiteException) {
-			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") throw e
-		}
-		statement.closeOnCompletion()
-		return adapter
-	}
-	
-	fun insert(connection: Connection, sql: String, table: Class<*>) {
+	private fun insert(connection: Connection, sql: String, table: Class<*>) {
 		val statement = connection.createStatement()
 		try {
 			statement.executeUpdate(sql)
@@ -168,9 +132,10 @@ class SQLiteHelper
 			} else {
 				e.printStackTrace()
 			}
+		} finally {
+			connection.commit()
+			statement.closeOnCompletion()
 		}
-		connection.commit()
-		statement.closeOnCompletion()
 	}
 	
 	override fun <T : Any> insert(value: T) {
@@ -182,7 +147,7 @@ class SQLiteHelper
 		insert(connection, sql, clazz)
 	}
 	
-	override fun insert(valueList: List<*>) {
+	override fun insert(valueList: Iterable<*>) {
 		val first = valueList.firstOrNull() ?: return
 		val clazz = first.javaClass
 		val field = clazz.declaredFields
@@ -193,15 +158,18 @@ class SQLiteHelper
 	}
 	
 	override fun insert(table: String, fields: String, values: String) {
-		val statement = connection.createStatement()
 		val sql = "INSERT INTO $table ($fields) VALUES $values;"
-		statement.executeUpdate(sql)
-		commit()
-		statement.closeOnCompletion()
+		val statement = connection.createStatement()
+		try {
+			statement.executeUpdate(sql)
+			commit()
+		} finally {
+			statement.closeOnCompletion()
+		}
 	}
 	
 	override fun <T : Any> update(
-		value: T, where: List<SQLHelper.Where>
+		value: T, where: Iterable<SQLHelper.Where>
 	) {
 		val set = StringBuilder()
 		value.javaClass.declaredFields.forEach {
@@ -214,7 +182,7 @@ class SQLiteHelper
 			set.delete(set.length - 1, set.length)
 		}
 		
-		val sql = "UPDATE ${value.tableName} SET $set WHERE ${toWhere(where)};"
+		val sql = "UPDATE ${value.tableName} SET $set WHERE ${where.whereStr()};"
 		
 		val statement = connection.createStatement()
 		statement.executeUpdate(sql)
@@ -229,8 +197,8 @@ class SQLiteHelper
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: List<SQLHelper.Where>) {
-		delete(table, toWhere(where))
+	override fun delete(table: String, where: Iterable<SQLHelper.Where>) {
+		delete(table, where.whereStr())
 	}
 	
 	override fun commit() {
@@ -250,26 +218,6 @@ class SQLiteHelper
 		}
 	}
 	
-	private fun toColumn(column: List<String>): String {
-		val stringBuilder = StringBuilder()
-		column.forEach {
-			if (it.isNotEmpty())
-				stringBuilder.append("$it,")
-		}
-		stringBuilder.delete(stringBuilder.length - 1, stringBuilder.length)
-		return stringBuilder.toString()
-	}
-	
-	private fun toWhere(where: List<SQLHelper.Where>): String {
-		val stringBuilder = StringBuilder()
-		where.forEach {
-			stringBuilder.append("${it.sqlStr} AND ")
-		}
-		if (stringBuilder.isNotEmpty())
-			stringBuilder.delete(stringBuilder.length - 5, stringBuilder.length)
-		return stringBuilder.toString()
-	}
-	
 	override fun hashCode(): Int {
 		var result = connection.hashCode()
 		result = 31 * result + path.hashCode()
@@ -287,11 +235,16 @@ class SQLiteHelper
 		
 		@Suppress("NestedLambdaShadowedImplicitParameter")
 		fun <T> createTableStr(keys: Class<T>): String {
-			val fieldSet = keys.declaredFields
+			val foreignKey = keys.getAnnotation(SQLHelper.ForeignKey::class.java)?.let {
+				if (it.target.isNotEmpty()) it.target else null
+			}
+			val foreignKeyList = ArrayList<Pair<String, String>>()
+			
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS ${keys.tableName}(")
-			fieldSet.forEach {
-				valueStrBuilder.append("${it.fieldName} ${
+			keys.declaredFields.forEach {
+				val fieldName = it.fieldName
+				valueStrBuilder.append("$fieldName ${
 				when (it.type) {
 					java.lang.Byte::class.java -> "INTEGER"
 					java.lang.Short::class.java -> "INTEGER"
@@ -311,24 +264,18 @@ class SQLiteHelper
 				}
 				}")
 				
-				//检查是否可以为空
-				it.getAnnotation(SQLHelper.NotNull::class.java)?.let {
-					valueStrBuilder.append(" NOT NULL")
-				}
-				it.getAnnotation(SQLHelper.AutoIncrement::class.java)?.let {
-					valueStrBuilder.append(" AUTO_INCREMENT")
-				}
-				it.getAnnotation(SQLHelper.PrimaryKey::class.java)?.run {
-					valueStrBuilder.append(" PRIMARY KEY")
-				}
-				it.getAnnotation(SQLHelper.Unique::class.java)?.let {
-					valueStrBuilder.append(" UNIQUE")
-				}
-				it.getAnnotation(Default::class.java)?.let {
-					valueStrBuilder.append(" DEFAULT ${it.default}")
-				}
-				it.getAnnotation(Check::class.java)?.let {
-					valueStrBuilder.append(" CHECK(${it.func})")
+				it.annotations.forEach {
+					when (it) {
+						//检查是否可以为空
+						is SQLHelper.NotNull -> valueStrBuilder.append(" NOT NULL")
+						is SQLHelper.AutoIncrement -> valueStrBuilder.append(" AUTO_INCREMENT")
+						is SQLHelper.PrimaryKey -> valueStrBuilder.append(" PRIMARY KEY")
+						is SQLHelper.Unique -> valueStrBuilder.append(" UNIQUE")
+						is SQLHelper.Default -> valueStrBuilder.append(" DEFAULT ${it.default}")
+						is SQLHelper.Check -> valueStrBuilder.append(" CHECK(${it.func})")
+						is SQLHelper.ForeignKey ->
+							foreignKeyList.add(fieldName to if (it.target.isNotEmpty()) it.target else fieldName)
+					}
 				}
 				
 				val annotation = it.getAnnotation(SQLHelper.ExtraAttribute::class.java) ?: run {
@@ -337,6 +284,12 @@ class SQLiteHelper
 				}
 				valueStrBuilder.append(" ${annotation.attributes},")
 			}
+			
+			foreignKey?.let {
+				val (source, target) = foreignKeyList.fieldStr()
+				valueStrBuilder.append("FOREIGN KEY ($source) REFERENCES $it ($target),")
+			}
+			
 			valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
 			valueStrBuilder.append(");")
 			return valueStrBuilder.toString()
