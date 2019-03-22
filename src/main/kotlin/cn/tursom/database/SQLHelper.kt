@@ -1,5 +1,7 @@
 package cn.tursom.database
 
+import cn.tursom.database.annotation.*
+import cn.tursom.database.clauses.Clause
 import java.io.Closeable
 import java.lang.reflect.Field
 import java.util.AbstractCollection
@@ -44,7 +46,7 @@ interface SQLHelper : Closeable {
 	fun <T : Any> select(
 		adapter: SQLAdapter<T>,
 		fields: Iterable<String>? = null,
-		where: Iterable<Where>,
+		where: Clause,
 		order: Field? = null,
 		reverse: Boolean = false,
 		maxCount: Int? = null
@@ -72,11 +74,11 @@ interface SQLHelper : Closeable {
 	
 	fun insert(table: String, fields: String, values: String)
 	
-	fun <T : Any> update(value: T, where: Iterable<Where>)
+	fun <T : Any> update(value: T, where: Clause)
 	
 	fun delete(table: String, where: String? = null)
 	
-	fun delete(table: String, where: Iterable<Where>)
+	fun delete(table: String, where: Clause)
 	
 	fun commit()
 	
@@ -88,75 +90,20 @@ interface SQLHelper : Closeable {
 	interface Where {
 		val sqlStr: String
 	}
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
-	annotation class ExtraAttribute(val attributes: String)
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
-	annotation class NotNull
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
-	annotation class AutoIncrement
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
-	annotation class PrimaryKey
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
-	annotation class Unique
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.CLASS)
-	annotation class StringField
-	
-	/**
-	 * only for string
-	 */
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
-	annotation class TextLength(val length: Int)
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD, AnnotationTarget.FUNCTION)
-	annotation class FieldName(val name: String)
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.CLASS, AnnotationTarget.FIELD)
-	annotation class FieldType(val name: String)
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.CLASS)
-	annotation class TableName(val name: String)
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
-	annotation class Default(val default: String)
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD)
-	annotation class Check(val func: String)
-	
-	@MustBeDocumented
-	@Target(AnnotationTarget.FIELD, AnnotationTarget.CLASS)
-	annotation class ForeignKey(val target: String = "")
 }
 
 val Field.fieldName: String
-	get() = getAnnotation(SQLHelper.FieldName::class.java)?.name ?: name
+	get() = getAnnotation(FieldName::class.java)?.name ?: name
 
 val <T : Any>T.tableName: String
 	get() = javaClass.tableName
 
 val <T> Class<T>.tableName: String
-	get() = (getAnnotation<SQLHelper.TableName>()?.name ?: name.split('.').last()).toLowerCase()
+	get() = (getAnnotation<TableName>()?.name ?: name.split('.').last()).toLowerCase()
 
 val <T : Any>T.fieldValue: String
 	get() = when (this) {
-		is SQLHelper.SqlField<*> -> this.javaClass.getAnnotation(SQLHelper.StringField::class.java)?.let {
+		is SQLHelper.SqlField<*> -> this.javaClass.getAnnotation(StringField::class.java)?.let {
 			sqlValue.sqlStr
 		} ?: sqlValue
 		is String -> sqlStr
@@ -179,7 +126,7 @@ inline fun <reified T : Any> SQLHelper.select(
 
 inline fun <reified T : Any> SQLHelper.select(
 	fields: Iterable<String> = listOf("*"),
-	where: Iterable<SQLHelper.Where>,
+	where: Clause,
 	order: Field? = null,
 	reverse: Boolean = false,
 	maxCount: Int? = null
@@ -191,7 +138,7 @@ inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation
 fun <T : Any> SQLHelper.select(
 	clazz: Class<T>,
 	fields: Iterable<String> = listOf("*"),
-	where: Iterable<SQLHelper.Where>,
+	where: Clause,
 	order: Field? = null,
 	reverse: Boolean = false,
 	maxCount: Int? = null
@@ -308,17 +255,17 @@ fun StringBuilder.appendField(
 	field.annotations.forEach annotations@{ annotation ->
 		append(" ${when (annotation) {
 			//检查是否可以为空
-			is SQLHelper.NotNull -> "NOT NULL"
-			is SQLHelper.AutoIncrement -> "AUTO_INCREMENT"
-			is SQLHelper.Unique -> "UNIQUE"
-			is SQLHelper.Default -> "DEFAULT ${annotation.default}"
-			is SQLHelper.Check -> "CHECK(${annotation.func})"
-			is SQLHelper.ExtraAttribute -> annotation.attributes
-			is SQLHelper.ForeignKey -> {
+			is NotNull -> "NOT NULL"
+			is AutoIncrement -> "AUTO_INCREMENT"
+			is Unique -> "UNIQUE"
+			is Default -> "DEFAULT ${annotation.default}"
+			is Check -> "CHECK(${field.fieldName}${annotation.func})"
+			is ExtraAttribute -> annotation.attributes
+			is ForeignKey -> {
 				foreignKeyList.add(fieldName to if (annotation.target.isNotEmpty()) annotation.target else fieldName)
 				return@annotations
 			}
-			is SQLHelper.PrimaryKey -> {
+			is PrimaryKey -> {
 				field.primaryKey()
 				return@annotations
 			}

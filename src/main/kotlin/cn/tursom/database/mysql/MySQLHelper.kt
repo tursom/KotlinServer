@@ -1,17 +1,17 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.*
-import cn.tursom.database.mysql.MySQLHelper.Companion.fieldType
-import com.sun.org.apache.xerces.internal.util.DOMUtil.getAnnotation
+import cn.tursom.database.annotation.FieldName
+import cn.tursom.database.annotation.FieldType
+import cn.tursom.database.annotation.ForeignKey
+import cn.tursom.database.annotation.TextLength
+import cn.tursom.database.clauses.Clause
 import java.lang.reflect.Field
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLSyntaxErrorException
 import java.text.DateFormat
 import java.text.SimpleDateFormat
-import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.reflect.jvm.javaGetter
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -108,14 +108,14 @@ class MySQLHelper(
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
 		fields: Iterable<String>?,
-		where: Iterable<SQLHelper.Where>,
+		where: Clause,
 		order: Field?,
 		reverse: Boolean,
 		maxCount: Int?
 	): SQLAdapter<T> = select(
 		adapter = adapter,
 		fields = fields?.fieldStr() ?: "*",
-		where = where.whereStr(),
+		where = where.sqlStr,
 		order = order?.fieldName,
 		reverse = false,
 		maxCount = maxCount
@@ -157,7 +157,7 @@ class MySQLHelper(
 	 * @param value 用来存储数据的bean对象
 	 * @param where SQL语句的一部分，用来限定查找的条件。每一条String储存一个条件
 	 */
-	override fun <T : Any> update(value: T, where: Iterable<SQLHelper.Where>) {
+	override fun <T : Any> update(value: T, where: Clause) {
 		val sb = StringBuilder()
 		value.javaClass.declaredFields.forEach {
 			it.isAccessible = true
@@ -165,7 +165,7 @@ class MySQLHelper(
 		}
 		if (sb.isNotEmpty())
 			sb.delete(sb.length - 1, sb.length)
-		update(value.tableName, sb.toString(), where.whereStr())
+		update(value.tableName, sb.toString(), where.sqlStr)
 	}
 	
 	/**
@@ -182,7 +182,7 @@ class MySQLHelper(
 			value.javaClass.declaredFields.forEach {
 				it.isAccessible = true
 				it.get(value)?.let { instance ->
-					sb.append(it.getAnnotation(SQLHelper.FieldName::class.java)?.name ?: it.name)
+					sb.append(it.getAnnotation(FieldName::class.java)?.name ?: it.name)
 					sb.append("=")
 					sb.append(instance.fieldValue)
 					sb.append(",")
@@ -248,15 +248,9 @@ class MySQLHelper(
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: Iterable<SQLHelper.Where>) {
-		val whereArray = StringBuilder()
-		where.forEach {
-			whereArray.append("${it.sqlStr},")
-		}
-		if (whereArray.isNotEmpty())
-			whereArray.delete(whereArray.length - 1, whereArray.length)
-		delete(table, whereArray.toString())
-	}
+	override fun delete(table: String, where: Clause) =
+		delete(table, where.sqlStr)
+	
 	
 	override fun close() {
 		connection.close()
@@ -283,7 +277,7 @@ class MySQLHelper(
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS `$table`(")
 			val primaryKeySet = ArrayList<String>()
 			
-			val foreignKey = keys.getAnnotation(SQLHelper.ForeignKey::class.java)?.let {
+			val foreignKey = keys.getAnnotation(ForeignKey::class.java)?.let {
 				if (it.target.isNotEmpty()) it.target else null
 			}
 			val foreignKeyList = ArrayList<Pair<String, String>>()
@@ -309,7 +303,7 @@ class MySQLHelper(
 		}
 		
 		private val Field.fieldType: String?
-			get() = getAnnotation(SQLHelper.FieldType::class.java)?.name ?: when (type) {
+			get() = getAnnotation(FieldType::class.java)?.name ?: when (type) {
 				java.lang.Byte::class.java -> "TINYINT"
 				java.lang.Character::class.java -> "TINYINT"
 				java.lang.Short::class.java -> "SMALLINT"
@@ -326,10 +320,10 @@ class MySQLHelper(
 				Float::class.java -> "FLOAT"
 				Double::class.java -> "Double"
 				
-				java.lang.String::class.java -> getAnnotation(SQLHelper.TextLength::class.java)?.let { "CHAR(${it.length})" }
+				java.lang.String::class.java -> getAnnotation(TextLength::class.java)?.let { "CHAR(${it.length})" }
 					?: "TEXT"
 				else -> if (type.isSqlField) {
-					type.getAnnotation(SQLHelper.FieldType::class.java)?.name ?: type.name.split('.').last()
+					type.getAnnotation(FieldType::class.java)?.name ?: type.name.split('.').last()
 				} else {
 					null
 				}

@@ -2,7 +2,10 @@ package cn.tursom.database
 
 import org.junit.Test
 import cn.tursom.database.SQLHelper.*
-import kotlin.reflect.jvm.javaField
+import cn.tursom.database.annotation.FieldName
+import cn.tursom.database.annotation.FieldType
+import cn.tursom.database.annotation.StringField
+import cn.tursom.database.clauses.EqualClause
 
 @FieldType("LONG")
 @StringField
@@ -38,7 +41,7 @@ class SqlHelperTest {
 	fun sqlHelperTest() {
 		val a = TestClass::ele1
 		println(a.name)
-		println(EqualWhere(TestClass::ele1.javaField!!, "1").sqlStr)
+		println(EqualClause(TestClass::ele1, "1").sqlStr)
 	}
 	
 	@Test

@@ -1,6 +1,10 @@
 package cn.tursom.database.sqlite
 
 import cn.tursom.database.*
+import cn.tursom.database.annotation.FieldType
+import cn.tursom.database.annotation.ForeignKey
+import cn.tursom.database.annotation.TextLength
+import cn.tursom.database.clauses.Clause
 import cn.tursom.tools.simplifyPath
 import org.sqlite.SQLiteException
 import java.io.File
@@ -92,12 +96,12 @@ class SQLiteHelper
 	override fun <T : Any> select(
 		adapter: SQLAdapter<T>,
 		fields: Iterable<String>?,
-		where: Iterable<SQLHelper.Where>,
+		where: Clause,
 		order: Field?,
 		reverse: Boolean,
 		maxCount: Int?
 	): SQLAdapter<T> =
-		select(adapter, fields?.fieldStr() ?: "*", where.whereStr(), order?.fieldName, reverse, maxCount)
+		select(adapter, fields?.fieldStr() ?: "*", where.sqlStr, order?.fieldName, reverse, maxCount)
 	
 	
 	override fun <T : Any> select(
@@ -169,7 +173,7 @@ class SQLiteHelper
 	}
 	
 	override fun <T : Any> update(
-		value: T, where: Iterable<SQLHelper.Where>
+		value: T, where: Clause
 	) {
 		val set = StringBuilder()
 		value.javaClass.declaredFields.forEach {
@@ -182,7 +186,7 @@ class SQLiteHelper
 			set.delete(set.length - 1, set.length)
 		}
 		
-		val sql = "UPDATE ${value.tableName} SET $set WHERE ${where.whereStr()};"
+		val sql = "UPDATE ${value.tableName} SET $set WHERE ${where.sqlStr};"
 		
 		val statement = connection.createStatement()
 		statement.executeUpdate(sql)
@@ -197,8 +201,8 @@ class SQLiteHelper
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: Iterable<SQLHelper.Where>) {
-		delete(table, where.whereStr())
+	override fun delete(table: String, where: Clause) {
+		delete(table, where.sqlStr)
 	}
 	
 	override fun commit() {
@@ -241,11 +245,11 @@ class SQLiteHelper
 				java.lang.Long::class.java -> "INTEGER"
 				java.lang.Float::class.java -> "REAL"
 				java.lang.Double::class.java -> "REAL"
-				java.lang.String::class.java -> getAnnotation<SQLHelper.TextLength>()?.let { "CHAR(${it.length})" }
+				java.lang.String::class.java -> getAnnotation<TextLength>()?.let { "CHAR(${it.length})" }
 					?: "TEXT"
 				else -> {
 					if (type.isSqlField) {
-						type.getAnnotation<SQLHelper.FieldType>()?.name ?: type.name.split('.').last()
+						type.getAnnotation<FieldType>()?.name ?: type.name.split('.').last()
 					} else {
 						null
 					}
@@ -254,7 +258,7 @@ class SQLiteHelper
 		
 		@Suppress("NestedLambdaShadowedImplicitParameter")
 		fun <T> createTableStr(keys: Class<T>): String {
-			val foreignKey = keys.getAnnotation(SQLHelper.ForeignKey::class.java)?.let {
+			val foreignKey = keys.getAnnotation(ForeignKey::class.java)?.let {
 				if (it.target.isNotEmpty()) it.target else null
 			}
 			val foreignKeyList = ArrayList<Pair<String, String>>()

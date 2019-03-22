@@ -1,7 +1,7 @@
 package cn.tursom.database.mysql
 
-import cn.tursom.database.EqualWhere
-import cn.tursom.database.SQLHelper.*
+import cn.tursom.database.annotation.*
+import cn.tursom.database.clauses.EqualClause
 import cn.tursom.database.select
 import cn.tursom.database.tableName
 import org.junit.Test
@@ -30,8 +30,6 @@ class MySQLHelperTest {
 		} catch (e: Exception) {
 		}
 		
-		val id2 = listOf(EqualWhere(TableStruckTestClass::ele2.javaField!!, "20"))
-		
 		val fieldList = ArrayList<TableStruckTestClass>()
 		for (i in 1..10000) {
 			fieldList.add(TableStruckTestClass(null, i.toDouble(), "233"))
@@ -40,13 +38,19 @@ class MySQLHelperTest {
 		println("insert: ${System.currentTimeMillis()}")
 		helper.insert(fieldList)
 		println("update: ${System.currentTimeMillis()}")
-//		helper.update(TableStruckTestClass(null, 20.toDouble(), "还行"), id2)
+		helper.update(
+			TableStruckTestClass(null, 20.toDouble(), "还行"),
+			EqualClause(TableStruckTestClass::tele1, "2")
+		)
 		println("select: ${System.currentTimeMillis()}")
-//		println(helper.select<TableStruckTestClass>().size)
+		println(helper.select<TableStruckTestClass>().size)
 		println("select: ${System.currentTimeMillis()}")
-		println(helper.select<TableStruckTestClass>(where = id2, order = TableStruckTestClass::text.javaField, reverse = true))
+		println(helper.select<TableStruckTestClass>(
+			where = EqualClause(TableStruckTestClass::tele1, "2"),
+			order = TableStruckTestClass::text.javaField,
+			reverse = true
+		))
 		println("end: ${System.currentTimeMillis()}")
-		
 	}
 	
 	@Test
