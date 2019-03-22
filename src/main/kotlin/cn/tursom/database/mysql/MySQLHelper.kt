@@ -167,34 +167,6 @@ class MySQLHelper(
 		update(value.tableName, sb.toString(), where.sqlStr)
 	}
 	
-	/**
-	 * 更新数据库数据
-	 * @param values 用来存储数据的bean对象与限定条件
-	 */
-	@Suppress("NestedLambdaShadowedImplicitParameter")
-	fun <T : Any> updateArray(values: List<Pair<T, List<SQLHelper.Where>>>) {
-		val table = values.first().first.tableName
-		val statement = connection.createStatement()
-		values.forEach {
-			val sb = StringBuilder()
-			val value = it.first
-			value.javaClass.declaredFields.forEach {
-				it.isAccessible = true
-				it.get(value)?.let { instance ->
-					sb.append(it.getAnnotation(FieldName::class.java)?.name ?: it.name)
-					sb.append("=")
-					sb.append(instance.fieldValue)
-					sb.append(",")
-				}
-			}
-			if (sb.isNotEmpty())
-				sb.delete(sb.length - 1, sb.length)
-			statement.executeUpdate("UPDATE $table SET $sb WHERE ${it.second.toWhere()};")
-		}
-		connection.commit()
-		statement.closeOnCompletion()
-	}
-	
 	private fun insert(connection: Connection, sql: String, table: Class<*>) {
 		val statement = connection.createStatement()
 		try {
@@ -327,16 +299,5 @@ class MySQLHelper(
 					null
 				}
 			}
-		
-		private fun List<SQLHelper.Where>.toWhere(): String? = if (isEmpty()) null else {
-			val whereStringBuilder = StringBuilder()
-			val iterator = iterator()
-			whereStringBuilder.append(iterator.next().sqlStr)
-			for (it in iterator) {
-				whereStringBuilder.append(" and ")
-				whereStringBuilder.append(it.sqlStr)
-			}
-			whereStringBuilder.toString()
-		}
 	}
 }

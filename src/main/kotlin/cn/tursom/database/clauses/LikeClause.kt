@@ -6,9 +6,26 @@ import java.lang.reflect.Field
 import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaField
 
+object LikeWildcard {
+	val single: String = "_"
+	val many: String = "%"
+	fun charList(charList: String) = "[$charList]"
+	fun unCharList(charList: String) = "[!$charList]"
+	infix operator fun String.rangeTo(target: String) = "$this-$target"
+}
+
 class LikeClause(val field: String, val value: String) : Clause {
 	constructor(field: Field, value: String) : this(field.fieldName, value)
 	constructor(field: KProperty<*>, value: String) : this(field.javaField!!, value)
+	
+	constructor(field: String, value: LikeWildcard.() -> String)
+		: this(field, LikeWildcard.value())
+	
+	constructor(field: Field, value: LikeWildcard.() -> String)
+		: this(field, LikeWildcard.value())
+	
+	constructor(field: KProperty<*>, value: LikeWildcard.() -> String)
+		: this(field, LikeWildcard.value())
 	
 	override val sqlStr: String
 		get() = "${this.field} LIKE '${value.sqlStr}'"
