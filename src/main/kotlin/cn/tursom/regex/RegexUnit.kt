@@ -4,13 +4,18 @@ interface RegexUnit {
 	val unit: String?
 }
 
-fun RegexUnit.onceMore() = UnitRegexUnit(unit?.let { "$it+" } ?: "")
+val RegexUnit.onceMore
+	get() = UnitRegexUnit(unit?.let { "$it+" } ?: "")
 
-fun RegexUnit.anyTime() = UnitRegexUnit(unit?.let { "$it*" } ?: "")
+val RegexUnit.anyTime
+	get() = UnitRegexUnit(unit?.let { "$it*" } ?: "")
 
-fun RegexUnit.noneOrOnce() = UnitRegexUnit(unit?.let { "$it?" } ?: "")
+val RegexUnit.noneOrOnce
+	get() = UnitRegexUnit(unit?.let { "$it?" } ?: "")
 
-fun RegexUnit.repeatTime(times: Int) = UnitRegexUnit(unit?.let { "$it{$times}" } ?: "")
+infix fun RegexUnit.repeat(times: Int) = UnitRegexUnit(unit?.let { "$it{$times}" } ?: "")
+
+infix fun RegexUnit.repeatTime(times: Int) = UnitRegexUnit(unit?.let { "$it{$times}" } ?: "")
 
 fun RegexUnit.timeRange(from: Int, to: Int) = UnitRegexUnit(unit?.let { "$it{$from,$to}" } ?: "")
 

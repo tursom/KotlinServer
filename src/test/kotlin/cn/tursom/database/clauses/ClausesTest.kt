@@ -20,7 +20,7 @@ class ClausesTest {
 	@Test
 	fun regexTest() {
 		println(RegexWildcard.make {
-			('a'..'z' and '0'..'9').anyTime() and any.anyTime()
+			('a'..'z' and '0'..'9').anyTime and any repeat 10
 		})
 		Regex("([a-z0-9])*.*")
 //		val regex = Regex(pattern = ".*((a)).*")
