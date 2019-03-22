@@ -23,7 +23,7 @@ class CharListRegexUnit(private val valList: String) : RegexUnit {
 	override fun toString() = "[$valList]"
 }
 
-infix fun Char.to(target: Char) = CharListRegexUnit(this, target)
+infix fun Char.list(target: Char) = CharListRegexUnit(this, target)
 
 infix fun CharRange.also(charList: CharListRegexUnit) = CharListRegexUnit(this) also charList
 infix fun CharRange.also(charList: CharRange) = CharListRegexUnit(this) also charList
