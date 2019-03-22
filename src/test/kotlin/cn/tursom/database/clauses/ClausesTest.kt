@@ -22,7 +22,7 @@ class ClausesTest {
 		println(RegexWildcard.make {
 			('a'..'z' and '0'..'9').onceBelow and any repeat 3
 		})
-		Regex("([a-z0-9])*.*")
+		Regex("[a-z0-9]?.{3}")
 //		val regex = Regex(pattern = ".*((a)).*")
 //		Regex("\\\\ \\[][a]")
 //		println(regex)

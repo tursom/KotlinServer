@@ -7,7 +7,7 @@ class CharListRegexUnit(private val valList: String) : RegexUnit {
 	constructor(range: CharListRegexUnit) : this(range.valList)
 	
 	val reverse
-		get() = CharListRegexUnit(if (valList[0] == '^') valList.drop(1) else "^$valList")
+		get() = CharListRegexUnit(if (valList.first() == '^') valList.drop(1) else "^$valList")
 	
 	infix fun also(charList: CharListRegexUnit) = CharListRegexUnit("$valList${charList.valList}")
 	infix fun also(charList: CharRange) = this also CharListRegexUnit(charList)
