@@ -1,6 +1,8 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.*
+import cn.tursom.database.mysql.MySQLHelper.Companion.fieldType
+import com.sun.org.apache.xerces.internal.util.DOMUtil.getAnnotation
 import java.lang.reflect.Field
 import java.sql.Connection
 import java.sql.DriverManager
@@ -8,6 +10,8 @@ import java.sql.SQLSyntaxErrorException
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.reflect.jvm.javaGetter
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -24,12 +28,14 @@ class MySQLHelper(
 		get() = synchronized(this) {
 			return field
 		}
-		set(value) = synchronized(this) {
+		set(value) {
 			value?.let { base ->
-				val statement = connection.createStatement()
-				statement.executeQuery("USE $base")
-				field = base
-				statement.closeOnCompletion()
+				synchronized(this) {
+					val statement = connection.createStatement()
+					statement.executeQuery("USE $base")
+					field = base
+					statement.closeOnCompletion()
+				}
 			}
 		}
 	
@@ -283,40 +289,21 @@ class MySQLHelper(
 			val foreignKeyList = ArrayList<Pair<String, String>>()
 			
 			fieldSet.forEach {
-				val fieldName = it.fieldName
-				valueStrBuilder.append("`${fieldName}` ${it.fieldType ?: return@forEach}")
-				
-				it.annotations.forEach annotations@{ annotation ->
-					when (annotation) {
-						//检查是否可以为空
-						is SQLHelper.NotNull -> valueStrBuilder.append(" NOT NULL")
-						is SQLHelper.AutoIncrement -> valueStrBuilder.append(" AUTO_INCREMENT")
-						is SQLHelper.PrimaryKey -> primaryKeySet.add(it.fieldName)
-						is SQLHelper.Unique -> valueStrBuilder.append(" UNIQUE")
-						is SQLHelper.Default -> valueStrBuilder.append(" DEFAULT ${annotation.default}")
-						is SQLHelper.Check -> valueStrBuilder.append(" CHECK(${annotation.func})")
-						is SQLHelper.ExtraAttribute -> valueStrBuilder.append(" ${annotation.attributes}")
-						is SQLHelper.ForeignKey ->
-							foreignKeyList.add(fieldName to if (annotation.target.isNotEmpty()) annotation.target else fieldName)
-					}
+				valueStrBuilder.appendField(it, { it.fieldType }, foreignKeyList) {
+					primaryKeySet.add(fieldName)
 				}
-				valueStrBuilder.append(",")
-			}
-			if (primaryKeySet.isNotEmpty()) {
-				valueStrBuilder.append("PRIMARY KEY(")
-				primaryKeySet.forEach {
-					valueStrBuilder.append("`$it`,")
-				}
-				valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
-				valueStrBuilder.append(")")
-			} else {
-				valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
 			}
 			
-			foreignKey?.let {
-				val (source, target) = foreignKeyList.fieldStr()
-				valueStrBuilder.append("FOREIGN KEY ($source) REFERENCES $it ($target),")
+			if (primaryKeySet.isNotEmpty()) {
+				valueStrBuilder.append("PRIMARY KEY(${primaryKeySet.fieldNameStr()}),")
 			}
+			
+			if (foreignKey != null && foreignKeyList.isEmpty()) {
+				val (source, target) = foreignKeyList.fieldStr()
+				valueStrBuilder.append("FOREIGN KEY ($source) REFERENCES $foreignKey ($target),")
+			}
+			valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
+			
 			valueStrBuilder.append(")ENGINE=$engine DEFAULT CHARSET=$charset;")
 			return valueStrBuilder.toString()
 		}

@@ -2,6 +2,7 @@ package cn.tursom.database
 
 import java.io.Closeable
 import java.lang.reflect.Field
+import java.util.AbstractCollection
 import kotlin.collections.forEach
 
 /**
@@ -223,12 +224,21 @@ fun Array<out Field>.fieldStr(): String {
 	return fields.toString()
 }
 
-
 fun Iterable<String>.fieldStr(): String {
 	val stringBuffer = StringBuffer()
 	forEach {
 		if (it.isNotEmpty())
 			stringBuffer.append("$it,")
+	}
+	stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
+	return stringBuffer.toString()
+}
+
+fun Iterable<String>.fieldNameStr(): String {
+	val stringBuffer = StringBuffer()
+	forEach {
+		if (it.isNotEmpty())
+			stringBuffer.append("`$it`,")
 	}
 	stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
 	return stringBuffer.toString()
@@ -284,6 +294,38 @@ fun List<Pair<String, String>>.fieldStr(): Pair<String, String> {
 	if (first.isNotEmpty()) first.deleteCharAt(first.length - 1)
 	if (second.isNotEmpty()) second.deleteCharAt(second.length - 1)
 	return first.toString() to second.toString()
+}
+
+
+fun StringBuilder.appendField(
+	field: Field,
+	fieldType: Field.() -> String?,
+	foreignKeyList: AbstractCollection<Pair<String, String>>,
+	primaryKey: Field.() -> Unit
+) {
+	val fieldName = field.fieldName
+	append("`$fieldName` ${field.fieldType() ?: return}")
+	field.annotations.forEach annotations@{ annotation ->
+		append(" ${when (annotation) {
+			//检查是否可以为空
+			is SQLHelper.NotNull -> "NOT NULL"
+			is SQLHelper.AutoIncrement -> "AUTO_INCREMENT"
+			is SQLHelper.Unique -> "UNIQUE"
+			is SQLHelper.Default -> "DEFAULT ${annotation.default}"
+			is SQLHelper.Check -> "CHECK(${annotation.func})"
+			is SQLHelper.ExtraAttribute -> annotation.attributes
+			is SQLHelper.ForeignKey -> {
+				foreignKeyList.add(fieldName to if (annotation.target.isNotEmpty()) annotation.target else fieldName)
+				return@annotations
+			}
+			is SQLHelper.PrimaryKey -> {
+				field.primaryKey()
+				return@annotations
+			}
+			else -> return@annotations
+		}}")
+	}
+	append(',')
 }
 
 val String.sqlStr

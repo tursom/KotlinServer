@@ -97,7 +97,7 @@ class SQLiteHelper
 		reverse: Boolean,
 		maxCount: Int?
 	): SQLAdapter<T> =
-		select(adapter, fields?.fieldStr()?:"*", where.whereStr(), order?.fieldName, reverse, maxCount)
+		select(adapter, fields?.fieldStr() ?: "*", where.whereStr(), order?.fieldName, reverse, maxCount)
 	
 	
 	override fun <T : Any> select(
@@ -233,6 +233,25 @@ class SQLiteHelper
 		}
 		private var connectionCount = HashMap<String, Int>()
 		
+		private val Field.fieldType: String?
+			get() = when (type) {
+				java.lang.Byte::class.java -> "INTEGER"
+				java.lang.Short::class.java -> "INTEGER"
+				java.lang.Integer::class.java -> "INTEGER"
+				java.lang.Long::class.java -> "INTEGER"
+				java.lang.Float::class.java -> "REAL"
+				java.lang.Double::class.java -> "REAL"
+				java.lang.String::class.java -> getAnnotation<SQLHelper.TextLength>()?.let { "CHAR(${it.length})" }
+					?: "TEXT"
+				else -> {
+					if (type.isSqlField) {
+						type.getAnnotation<SQLHelper.FieldType>()?.name ?: type.name.split('.').last()
+					} else {
+						null
+					}
+				}
+			}
+		
 		@Suppress("NestedLambdaShadowedImplicitParameter")
 		fun <T> createTableStr(keys: Class<T>): String {
 			val foreignKey = keys.getAnnotation(SQLHelper.ForeignKey::class.java)?.let {
@@ -243,49 +262,13 @@ class SQLiteHelper
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS ${keys.tableName}(")
 			keys.declaredFields.forEach {
-				val fieldName = it.fieldName
-				valueStrBuilder.append("$fieldName ${
-				when (it.type) {
-					java.lang.Byte::class.java -> "INTEGER"
-					java.lang.Short::class.java -> "INTEGER"
-					java.lang.Integer::class.java -> "INTEGER"
-					java.lang.Long::class.java -> "INTEGER"
-					java.lang.Float::class.java -> "REAL"
-					java.lang.Double::class.java -> "REAL"
-					java.lang.String::class.java -> it.getAnnotation<SQLHelper.TextLength>()?.let { "CHAR(${it.length})" }
-						?: "TEXT"
-					else -> {
-						if (it.type.isSqlField) {
-							it.type.getAnnotation<SQLHelper.FieldType>()?.name ?: it.type.name.split('.').last()
-						} else {
-							return@forEach
-						}
-					}
+				valueStrBuilder.appendField(it, { it.fieldType }, foreignKeyList) {
+					valueStrBuilder.append(" PRIMARY KEY")
 				}
-				}")
-				
-				it.annotations.forEach {
-					when (it) {
-						//检查是否可以为空
-						is SQLHelper.NotNull -> valueStrBuilder.append(" NOT NULL")
-						is SQLHelper.AutoIncrement -> valueStrBuilder.append(" AUTO_INCREMENT")
-						is SQLHelper.PrimaryKey -> valueStrBuilder.append(" PRIMARY KEY")
-						is SQLHelper.Unique -> valueStrBuilder.append(" UNIQUE")
-						is SQLHelper.Default -> valueStrBuilder.append(" DEFAULT ${it.default}")
-						is SQLHelper.Check -> valueStrBuilder.append(" CHECK(${it.func})")
-						is SQLHelper.ForeignKey ->
-							foreignKeyList.add(fieldName to if (it.target.isNotEmpty()) it.target else fieldName)
-					}
-				}
-				
-				val annotation = it.getAnnotation(SQLHelper.ExtraAttribute::class.java) ?: run {
-					valueStrBuilder.append(",")
-					return@forEach
-				}
-				valueStrBuilder.append(" ${annotation.attributes},")
 			}
 			
 			foreignKey?.let {
+				if (foreignKeyList.isEmpty()) return@let
 				val (source, target) = foreignKeyList.fieldStr()
 				valueStrBuilder.append("FOREIGN KEY ($source) REFERENCES $it ($target),")
 			}
