@@ -1,10 +1,11 @@
 package cn.tursom.database.clauses
 
-import org.junit.Test
 import cn.tursom.database.annotation.AutoIncrement
 import cn.tursom.database.annotation.TableName
 import cn.tursom.database.select
 import cn.tursom.database.sqlite.SQLiteHelper
+import cn.tursom.regex.*
+import org.junit.Test
 
 @TableName("ClausesTestTable")
 data class TestClass(@AutoIncrement val id: Int)
@@ -19,12 +20,12 @@ class ClausesTest {
 	@Test
 	fun regexTest() {
 		println(RegexWildcard.make {
-			charList(('a' to 'z') also ('0' to '9')).anyTime()
+			('a'..'z' and '0'..'9').anyTime() and any.anyTime()
 		})
-		Regex("\\b([a-z]+) \\1\\b")
-		val regex = Regex(pattern = ".*((a)).*")
-		Regex("\\\\ \\[][a]")
-		println(regex)
-		println("a".contains(regex))
+		Regex("([a-z0-9])*.*")
+//		val regex = Regex(pattern = ".*((a)).*")
+//		Regex("\\\\ \\[][a]")
+//		println(regex)
+//		println("a".contains(regex))
 	}
 }
