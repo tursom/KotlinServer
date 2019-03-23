@@ -48,7 +48,7 @@ class SqliteTest {
 //			println("select: ${System.currentTimeMillis()}")
 //			println(sqLiteHelper.select<TestClass>().size)
 			println("select: ${System.currentTimeMillis()}")
-			val result = sqLiteHelper.select<TestClass>(where = ClauseMaker.make { TestClass::text regexp { (beg)(str("还行"))(end) } })
+			val result = sqLiteHelper.select<TestClass>(where = ClauseMaker.make { TestClass::text regexp { (beg)(+"还行")(end) } })
 			println(result)
 			println("end: ${System.currentTimeMillis()}")
 			
