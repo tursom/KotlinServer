@@ -3,6 +3,8 @@ package cn.tursom.database.mysql
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.clause
 import cn.tursom.database.select
+import cn.tursom.regex.RegexMaker.beg
+import cn.tursom.regex.RegexMaker.end
 import org.junit.Test
 import kotlin.reflect.jvm.javaField
 
@@ -45,7 +47,7 @@ class MySQLHelperTest {
 //		println(helper.select<TableStruckTestClass>().size)
 		println("select: ${System.currentTimeMillis()}")
 		println(helper.select<TableStruckTestClass>(
-			where = clause { TableStruckTestClass::text regexp { (beg)(+"还行")(end) } },
+			where = clause { +TableStruckTestClass::text regexp { (beg)(+"还行")(end) } },
 			order = TableStruckTestClass::text.javaField,
 			reverse = true
 		))

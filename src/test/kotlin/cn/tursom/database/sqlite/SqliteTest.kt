@@ -4,6 +4,9 @@ import cn.tursom.database.*
 import cn.tursom.database.SQLHelper.*
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.ClauseMaker
+import cn.tursom.database.clauses.clause
+import cn.tursom.regex.RegexMaker.beg
+import cn.tursom.regex.RegexMaker.end
 import org.junit.Test
 import java.sql.ResultSet
 
@@ -44,11 +47,13 @@ class SqliteTest {
 //			println("insert: ${System.currentTimeMillis()}")
 //			sqLiteHelper.insert(fieldList)
 //			println("update: ${System.currentTimeMillis()}")
-//			sqLiteHelper.update(TestClass(20, TTime(), "还行"), ClauseMaker.make { TestClass::_id equal "20" })
+//			sqLiteHelper.update(TestClass(20, TTime(), "还行"), clause { TestClass::_id equal "20" })
 //			println("select: ${System.currentTimeMillis()}")
 //			println(sqLiteHelper.select<TestClass>().size)
 			println("select: ${System.currentTimeMillis()}")
-			val result = sqLiteHelper.select<TestClass>(where = ClauseMaker.make { TestClass::text regexp { (beg)(+"还行")(end) } })
+			val result = sqLiteHelper.select<TestClass>(
+				where = clause { (+TestClass::text regexp { (beg)(+"还行")(end) }) or (+TestClass::_id equal "10") }
+			)
 			println(result)
 			println("end: ${System.currentTimeMillis()}")
 			

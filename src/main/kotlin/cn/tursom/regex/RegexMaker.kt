@@ -16,6 +16,7 @@ package cn.tursom.regex
  * 我们还可以在一个 CharRange 或 Pair<Char, Char> 前面加 + 生成字符组
  * 或者我们也可以手动指定使用哪些字符，使用 list 方法，返回的字符串中的所有字符就会组成一个字符组单元，
  * 不过要注意，- 必须使用 $hyphen 转义，否则会抛出 UnitListCheckException 异常
+ * 如果你对自己足够有信心，也可以在字符串前面加 !，这会直接生成一个字符组对象，不经检查
  */
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
@@ -154,6 +155,8 @@ object RegexMaker {
 			throw UnitListCheckException()
 		UnitListRegexUnit(it)
 	}
+	
+	operator fun String.not() = UnitListRegexUnit(this)
 	
 	@Suppress("UNUSED_EXPRESSION")
 	fun make(func: RegexMaker.() -> RegexUnit) = Regex(func().toString())
