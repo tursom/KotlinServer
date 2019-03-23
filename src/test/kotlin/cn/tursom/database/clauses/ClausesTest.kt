@@ -20,9 +20,9 @@ class ClausesTest {
 	@Test
 	fun regexTest() {
 		println(RegexWildcard.make {
-			('a'..'z' and '0'..'9').onceBelow and any repeat 3
+			('a'..'z' and '0'..'9').onceBelow link any repeat 3
 		})
-		Regex("[a-z0-9]?.{3}")
+		Regex("[a-z0-9]?((.{3}){2}(){4}){5,6}")
 //		val regex = Regex(pattern = ".*((a)).*")
 //		Regex("\\\\ \\[][a]")
 //		println(regex)

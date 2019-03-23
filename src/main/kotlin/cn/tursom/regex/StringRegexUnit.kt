@@ -1,9 +1,11 @@
 package cn.tursom.regex
 
 class StringRegexUnit(private val str: String) : RegexUnit {
-	override val unit: String
+	constructor(str: StringRegexUnit) : this(str.str)
+	
+	override val unit: String?
 		get() = when (str.length) {
-			0 -> ""
+			0 -> null
 			1 -> str
 			else -> "($str)"
 		}

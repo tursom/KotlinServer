@@ -16,27 +16,8 @@ class CharListRegexUnit(private val valList: String) : RegexUnit {
 	infix fun and(charList: CharListRegexUnit) = CharListRegexUnit("$valList${charList.valList}")
 	infix fun and(charList: CharRange) = this and CharListRegexUnit(charList)
 	infix fun and(charList: Pair<Char, Char>) = this and CharListRegexUnit(charList)
-	
 	override val unit: String
-		get() = "[$valList]"
+		get() = toString()
 	
 	override fun toString() = "[$valList]"
 }
-
-infix fun Char.list(target: Char) = CharListRegexUnit(this, target)
-
-infix fun CharRange.also(charList: CharListRegexUnit) = CharListRegexUnit(this) also charList
-infix fun CharRange.also(charList: CharRange) = CharListRegexUnit(this) also charList
-infix fun CharRange.also(charList: Pair<Char, Char>) = CharListRegexUnit(this) also charList
-
-infix fun Pair<Char, Char>.also(charList: CharListRegexUnit) = CharListRegexUnit(this) also charList
-infix fun Pair<Char, Char>.also(charList: CharRange) = CharListRegexUnit(this) also charList
-infix fun Pair<Char, Char>.also(charList: Pair<Char, Char>) = CharListRegexUnit(this) also charList
-
-infix fun CharRange.and(charList: CharListRegexUnit) = CharListRegexUnit(this) and charList
-infix fun CharRange.and(charList: CharRange) = CharListRegexUnit(this) and charList
-infix fun CharRange.and(charList: Pair<Char, Char>) = CharListRegexUnit(this) and charList
-
-infix fun Pair<Char, Char>.and(charList: CharListRegexUnit) = CharListRegexUnit(this) and charList
-infix fun Pair<Char, Char>.and(charList: CharRange) = CharListRegexUnit(this) and charList
-infix fun Pair<Char, Char>.and(charList: Pair<Char, Char>) = CharListRegexUnit(this) and charList
