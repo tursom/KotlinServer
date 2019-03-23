@@ -22,7 +22,7 @@ object ClauseMaker {
 	infix fun String.equal(value: String) = EqualClause(this, value)
 	infix fun String.glob(value: String) = GlobClause(this, value)
 	infix fun String.glob(maker: GlobValue.() -> String) = GlobClause(this, GlobValue.maker())
-	infix fun String.greateEqual(value: String) = GreaterEqualClause(this, value)
+	infix fun String.greaterEqual(value: String) = GreaterEqualClause(this, value)
 	infix fun String.greaterThan(value: String) = GreaterThanClause(this, value)
 	infix fun String.lessEqual(value: String) = LessEqualClause(this, value)
 	infix fun String.lessThan(value: String) = LessThanClause(this, value)
