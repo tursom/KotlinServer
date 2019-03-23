@@ -10,4 +10,5 @@ class InfixExpressionClause(field: String, value: String, expression: String) : 
 	constructor(field: KProperty<*>, value: String, expression: String) : this(field.javaField!!, value, expression)
 	
 	override val sqlStr = "$field$expression$value"
+	override fun toString() = sqlStr
 }

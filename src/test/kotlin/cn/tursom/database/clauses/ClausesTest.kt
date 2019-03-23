@@ -4,7 +4,7 @@ import cn.tursom.database.annotation.AutoIncrement
 import cn.tursom.database.annotation.TableName
 import cn.tursom.database.select
 import cn.tursom.database.sqlite.SQLiteHelper
-import cn.tursom.regex.RegexMaker
+import cn.tursom.regex.regex
 import org.junit.Test
 
 @TableName("ClausesTestTable")
@@ -19,8 +19,8 @@ class ClausesTest {
 	
 	@Test
 	fun regexTest() {
-		ClauseMaker.make{TestClass::id regexp { ('a'..'z' and '0'..'9')..(1 to 2) link any..3 link +(caret..1) }}
-		println(RegexMaker.make { ('a'..'z' and '0'..'9')..(1 to 2) link any..3 link +(caret..1) })
+		println(clause { TestClass::id regexp { ('a'..'z' and '0'..'9')..(1 to 2) link any..3 link +(caret..1) } })
+		println(regex { ('a'..'z' and '0'..'9')..(1 to 2) link any..3 link +(caret..1) })
 		Regex("[a-z0-9]?((.{3}){2}(){4}){5,6}")
 //		val regex = Regex(pattern = ".*((a)).*")
 //		Regex("\\\\ \\[][a]")

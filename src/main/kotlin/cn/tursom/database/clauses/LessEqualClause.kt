@@ -10,5 +10,6 @@ class LessEqualClause(field: String, value: String) : Clause {
 	constructor(field: KProperty<*>, value: String) : this(field.javaField!!, value)
 	
 	override val sqlStr = "$field<=$value"
+	override fun toString() = sqlStr
 }
 

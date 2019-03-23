@@ -28,4 +28,5 @@ class LikeClause(field: String, value: String) : Clause {
 		: this(field, LikeWildcard.value())
 	
 	override val sqlStr = "$field LIKE '${value.sqlStr}'"
+	override fun toString() = sqlStr
 }

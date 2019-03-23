@@ -63,3 +63,5 @@ object ClauseMaker {
 	@Suppress("UNUSED_EXPRESSION")
 	fun make(maker: ClauseMaker.() -> Clause) = maker()
 }
+
+fun clause(maker: ClauseMaker.() -> Clause) = ClauseMaker.maker()

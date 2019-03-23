@@ -25,6 +25,6 @@ class RegexpClause(val field: String, val value: String) : Clause {
 	constructor(field: Field, value: RegexMaker.() -> RegexUnit) : this(field, RegexMaker.value())
 	constructor(field: KProperty<*>, value: RegexMaker.() -> RegexUnit) : this(field, RegexMaker.value())
 	
-	override val sqlStr: String
-		get() = "${this.field} REGEXP '${value.sqlStr}'"
+	override val sqlStr = "$field REGEXP ${value.sqlStr}"
+	override fun toString() = sqlStr
 }

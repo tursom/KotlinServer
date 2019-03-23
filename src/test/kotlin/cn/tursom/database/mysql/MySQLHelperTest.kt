@@ -2,6 +2,7 @@ package cn.tursom.database.mysql
 
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.ClauseMaker
+import cn.tursom.database.clauses.clause
 import cn.tursom.database.select
 import org.junit.Test
 import kotlin.reflect.jvm.javaField
@@ -45,7 +46,7 @@ class MySQLHelperTest {
 //		println(helper.select<TableStruckTestClass>().size)
 //		println("select: ${System.currentTimeMillis()}")
 		println(helper.select<TableStruckTestClass>(
-			where = ClauseMaker.make {
+			where = clause {
 				(TableStruckTestClass::ele2 equal "20") or (TableStruckTestClass::ele2 lessThan "10")
 			},
 			order = TableStruckTestClass::text.javaField,

@@ -149,3 +149,5 @@ object RegexMaker {
 	@Suppress("UNUSED_EXPRESSION")
 	fun make(func: RegexMaker.() -> RegexUnit) = Regex(func().toString())
 }
+
+fun regex(func: RegexMaker.() -> RegexUnit) = Regex(RegexMaker.func().toString())
