@@ -1,5 +1,7 @@
 package cn.tursom.regex
 
+import kotlin.text.Typography.times
+
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 object RegexWildcard {
 	val pointChar = UnitRegexUnit("\\.")
@@ -28,6 +30,7 @@ object RegexWildcard {
 	val any = UnitRegexUnit(".")
 	val beg = UnitRegexUnit("^")
 	val end = UnitRegexUnit("$")
+	val empty = UnitRegexUnit("()")
 	
 	val Char.control
 		get() = ControlCharRegexUnit(this)
@@ -57,32 +60,32 @@ object RegexWildcard {
 		}
 	
 	val RegexUnit.onceMore
-		get() = UnitRegexUnit(unit?.let { "$it+" } ?: "")
+		get() = RepeatRegexUnit(this, 1, -1)
 	
 	val RegexUnit.anyTime
-		get() = UnitRegexUnit(unit?.let { "$it*" } ?: "")
+		get() = RepeatRegexUnit(this, -1)
 	
 	val RegexUnit.onceBelow
-		get() = UnitRegexUnit(unit?.let { "$it?" } ?: "")
+		get() = RepeatRegexUnit(this, 0, 1)
 	
-	infix fun RegexUnit.repeat(times: Int) = RepeatRegexUnit(StringRegexUnit(unit ?: ""), times)
-	infix fun String.repeat(times: Int) = RepeatRegexUnit(StringRegexUnit(this), times)
+	infix fun RegexUnit.repeat(times: Int) = RepeatRegexUnit(this, times)
+	infix fun String.repeat(times: Int) = RepeatRegexUnit(this, times)
 	
-	infix fun RegexUnit.repeatTime(times: Int) = RepeatRegexUnit(StringRegexUnit(unit ?: ""), times)
-	infix fun String.repeatTime(times: Int) = RepeatRegexUnit(StringRegexUnit(this), times)
+	infix fun RegexUnit.repeatTime(times: Int) = RepeatRegexUnit(this, times)
+	infix fun String.repeatTime(times: Int) = RepeatRegexUnit(this, times)
 	
-	fun RegexUnit.timeRange(from: Int, to: Int) = RepeatRegexUnit(StringRegexUnit(unit ?: ""), from, to)
-	fun String.timeRange(from: Int, to: Int) = RepeatRegexUnit(StringRegexUnit(this), from, to)
+	fun RegexUnit.timeRange(from: Int, to: Int) = RepeatRegexUnit(this, from, to)
+	fun String.timeRange(from: Int, to: Int) = RepeatRegexUnit(this, from, to)
 	
-	infix fun RegexUnit.link(target: RegexUnit) = StringRegexUnit("${unit ?: ""}${target.unit ?: ""}")
-	infix fun RegexUnit.link(target: String) = StringRegexUnit("${unit ?: ""}${StringRegexUnit(target).unit}")
-	infix fun String.link(target: RegexUnit) = StringRegexUnit("${StringRegexUnit(this).unit}${target.unit}")
-	infix fun String.link(target: String) = StringRegexUnit("${StringRegexUnit(this).unit}${StringRegexUnit(target).unit}")
+	infix fun RegexUnit.link(target: RegexUnit) = StringRegexUnit("$this$target")
+	infix fun RegexUnit.link(target: String) = StringRegexUnit("$this$target")
+	infix fun String.link(target: RegexUnit) = StringRegexUnit("$this$target")
+	infix fun String.link(target: String) = StringRegexUnit("$this$target")
 	
-	infix fun RegexUnit.also(target: RegexUnit) = StringRegexUnit("${unit ?: ""}${target.unit ?: ""}")
-	infix fun RegexUnit.also(target: String) = StringRegexUnit("${unit ?: ""}${StringRegexUnit(target).unit}")
-	infix fun String.also(target: RegexUnit) = StringRegexUnit("${StringRegexUnit(this).unit}${target.unit}")
-	infix fun String.also(target: String) = StringRegexUnit("${StringRegexUnit(this).unit}${StringRegexUnit(target).unit}")
+	infix fun RegexUnit.also(target: RegexUnit) = StringRegexUnit("$this$target")
+	infix fun RegexUnit.also(target: String) = StringRegexUnit("$this$target")
+	infix fun String.also(target: RegexUnit) = StringRegexUnit("$this$target")
+	infix fun String.also(target: String) = StringRegexUnit("$this$target")
 	
 	infix fun RegexUnit.or(target: RegexUnit): StringRegexUnit {
 		val unit = this.unit
@@ -135,6 +138,15 @@ object RegexWildcard {
 	infix fun Pair<Char, Char>.and(charList: CharListRegexUnit) = CharListRegexUnit(this) and charList
 	infix fun Pair<Char, Char>.and(charList: CharRange) = CharListRegexUnit(this) and charList
 	infix fun Pair<Char, Char>.and(charList: Pair<Char, Char>) = CharListRegexUnit(this) and charList
+	
+	operator fun RegexUnit.rangeTo(times: Int) = RepeatRegexUnit(this, times)
+	operator fun String.rangeTo(times: Int) = RepeatRegexUnit(this, times)
+	
+	operator fun RegexUnit.rangeTo(range: IntRange) = RepeatRegexUnit(this, range)
+	operator fun String.rangeTo(range: IntRange) = RepeatRegexUnit(this, range)
+	
+	operator fun RegexUnit.rangeTo(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
+	operator fun String.rangeTo(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
 	
 	@Suppress("UNUSED_EXPRESSION")
 	fun make(func: RegexWildcard.() -> RegexUnit) = Regex(func().toString())
