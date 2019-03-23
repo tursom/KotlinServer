@@ -1,7 +1,6 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.*
-import cn.tursom.database.annotation.FieldName
 import cn.tursom.database.annotation.FieldType
 import cn.tursom.database.annotation.ForeignKey
 import cn.tursom.database.annotation.TextLength
@@ -236,8 +235,6 @@ class MySQLHelper(
 		init {
 			Class.forName("com.mysql.cj.jdbc.Driver")
 		}
-		
-		var dateFoemat: DateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 		
 		fun <T> createTableStr(keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8"): String =
 			createTableStr(keys.tableName, keys, engine, charset)

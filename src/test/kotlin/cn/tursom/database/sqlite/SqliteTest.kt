@@ -35,7 +35,7 @@ class SqliteTest {
 			SQLiteHelper("../KotlinServer/test.db").use { sqLiteHelper2 ->
 				println(sqLiteHelper == sqLiteHelper2)
 			}
-			
+
 //			val fieldList = ArrayList<TestClass>()
 //			for (i in 1..10000) {
 //				fieldList.add(TestClass(i, TTime(), "233"))
@@ -48,7 +48,8 @@ class SqliteTest {
 //			println("select: ${System.currentTimeMillis()}")
 //			println(sqLiteHelper.select<TestClass>().size)
 			println("select: ${System.currentTimeMillis()}")
-			println(sqLiteHelper.select<TestClass>(where = ClauseMaker.make { TestClass::_id regexp { numbers - 2 } }))
+			val result = sqLiteHelper.select<TestClass>(where = ClauseMaker.make { TestClass::_id regexp { (beg)(numbers - 2)(end) } })
+			println(result)
 			println("end: ${System.currentTimeMillis()}")
 			
 			//清空表

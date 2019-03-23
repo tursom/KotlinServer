@@ -261,7 +261,7 @@ open class SQLiteHelper
 			override fun xFunc() {
 				val regex = Regex(value_text(0) ?: "")
 				val value = value_text(1) ?: ""
-				result(if (regex.matches(value)) 1 else 0)
+				result(if (regex.containsMatchIn(value)) 1 else 0)
 			}
 		}
 		
