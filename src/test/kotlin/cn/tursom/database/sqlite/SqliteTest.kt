@@ -3,11 +3,9 @@ package cn.tursom.database.sqlite
 import cn.tursom.database.*
 import cn.tursom.database.SQLHelper.*
 import cn.tursom.database.annotation.*
-import cn.tursom.database.clauses.EqualClause
-import cn.tursom.database.clauses.GreaterThanClause
+import cn.tursom.database.clauses.ClauseMaker
 import org.junit.Test
 import java.sql.ResultSet
-import kotlin.reflect.jvm.javaField
 
 @FieldType("DATE")
 data class TTime(private var obj: Long = System.currentTimeMillis()) : SqlField<Long>, SQLAdapter.ResultSetReadable {
@@ -46,11 +44,11 @@ class SqliteTest {
 			println("insert: ${System.currentTimeMillis()}")
 			sqLiteHelper.insert(fieldList)
 			println("update: ${System.currentTimeMillis()}")
-			sqLiteHelper.update(TestClass(20, TTime(), "还行"), EqualClause(TestClass::_id, "20"))
+			sqLiteHelper.update(TestClass(20, TTime(), "还行"), ClauseMaker.make { TestClass::_id equal "20" })
 			println("select: ${System.currentTimeMillis()}")
 			println(sqLiteHelper.select<TestClass>().size)
 			println("select: ${System.currentTimeMillis()}")
-			println(sqLiteHelper.select<TestClass>(where = EqualClause(TestClass::_id, "20")))
+			println(sqLiteHelper.select<TestClass>(where = ClauseMaker.make { TestClass::_id equal "20" }))
 			println("end: ${System.currentTimeMillis()}")
 			
 			//清空表

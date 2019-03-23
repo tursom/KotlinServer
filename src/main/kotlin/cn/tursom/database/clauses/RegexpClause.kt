@@ -9,7 +9,7 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaField
 
 
-class RegexpClauses(val field: String, val value: String) : Clause {
+class RegexpClause(val field: String, val value: String) : Clause {
 	constructor(field: Field, value: String) : this(field.fieldName, value)
 	constructor(field: KProperty<*>, value: String) : this(field.javaField!!, value)
 	

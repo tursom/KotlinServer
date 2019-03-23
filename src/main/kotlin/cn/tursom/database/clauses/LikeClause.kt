@@ -14,7 +14,7 @@ object LikeWildcard {
 	infix operator fun String.rangeTo(target: String) = "$this-$target"
 }
 
-class LikeClause(val field: String, val value: String) : Clause {
+class LikeClause(field: String, value: String) : Clause {
 	constructor(field: Field, value: String) : this(field.fieldName, value)
 	constructor(field: KProperty<*>, value: String) : this(field.javaField!!, value)
 	
@@ -27,6 +27,5 @@ class LikeClause(val field: String, val value: String) : Clause {
 	constructor(field: KProperty<*>, value: LikeWildcard.() -> String)
 		: this(field, LikeWildcard.value())
 	
-	override val sqlStr: String
-		get() = "${this.field} LIKE '${value.sqlStr}'"
+	override val sqlStr = "$field LIKE '${value.sqlStr}'"
 }

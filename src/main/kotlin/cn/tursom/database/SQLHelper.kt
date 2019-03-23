@@ -6,6 +6,8 @@ import java.io.Closeable
 import java.lang.reflect.Field
 import java.util.AbstractCollection
 import kotlin.collections.forEach
+import kotlin.reflect.KProperty
+import kotlin.reflect.jvm.javaField
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -94,6 +96,8 @@ interface SQLHelper : Closeable {
 
 val Field.fieldName: String
 	get() = getAnnotation(FieldName::class.java)?.name ?: name
+val KProperty<*>.fieldName: String
+	get() = javaField!!.fieldName
 
 val <T : Any>T.tableName: String
 	get() = javaClass.tableName

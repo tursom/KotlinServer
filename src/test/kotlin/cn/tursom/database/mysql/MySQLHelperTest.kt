@@ -1,11 +1,8 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.annotation.*
-import cn.tursom.database.clauses.EqualClause
-import cn.tursom.database.clauses.LessThanClause
-import cn.tursom.database.clauses.OrClause
+import cn.tursom.database.clauses.ClauseMaker
 import cn.tursom.database.select
-import cn.tursom.database.tableName
 import org.junit.Test
 import kotlin.reflect.jvm.javaField
 
@@ -42,16 +39,15 @@ class MySQLHelperTest {
 //		println("update: ${System.currentTimeMillis()}")
 //		helper.update(
 //			TableStruckTestClass(null, 20.toDouble(), "还行"),
-//			EqualClause(TableStruckTestClass::ele2, "20")
+//			ClauseMaker.make { TableStruckTestClass::ele2 equal "20" }
 //		)
 //		println("select: ${System.currentTimeMillis()}")
 //		println(helper.select<TableStruckTestClass>().size)
 //		println("select: ${System.currentTimeMillis()}")
 		println(helper.select<TableStruckTestClass>(
-			where = OrClause(
-				EqualClause(TableStruckTestClass::ele2, "20"),
-				LessThanClause(TableStruckTestClass::ele2, "10")
-			),
+			where = ClauseMaker.make {
+				(TableStruckTestClass::ele2 equal "20") or (TableStruckTestClass::ele2 lessThan "10")
+			},
 			order = TableStruckTestClass::text.javaField,
 			reverse = true
 		))

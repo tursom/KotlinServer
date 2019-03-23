@@ -1,6 +1,5 @@
 package cn.tursom.database.clauses
 
-class AndClause(val first: Clause, val second: Clause) : Clause {
-	override val sqlStr: String
-		get() = "(${first.sqlStr} AND ${second.sqlStr})"
+class AndClause(first: Clause, second: Clause) : Clause {
+	override val sqlStr = "(${first.sqlStr} AND ${second.sqlStr})"
 }
