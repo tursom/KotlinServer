@@ -1,12 +1,8 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.annotation.*
-import cn.tursom.database.clauses.ClauseMaker
 import cn.tursom.database.clauses.clause
 import cn.tursom.database.select
-import cn.tursom.regex.RegexMaker.beg
-import cn.tursom.regex.RegexMaker.end
-import cn.tursom.regex.RegexMaker.numbers
 import org.junit.Test
 import kotlin.reflect.jvm.javaField
 
@@ -49,7 +45,7 @@ class MySQLHelperTest {
 //		println(helper.select<TableStruckTestClass>().size)
 		println("select: ${System.currentTimeMillis()}")
 		println(helper.select<TableStruckTestClass>(
-			where = clause { TableStruckTestClass::ele2 regexp { (beg)(numbers - 1)(end) } },
+			where = clause { TableStruckTestClass::text regexp { (beg)(str("还行"))(end) } },
 			order = TableStruckTestClass::text.javaField,
 			reverse = true
 		))

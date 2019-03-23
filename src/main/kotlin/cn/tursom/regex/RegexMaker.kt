@@ -214,6 +214,7 @@ object RegexMaker {
 	}
 	
 	fun str(str: String) = StringRegexUnit(str)
+	fun text(str: String) = StringRegexUnit(str)
 	
 	@Suppress("UNUSED_EXPRESSION")
 	fun make(func: RegexMaker.() -> RegexUnit) = Regex(func().toString())
