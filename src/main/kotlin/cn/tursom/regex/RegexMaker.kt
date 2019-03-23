@@ -1,9 +1,7 @@
 package cn.tursom.regex
 
-import kotlin.text.Typography.times
-
 @Suppress("unused", "MemberVisibilityCanBePrivate")
-object RegexWildcard {
+object RegexMaker {
 	val pointChar = UnitRegexUnit("\\.")
 	val caret = UnitRegexUnit("\\^")
 	val dollar = UnitRegexUnit("\\$")
@@ -149,5 +147,5 @@ object RegexWildcard {
 	operator fun String.rangeTo(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
 	
 	@Suppress("UNUSED_EXPRESSION")
-	fun make(func: RegexWildcard.() -> RegexUnit) = Regex(func().toString())
+	fun make(func: RegexMaker.() -> RegexUnit) = Regex(func().toString())
 }
