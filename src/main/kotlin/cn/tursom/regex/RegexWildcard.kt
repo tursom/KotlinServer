@@ -137,5 +137,5 @@ object RegexWildcard {
 	infix fun Pair<Char, Char>.and(charList: Pair<Char, Char>) = CharListRegexUnit(this) and charList
 	
 	@Suppress("UNUSED_EXPRESSION")
-	fun make(func: RegexWildcard.() -> RegexUnit) = func()
+	fun make(func: RegexWildcard.() -> RegexUnit) = Regex(func().toString())
 }
