@@ -14,7 +14,7 @@ class RepeatRegexUnit(val repeatUnit: RegexUnit?, val from: Int, val to: Int? = 
 	
 	val range = when {
 		from < 0 -> "*"
-		to == null -> "{$from}"
+		to == null -> if (from != 1) "{$from}" else ""
 		to < 0 -> if (from == 1) "+" else "{$from,}"
 		to == 1 && from == 0 -> "?"
 		else -> "{$from,$to}"

@@ -8,10 +8,10 @@ import cn.tursom.database.clauses.Clause
 import cn.tursom.tools.simplifyPath
 import org.sqlite.SQLiteException
 import java.io.File
+import java.lang.reflect.Field
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLException
-import java.lang.reflect.Field
 
 
 /**
@@ -20,7 +20,7 @@ import java.lang.reflect.Field
  */
 
 @Suppress("SqlDialectInspection", "SqlNoDataSourceInspection")
-class SQLiteHelper
+open class SQLiteHelper
 /**
  * 创建名为 base.db 的数据库连接
  */
@@ -34,6 +34,8 @@ class SQLiteHelper
 				val connection = DriverManager.getConnection("jdbc:sqlite:$base") ?: throw CantConnectDataBase()
 				connectionMap[path] = connection
 				connection.autoCommit = false
+				// 实现 REGEXP 函数
+				org.sqlite.Function.create(connection, "REGEXP", regexp)
 				connection
 			}()
 			connectionCount[path] = connectionCount[path] ?: 0 + 1
@@ -129,7 +131,7 @@ class SQLiteHelper
 		try {
 			statement.executeUpdate(sql)
 		} catch (e: SQLiteException) {
-			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: $table)") {
+			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: ${table.tableName})") {
 				createTable(table)
 				statement.executeUpdate(sql)
 			} else {
@@ -254,6 +256,14 @@ class SQLiteHelper
 					}
 				}
 			}
+		
+		val regexp = object : org.sqlite.Function() {
+			override fun xFunc() {
+				val regex = Regex(value_text(0) ?: "")
+				val value = value_text(1) ?: ""
+				result(if (regex.matches(value)) 1 else 0)
+			}
+		}
 		
 		@Suppress("NestedLambdaShadowedImplicitParameter")
 		fun <T> createTableStr(keys: Class<T>): String {

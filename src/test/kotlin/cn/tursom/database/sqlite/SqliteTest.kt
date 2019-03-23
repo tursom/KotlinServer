@@ -36,23 +36,23 @@ class SqliteTest {
 				println(sqLiteHelper == sqLiteHelper2)
 			}
 			
-			val fieldList = ArrayList<TestClass>()
-			for (i in 1..10000) {
-				fieldList.add(TestClass(i, TTime(), "233"))
-			}
-			
-			println("insert: ${System.currentTimeMillis()}")
-			sqLiteHelper.insert(fieldList)
-			println("update: ${System.currentTimeMillis()}")
-			sqLiteHelper.update(TestClass(20, TTime(), "还行"), ClauseMaker.make { TestClass::_id equal "20" })
+//			val fieldList = ArrayList<TestClass>()
+//			for (i in 1..10000) {
+//				fieldList.add(TestClass(i, TTime(), "233"))
+//			}
+//
+//			println("insert: ${System.currentTimeMillis()}")
+//			sqLiteHelper.insert(fieldList)
+//			println("update: ${System.currentTimeMillis()}")
+//			sqLiteHelper.update(TestClass(20, TTime(), "还行"), ClauseMaker.make { TestClass::_id equal "20" })
+//			println("select: ${System.currentTimeMillis()}")
+//			println(sqLiteHelper.select<TestClass>().size)
 			println("select: ${System.currentTimeMillis()}")
-			println(sqLiteHelper.select<TestClass>().size)
-			println("select: ${System.currentTimeMillis()}")
-			println(sqLiteHelper.select<TestClass>(where = ClauseMaker.make { TestClass::_id equal "20" }))
+			println(sqLiteHelper.select<TestClass>(where = ClauseMaker.make { TestClass::_id regexp { numbers - 2 } }))
 			println("end: ${System.currentTimeMillis()}")
 			
 			//清空表
-			sqLiteHelper.delete(TestClass::class.java)
+//			sqLiteHelper.delete(TestClass::class.java)
 		}
 	}
 }
