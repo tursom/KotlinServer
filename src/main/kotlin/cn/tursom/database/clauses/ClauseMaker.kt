@@ -18,7 +18,10 @@ object ClauseMaker {
 	operator fun KProperty<*>.unaryPlus() = fieldName
 	
 	infix fun Clause.and(clause: Clause) = AndClause(this, clause)
+	infix operator fun Clause.plus(clause: Clause) = AndClause(this, clause)
 	infix fun String.equal(value: String) = EqualClause(this, value)
+	infix fun String.glob(value: String) = GlobClause(this, value)
+	infix fun String.glob(maker: GlobValue.() -> String) = GlobClause(this, GlobValue.maker())
 	infix fun String.greateEqual(value: String) = GreaterEqualClause(this, value)
 	infix fun String.greaterThan(value: String) = GreaterThanClause(this, value)
 	infix fun String.lessEqual(value: String) = LessEqualClause(this, value)
@@ -28,6 +31,8 @@ object ClauseMaker {
 	operator fun Clause.not() = NotClause(this)
 	infix fun String.notEqual(value: String) = NotEqualClause(this, value)
 	infix fun Clause.or(value: Clause) = OrClause(this, value)
+	infix operator fun Clause.minus(value: Clause) = OrClause(this, value)
+	infix operator fun Clause.rangeTo(value: Clause) = OrClause(this, value)
 	
 	infix fun String.regexp(value: String) = RegexpClause(this, value)
 	infix fun String.regexp(value: Regex) = RegexpClause(this, value)

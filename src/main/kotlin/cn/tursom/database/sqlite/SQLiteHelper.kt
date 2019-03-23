@@ -113,7 +113,6 @@ open class SQLiteHelper
 		}${if (order != null) " ORDER BY $order ${if (reverse) "DESC" else "ASC"}" else ""
 		}${if (maxCount != null) " limit 0,$maxCount" else ""
 		};"
-		
 		val statement = connection.createStatement()
 		try {
 			adapter.adapt(

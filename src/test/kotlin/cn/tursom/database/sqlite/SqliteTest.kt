@@ -1,12 +1,11 @@
 package cn.tursom.database.sqlite
 
-import cn.tursom.database.*
-import cn.tursom.database.SQLHelper.*
+import cn.tursom.database.SQLAdapter
+import cn.tursom.database.SQLHelper.SqlField
 import cn.tursom.database.annotation.*
-import cn.tursom.database.clauses.ClauseMaker
 import cn.tursom.database.clauses.clause
-import cn.tursom.regex.RegexMaker.beg
-import cn.tursom.regex.RegexMaker.end
+import cn.tursom.database.select
+import cn.tursom.database.sqlStr
 import org.junit.Test
 import java.sql.ResultSet
 
@@ -52,7 +51,7 @@ class SqliteTest {
 //			println(sqLiteHelper.select<TestClass>().size)
 			println("select: ${System.currentTimeMillis()}")
 			val result = sqLiteHelper.select<TestClass>(
-				where = clause { (+TestClass::text regexp { (beg)(+"还行")(end) }) or (+TestClass::_id equal "10") }
+				where = clause { (+TestClass::text equal "还行".sqlStr) or (+TestClass::_id equal "10") }
 			)
 			println(result)
 			println("end: ${System.currentTimeMillis()}")

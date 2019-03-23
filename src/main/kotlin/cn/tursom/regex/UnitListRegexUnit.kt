@@ -10,7 +10,8 @@ class UnitListRegexUnit(private val valList: String) : RegexUnit {
 		get() = UnitListRegexUnit(if (valList.first() == '^') valList.drop(1) else "^$valList")
 	
 	operator fun not() = reverse
-	operator fun plus(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
+	infix operator fun plus(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
+	infix operator fun times(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
 	infix fun also(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
 	infix fun and(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
 	infix fun link(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
