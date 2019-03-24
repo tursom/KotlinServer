@@ -172,6 +172,14 @@ open class SQLiteHelper
 		}
 	}
 	
+	override fun update(table: String, set: String, where: String) {
+		val sql = "UPDATE $table SET $set WHERE $where;"
+		val statement = connection.createStatement()
+		statement.executeUpdate(sql)
+		commit()
+		statement.closeOnCompletion()
+	}
+	
 	override fun <T : Any> update(
 		value: T, where: Clause
 	) {
@@ -185,13 +193,7 @@ open class SQLiteHelper
 		if (set.isNotEmpty()) {
 			set.delete(set.length - 1, set.length)
 		}
-		
-		val sql = "UPDATE ${value.tableName} SET $set WHERE ${where.sqlStr};"
-		
-		val statement = connection.createStatement()
-		statement.executeUpdate(sql)
-		commit()
-		statement.closeOnCompletion()
+		update(value.tableName, set.toString(), where.sqlStr)
 	}
 	
 	override fun delete(table: String, where: String?) {

@@ -6,6 +6,7 @@ import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.clause
 import cn.tursom.database.select
 import cn.tursom.database.sqlStr
+import cn.tursom.database.update
 import org.junit.Test
 import java.sql.ResultSet
 
@@ -34,9 +35,9 @@ class SqliteTest {
 		
 		SQLiteHelper("test.db").use { sqLiteHelper ->
 			//测试同一性
-			SQLiteHelper("../KotlinServer/test.db").use { sqLiteHelper2 ->
-				println(sqLiteHelper == sqLiteHelper2)
-			}
+//			SQLiteHelper("../KotlinServer/test.db").use { sqLiteHelper2 ->
+//				println(sqLiteHelper == sqLiteHelper2)
+//			}
 
 //			val fieldList = ArrayList<TestClass>()
 //			for (i in 1..10000) {
@@ -49,10 +50,19 @@ class SqliteTest {
 //			sqLiteHelper.update(TestClass(20, TTime(), "还行"), clause { TestClass::_id equal "20" })
 //			println("select: ${System.currentTimeMillis()}")
 //			println(sqLiteHelper.select<TestClass>().size)
+			
+			sqLiteHelper update {
+				this table TestClass::class
+				TestClass::text setTo TestClass::_id - 11
+				where { !TestClass::_id equal !10 }
+			}
+			
 			println("select: ${System.currentTimeMillis()}")
-			val result = sqLiteHelper.select<TestClass>(
-				where = clause { (!TestClass::text equal !"还行") or (!TestClass::_id equal !10) }
-			)
+			val result: SQLAdapter<TestClass> = sqLiteHelper select {
+				fields { +TestClass::_id + TestClass::text }
+				where { (!TestClass::text equal !"还行") or (!TestClass::_id equal !10) }
+				TestClass::_id limit 10
+			}
 			println(result)
 			println("end: ${System.currentTimeMillis()}")
 			

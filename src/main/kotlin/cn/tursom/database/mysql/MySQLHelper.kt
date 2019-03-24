@@ -140,12 +140,14 @@ class MySQLHelper(
 		return adapter
 	}
 	
-	private fun update(
+	override fun update(
 		table: String,
 		set: String,
-		where: String) {
+		where: String
+	) {
+		val sql = "UPDATE $table SET $set${if (where.isNotEmpty()) " WHERE $where" else ""};"
 		val statement = connection.createStatement()
-		statement.executeUpdate("UPDATE $table SET $set WHERE $where;")
+		statement.executeUpdate(sql)
 		connection.commit()
 		statement.closeOnCompletion()
 	}

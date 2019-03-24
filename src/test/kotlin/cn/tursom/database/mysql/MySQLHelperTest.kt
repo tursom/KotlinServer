@@ -46,11 +46,9 @@ class MySQLHelperTest {
 //		println("select: ${System.currentTimeMillis()}")
 //		println(helper.select<TableStruckTestClass>().size)
 		println("select: ${System.currentTimeMillis()}")
-		println(helper.select<TableStruckTestClass>(
-			where = clause { !TableStruckTestClass::text regexp { beg + +"还行" + end } },
-			order = TableStruckTestClass::text.javaField,
-			reverse = true
-		))
+		println(helper.select<TableStruckTestClass> {
+			where { !TableStruckTestClass::ele2 lessThan !10 }
+		})
 		println("end: ${System.currentTimeMillis()}")
 	}
 	

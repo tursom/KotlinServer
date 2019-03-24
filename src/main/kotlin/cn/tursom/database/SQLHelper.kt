@@ -2,10 +2,12 @@ package cn.tursom.database
 
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.Clause
+import cn.tursom.database.clauses.ClauseMaker
 import java.io.Closeable
 import java.lang.reflect.Field
 import java.util.AbstractCollection
 import kotlin.collections.forEach
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaField
 
@@ -76,6 +78,8 @@ interface SQLHelper : Closeable {
 	
 	fun insert(table: String, fields: String, values: String)
 	
+	fun update(table: String, set: String, where: String = "")
+	
 	fun <T : Any> update(value: T, where: Clause)
 	
 	fun delete(table: String, where: String? = null)
@@ -99,13 +103,16 @@ val Field.fieldName: String
 val KProperty<*>.fieldName: String
 	get() = javaField!!.fieldName
 
-val <T : Any>T.tableName: String
+val Any.tableName: String
 	get() = javaClass.tableName
 
-val <T> Class<T>.tableName: String
+val Class<*>.tableName: String
 	get() = (getAnnotation<TableName>()?.name ?: name.split('.').last()).toLowerCase()
 
-val <T : Any>T.fieldValue: String
+val KClass<*>.tableName: String
+	get() = java.tableName
+
+val Any.fieldValue: String
 	get() = when (this) {
 		is SQLHelper.SqlField<*> -> this.javaClass.getAnnotation(StringField::class.java)?.let {
 			sqlValue.sqlStr
@@ -135,6 +142,32 @@ inline fun <reified T : Any> SQLHelper.select(
 	reverse: Boolean = false,
 	maxCount: Int? = null
 ): SQLAdapter<T> = select(SQLAdapter(T::class.java), fields, where, order, reverse, maxCount)
+
+fun <T : Any> SQLHelper.select(
+	adapter: SQLAdapter<T>,
+	maker: SqlSelector<T>.() -> Unit
+): SQLAdapter<T> {
+	val selector = SqlSelector(this, adapter)
+	selector.maker()
+	return selector.select()
+}
+
+inline infix fun <reified T : Any> SQLHelper.select(
+	noinline maker: SqlSelector<T>.() -> Unit
+): SQLAdapter<T> = select(SQLAdapter(T::class.java), maker)
+
+fun SQLHelper.delete(
+	table: String,
+	where: ClauseMaker.() -> Clause
+) {
+	delete(table, ClauseMaker.where())
+}
+
+infix fun SQLHelper.update(updater: SqlUpdater.() -> Unit) {
+	val sqlUpdater = SqlUpdater(this)
+	sqlUpdater.updater()
+	sqlUpdater.update()
+}
 
 inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T::class.java)
 inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation(T::class.java)
@@ -185,14 +218,18 @@ fun Iterable<String>.fieldStr(): String {
 	return stringBuffer.toString()
 }
 
-fun Iterable<String>.fieldNameStr(): String {
+fun Iterable<String>.fieldNameStr(): String? {
 	val stringBuffer = StringBuffer()
 	forEach {
 		if (it.isNotEmpty())
 			stringBuffer.append("`$it`,")
 	}
-	stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
-	return stringBuffer.toString()
+	return if (stringBuffer.isNotEmpty()) {
+		stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
+		stringBuffer.toString()
+	} else {
+		null
+	}
 }
 
 fun Array<out Field>.valueStr(value: Any): String? {
