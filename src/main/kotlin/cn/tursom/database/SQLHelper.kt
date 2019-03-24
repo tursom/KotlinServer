@@ -258,7 +258,6 @@ fun StringBuilder.appendField(
 	append("`$fieldName` ${field.fieldType() ?: return}")
 	field.annotations.forEach annotations@{ annotation ->
 		append(" ${when (annotation) {
-			//检查是否可以为空
 			is NotNull -> "NOT NULL"
 			is AutoIncrement -> "AUTO_INCREMENT"
 			is Unique -> "UNIQUE"

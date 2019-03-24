@@ -34,14 +34,20 @@ package cn.tursom.regex
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 object RegexMaker {
-	operator fun String.unaryMinus() = UnitRegexUnit(this)
 	operator fun String.unaryPlus() = StringRegexUnit(this)
+	operator fun String.unaryMinus() = UnitRegexUnit(this)
+	
+	val Any.str
+		get() = +toString()
+	val Any.unit
+		get() = -toString()
 	
 	val slush = -"\\\\"
-	val pointChar = -"\\."
+	val point = -"\\."
 	val caret = -"\\^"
 	val dollar = -"\\$"
 	val plus = -"\\+"
+	val star = -"\\*"
 	val roundBrackets = -"\\("
 	val squareBrackets = -"\\["
 	val curlyBrackets = -"\\{"
@@ -194,6 +200,7 @@ object RegexMaker {
 	class UnitListCheckException : Exception()
 	
 	operator fun String.not() = UnitListRegexUnit(this)
+	operator fun Any.not() = !toString()
 	fun list(func: UnitList.() -> String) = UnitList.func().let {
 		if (it.filterIndexed { index, c -> c == '-' && (index == 0 || it[index - 1] != '\\') }.isNotEmpty())
 			throw UnitListCheckException()
@@ -201,7 +208,7 @@ object RegexMaker {
 	}
 	
 	@Suppress("UNUSED_EXPRESSION")
-	fun make(func: RegexMaker.() -> RegexUnit) = Regex(func().toString())
+	fun make(func: RegexMaker.() -> RegexUnit) = func()
 }
 
 fun regex(func: RegexMaker.() -> RegexUnit) = Regex(RegexMaker.func().toString())

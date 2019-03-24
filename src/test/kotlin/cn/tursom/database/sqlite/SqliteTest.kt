@@ -51,7 +51,7 @@ class SqliteTest {
 //			println(sqLiteHelper.select<TestClass>().size)
 			println("select: ${System.currentTimeMillis()}")
 			val result = sqLiteHelper.select<TestClass>(
-				where = clause { (+TestClass::text equal "还行".sqlStr) or (+TestClass::_id equal "10") }
+				where = clause { (!TestClass::text equal !"还行") or (!TestClass::_id equal !10) }
 			)
 			println(result)
 			println("end: ${System.currentTimeMillis()}")

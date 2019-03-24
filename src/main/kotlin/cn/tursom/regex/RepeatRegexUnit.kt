@@ -1,31 +1,46 @@
 package cn.tursom.regex
 
-@Suppress("MemberVisibilityCanBePrivate")
-class RepeatRegexUnit(val repeatUnit: RegexUnit?, val from: Int, val to: Int = 0) : RegexUnit {
+/**
+ * 将 ${repeatUnit} 匹配 ${from} 到 ${to} 次
+ * 匹配任意次数 如果 ${from} < 0
+ * 精确匹配 ${from} 次 如果 ${to} == 0
+ * 最少匹配 ${from} 次 如果 ${to} < 0
+ */
+class RepeatRegexUnit(repeatUnit: RegexUnit?, from: Int, to: Int = 0) : RegexUnit {
 	constructor(repeatUnit: RegexUnit?, range: IntRange) : this(repeatUnit, range.start, range.last)
 	constructor(repeatUnit: RegexUnit?, range: Pair<Int, Int>) : this(repeatUnit, range.first, range.second)
 	
-	constructor(repeatUnit: String?, from: Int, to: Int = 0) : this(StringRegexUnit(repeatUnit ?: ""), from, to)
-	constructor(repeatUnit: String?, range: IntRange) : this(StringRegexUnit(repeatUnit ?: ""), range.start, range.last)
-	constructor(repeatUnit: String?, range: Pair<Int, Int>) :
-		this(StringRegexUnit(repeatUnit ?: ""), range.first, range.second)
-	
-	constructor(repeatUnit: RepeatRegexUnit?) : this(repeatUnit?.repeatUnit, repeatUnit?.from ?: 0, repeatUnit?.to ?: 0)
-	
-	val range = when {
+	private val str = when {
 		from < 0 -> "*"
-		to == 0 -> if (from != 1) "{$from}" else ""
-		to < 0 -> if (from == 1) "+" else "{$from,}"
+		to == 0 -> when (from) {
+			0 -> null
+			1 -> ""
+			else -> "{$from}"
+		}
+		to < 0 -> when (from) {
+			0 -> "*"
+			1 -> "+"
+			else -> "{$from,}"
+		}
 		to == 1 && from == 0 -> "?"
+		to == from -> when (from) {
+			0 -> null
+			1 -> ""
+			else -> "{$from}"
+		}
 		else -> "{$from,$to}"
-	}
-	
-	operator fun unaryPlus() = RepeatRegexUnit(repeatUnit, from, -1)
-	
-	override val unit = repeatUnit?.unit?.let {
-		if (it.isNotEmpty()) "${if (repeatUnit is RepeatRegexUnit) "($it)" else it}$range"
-		else ""
+	}?.let { range ->
+		repeatUnit?.unit?.let {
+			if (it.isNotEmpty()) "$it$range"
+			else ""
+		}
 	} ?: ""
 	
-	override fun toString() = unit
+	override val unit = if (str.isEmpty()) {
+		""
+	} else {
+		"($str)"
+	}
+	
+	override fun toString() = str
 }
