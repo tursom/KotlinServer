@@ -194,7 +194,7 @@ infix fun SQLHelper.delete(helper: SqlDeleter.() -> Unit): Int {
 	return deleter.delete()
 }
 
-infix fun SQLHelper.update(updater: SqlUpdater.() -> Unit) : Int{
+infix fun SQLHelper.update(updater: SqlUpdater.() -> Unit): Int {
 	val sqlUpdater = SqlUpdater(this)
 	sqlUpdater.updater()
 	return sqlUpdater.update()
@@ -294,6 +294,7 @@ fun StringBuilder.appendField(
 	field: Field,
 	fieldType: Field.() -> String?,
 	foreignKeyList: AbstractCollection<Pair<String, String>>,
+	autoIncrement: String="AUTO_INCREMENT",
 	primaryKey: Field.() -> Unit
 ) {
 	val fieldName = field.fieldName
@@ -301,7 +302,7 @@ fun StringBuilder.appendField(
 	field.annotations.forEach annotations@{ annotation ->
 		append(" ${when (annotation) {
 			is NotNull -> "NOT NULL"
-			is AutoIncrement -> "AUTO_INCREMENT"
+			is AutoIncrement -> autoIncrement
 			is Unique -> "UNIQUE"
 			is Default -> "DEFAULT ${annotation.default}"
 			is Check -> "CHECK(${field.fieldName}${annotation.func})"

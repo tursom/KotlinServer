@@ -1,9 +1,7 @@
 package cn.tursom.database.sqlite
 
 import cn.tursom.database.*
-import cn.tursom.database.annotation.FieldType
-import cn.tursom.database.annotation.ForeignKey
-import cn.tursom.database.annotation.TextLength
+import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.Clause
 import cn.tursom.tools.simplifyPath
 import org.sqlite.SQLiteException
@@ -67,6 +65,7 @@ open class SQLiteHelper
 	 */
 	override fun createTable(fields: Class<*>) {
 		val sql = createTableStr(fields)
+		println(sql)
 		val statement = connection.createStatement()
 		statement.executeUpdate(sql)
 		commit()
@@ -254,8 +253,17 @@ open class SQLiteHelper
 				java.lang.Long::class.java -> "INTEGER"
 				java.lang.Float::class.java -> "REAL"
 				java.lang.Double::class.java -> "REAL"
-				java.lang.String::class.java -> getAnnotation<TextLength>()?.let { "CHAR(${it.length})" }
-					?: "TEXT"
+				
+				Byte::class.java -> "INTEGER"
+				Char::class.java -> "INTEGER"
+				Short::class.java -> "INTEGER"
+				Int::class.java -> "INTEGER"
+				Long::class.java -> "INTEGER"
+				Float::class.java -> "REAL"
+				Double::class.java -> "REAL"
+				
+				java.lang.String::class.java -> getAnnotation<TextLength>()?.let { "CHAR(${it.length})" } ?: "TEXT"
+				
 				else -> {
 					if (type.isSqlField) {
 						type.getAnnotation<FieldType>()?.name ?: type.name.split('.').last()
@@ -265,12 +273,37 @@ open class SQLiteHelper
 				}
 			}
 		
-		val regexp = object : org.sqlite.Function() {
+		private val regexp = object : org.sqlite.Function() {
 			override fun xFunc() {
 				val regex = Regex(value_text(0) ?: "")
 				val value = value_text(1) ?: ""
 				result(if (regex.containsMatchIn(value)) 1 else 0)
 			}
+		}
+		
+		private fun StringBuilder.appendField(
+			field: Field,
+			foreignKeyList: java.util.AbstractCollection<Pair<String, String>>
+		) {
+			val fieldName = field.fieldName
+			append("`$fieldName` ${field.fieldType ?: return}")
+			field.annotations.forEach annotations@{ annotation ->
+				append(" ${when (annotation) {
+					is NotNull -> "NOT NULL"
+					is Unique -> "UNIQUE"
+					is Default -> "DEFAULT ${annotation.default}"
+					is Check -> "CHECK(${field.fieldName}${annotation.func})"
+					is ExtraAttribute -> annotation.attributes
+					is PrimaryKey -> " PRIMARY KEY${field.getAnnotation(AutoIncrement::class.java)?.let { " AUTOINCREMENT" }
+						?: ""}"
+					is ForeignKey -> {
+						foreignKeyList.add(fieldName to if (annotation.target.isNotEmpty()) annotation.target else fieldName)
+						return@annotations
+					}
+					else -> return@annotations
+				}}")
+			}
+			append(',')
 		}
 		
 		@Suppress("NestedLambdaShadowedImplicitParameter")
@@ -283,9 +316,7 @@ open class SQLiteHelper
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS ${keys.tableName}(")
 			keys.declaredFields.forEach {
-				valueStrBuilder.appendField(it, { it.fieldType }, foreignKeyList) {
-					valueStrBuilder.append(" PRIMARY KEY")
-				}
+				valueStrBuilder.appendField(it, foreignKeyList)
 			}
 			
 			foreignKey?.let {
