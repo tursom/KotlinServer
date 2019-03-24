@@ -203,8 +203,8 @@ open class SQLiteHelper
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: Clause) {
-		delete(table, where.sqlStr)
+	override fun delete(table: String, where: Clause?) {
+		delete(table, where?.sqlStr)
 	}
 	
 	override fun commit() {

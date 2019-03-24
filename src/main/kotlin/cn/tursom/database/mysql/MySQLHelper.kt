@@ -220,8 +220,8 @@ class MySQLHelper(
 		statement.closeOnCompletion()
 	}
 	
-	override fun delete(table: String, where: Clause) =
-		delete(table, where.sqlStr)
+	override fun delete(table: String, where: Clause?) =
+		delete(table, where?.sqlStr)
 	
 	
 	override fun close() {

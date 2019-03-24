@@ -84,7 +84,7 @@ interface SQLHelper : Closeable {
 	
 	fun delete(table: String, where: String? = null)
 	
-	fun delete(table: String, where: Clause)
+	fun delete(table: String, where: Clause?)
 	
 	fun commit()
 	
@@ -156,22 +156,6 @@ inline infix fun <reified T : Any> SQLHelper.select(
 	noinline maker: SqlSelector<T>.() -> Unit
 ): SQLAdapter<T> = select(SQLAdapter(T::class.java), maker)
 
-fun SQLHelper.delete(
-	table: String,
-	where: ClauseMaker.() -> Clause
-) {
-	delete(table, ClauseMaker.where())
-}
-
-infix fun SQLHelper.update(updater: SqlUpdater.() -> Unit) {
-	val sqlUpdater = SqlUpdater(this)
-	sqlUpdater.updater()
-	sqlUpdater.update()
-}
-
-inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T::class.java)
-inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation(T::class.java)
-
 fun <T : Any> SQLHelper.select(
 	clazz: Class<T>,
 	fields: Iterable<String> = listOf("*"),
@@ -197,6 +181,28 @@ fun SQLHelper.delete(
 	clazz: Class<*>,
 	where: String? = null
 ) = delete(clazz.tableName, where)
+
+fun SQLHelper.delete(
+	table: String,
+	where: ClauseMaker.() -> Clause
+) {
+	delete(table, ClauseMaker.where())
+}
+
+infix fun SQLHelper.delete(helper: SqlDeleter.() -> Unit) {
+	val deleter = SqlDeleter(this)
+	deleter.helper()
+	deleter.delete()
+}
+
+infix fun SQLHelper.update(updater: SqlUpdater.() -> Unit) {
+	val sqlUpdater = SqlUpdater(this)
+	sqlUpdater.updater()
+	sqlUpdater.update()
+}
+
+inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T::class.java)
+inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation(T::class.java)
 
 fun Array<out Field>.fieldStr(): String {
 	val fields = StringBuilder()

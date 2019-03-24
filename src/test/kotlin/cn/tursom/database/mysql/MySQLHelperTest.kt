@@ -2,7 +2,9 @@ package cn.tursom.database.mysql
 
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.clause
+import cn.tursom.database.delete
 import cn.tursom.database.select
+import cn.tursom.database.tableName
 import cn.tursom.regex.RegexMaker.beg
 import cn.tursom.regex.RegexMaker.end
 import org.junit.Test
@@ -45,9 +47,20 @@ class MySQLHelperTest {
 //		)
 //		println("select: ${System.currentTimeMillis()}")
 //		println(helper.select<TableStruckTestClass>().size)
+		
 		println("select: ${System.currentTimeMillis()}")
 		println(helper.select<TableStruckTestClass> {
-			where { !TableStruckTestClass::ele2 lessThan !10 }
+			where { !TableStruckTestClass::ele2 equal !10 }
+		})
+		
+		helper.delete {
+			TableStruckTestClass::class where {
+				!TableStruckTestClass::ele2 equal !10
+			}
+		}
+		
+		println(helper.select<TableStruckTestClass> {
+			where { !TableStruckTestClass::ele2 equal !10 }
 		})
 		println("end: ${System.currentTimeMillis()}")
 	}
