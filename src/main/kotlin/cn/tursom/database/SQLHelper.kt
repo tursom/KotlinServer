@@ -72,19 +72,19 @@ interface SQLHelper : Closeable {
 	 * 插入
 	 * @param value 值
 	 */
-	fun <T : Any> insert(value: T)
+	fun <T : Any> insert(value: T): Int
 	
-	fun insert(valueList: Iterable<*>)
+	fun insert(valueList: Iterable<*>): Int
 	
-	fun insert(table: String, fields: String, values: String)
+	fun insert(table: String, fields: String, values: String): Int
 	
-	fun update(table: String, set: String, where: String = "")
+	fun update(table: String, set: String, where: String = ""): Int
 	
-	fun <T : Any> update(value: T, where: Clause)
+	fun <T : Any> update(value: T, where: Clause): Int
 	
-	fun delete(table: String, where: String? = null)
+	fun delete(table: String, where: String? = null): Int
 	
-	fun delete(table: String, where: Clause?)
+	fun delete(table: String, where: Clause?): Int
 	
 	fun commit()
 	
@@ -185,20 +185,19 @@ fun SQLHelper.delete(
 fun SQLHelper.delete(
 	table: String,
 	where: ClauseMaker.() -> Clause
-) {
-	delete(table, ClauseMaker.where())
-}
+) = delete(table, ClauseMaker.where())
 
-infix fun SQLHelper.delete(helper: SqlDeleter.() -> Unit) {
+
+infix fun SQLHelper.delete(helper: SqlDeleter.() -> Unit): Int {
 	val deleter = SqlDeleter(this)
 	deleter.helper()
-	deleter.delete()
+	return deleter.delete()
 }
 
-infix fun SQLHelper.update(updater: SqlUpdater.() -> Unit) {
+infix fun SQLHelper.update(updater: SqlUpdater.() -> Unit) : Int{
 	val sqlUpdater = SqlUpdater(this)
 	sqlUpdater.updater()
-	sqlUpdater.update()
+	return sqlUpdater.update()
 }
 
 inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T::class.java)

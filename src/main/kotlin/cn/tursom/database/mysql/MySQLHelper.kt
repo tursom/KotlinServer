@@ -144,12 +144,15 @@ class MySQLHelper(
 		table: String,
 		set: String,
 		where: String
-	) {
+	): Int {
 		val sql = "UPDATE $table SET $set${if (where.isNotEmpty()) " WHERE $where" else ""};"
 		val statement = connection.createStatement()
-		statement.executeUpdate(sql)
-		connection.commit()
-		statement.closeOnCompletion()
+		return try {
+			statement.executeUpdate(sql)
+		} finally {
+			commit()
+			statement.closeOnCompletion()
+		}
 	}
 	
 	/**
@@ -157,7 +160,7 @@ class MySQLHelper(
 	 * @param value 用来存储数据的bean对象
 	 * @param where SQL语句的一部分，用来限定查找的条件。每一条String储存一个条件
 	 */
-	override fun <T : Any> update(value: T, where: Clause) {
+	override fun <T : Any> update(value: T, where: Clause): Int {
 		val sb = StringBuilder()
 		value.javaClass.declaredFields.forEach {
 			it.isAccessible = true
@@ -165,19 +168,19 @@ class MySQLHelper(
 		}
 		if (sb.isNotEmpty())
 			sb.delete(sb.length - 1, sb.length)
-		update(value.tableName, sb.toString(), where.sqlStr)
+		return update(value.tableName, sb.toString(), where.sqlStr)
 	}
 	
-	private fun insert(connection: Connection, sql: String, table: Class<*>) {
+	private fun insert(connection: Connection, sql: String, table: Class<*>): Int {
 		val statement = connection.createStatement()
-		try {
+		return try {
 			statement.executeUpdate(sql)
 		} catch (e: SQLSyntaxErrorException) {
 			if (e.message == "Table '$basename.${table.tableName}' doesn't exist") {
 				createTable(table)
 				statement.executeUpdate(sql)
 			} else {
-				e.printStackTrace()
+				throw e
 			}
 		} finally {
 			connection.commit()
@@ -185,39 +188,44 @@ class MySQLHelper(
 		}
 	}
 	
-	override fun insert(table: String, fields: String, values: String) {
+	override fun insert(table: String, fields: String, values: String): Int {
+		val sql = "INSERT INTO $table ($fields) VALUES $values;"
 		val statement = connection.createStatement()
-		try {
-			statement.executeUpdate("INSERT INTO $table ($fields) VALUES $values;")
-			connection.commit()
+		return try {
+			statement.executeUpdate(sql)
 		} finally {
+			connection.commit()
 			statement.closeOnCompletion()
 		}
 	}
 	
-	override fun <T : Any> insert(value: T) {
+	override fun <T : Any> insert(value: T): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${
-		fields.valueStr(value) ?: return});"
-		insert(connection, sql, clazz)
+		fields.valueStr(value) ?: return 0});"
+		return insert(connection, sql, clazz)
 	}
 	
-	override fun insert(valueList: Iterable<*>) {
-		val first = valueList.firstOrNull() ?: return
+	override fun insert(valueList: Iterable<*>): Int {
+		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
 		val field = clazz.declaredFields
-		val values = valueList.valueStr(field) ?: return
-		if (values.isEmpty()) return
+		val values = valueList.valueStr(field) ?: return 0
+		if (values.isEmpty()) return 0
 		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
-		insert(connection, sql, clazz)
+		return insert(connection, sql, clazz)
 	}
 	
-	override fun delete(table: String, where: String?) {
+	override fun delete(table: String, where: String?): Int {
+		val sql = "DELETE FROM `$table`${if (where != null) " WHERE $where" else ""};"
 		val statement = connection.createStatement()
-		statement.executeUpdate("DELETE FROM `$table`${if (where != null) " WHERE $where" else ""};")
-		connection.commit()
-		statement.closeOnCompletion()
+		return try {
+			statement.executeUpdate(sql)
+		} finally {
+			connection.commit()
+			statement.closeOnCompletion()
+		}
 	}
 	
 	override fun delete(table: String, where: Clause?) =

@@ -49,19 +49,9 @@ class MySQLHelperTest {
 //		println(helper.select<TableStruckTestClass>().size)
 		
 		println("select: ${System.currentTimeMillis()}")
-		println(helper.select<TableStruckTestClass> {
-			where { !TableStruckTestClass::ele2 equal !10 }
-		})
-		
-		helper.delete {
-			TableStruckTestClass::class where {
-				!TableStruckTestClass::ele2 equal !10
-			}
-		}
-		
-		println(helper.select<TableStruckTestClass> {
-			where { !TableStruckTestClass::ele2 equal !10 }
-		})
+		println(helper.select<TableStruckTestClass> { where { !TableStruckTestClass::ele2 equal !11 } })
+		println(helper.delete { TableStruckTestClass::class where { !TableStruckTestClass::ele2 equal !11 } })
+		println(helper.select<TableStruckTestClass> { where { !TableStruckTestClass::ele2 equal !11 } })
 		println("end: ${System.currentTimeMillis()}")
 	}
 	

@@ -66,7 +66,7 @@ class SqlUpdater(val helper: SQLHelper) {
 		override fun toString() = str
 	}
 	
-	fun update() {
+	fun update(): Int {
 		val set = StringBuilder()
 		this.set.forEach { (field, value) ->
 			set.append("$field=$value,")
@@ -74,6 +74,6 @@ class SqlUpdater(val helper: SQLHelper) {
 		if (set.isNotEmpty()) {
 			set.delete(set.length - 1, set.length)
 		}
-		helper.update(table, set.toString(), where ?: "")
+		return helper.update(table, set.toString(), where ?: "")
 	}
 }

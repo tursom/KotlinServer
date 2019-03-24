@@ -125,16 +125,16 @@ open class SQLiteHelper
 		return adapter
 	}
 	
-	private fun insert(connection: Connection, sql: String, table: Class<*>) {
+	private fun insert(connection: Connection, sql: String, table: Class<*>): Int {
 		val statement = connection.createStatement()
-		try {
+		return try {
 			statement.executeUpdate(sql)
 		} catch (e: SQLiteException) {
 			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: ${table.tableName})") {
 				createTable(table)
 				statement.executeUpdate(sql)
 			} else {
-				e.printStackTrace()
+				throw e
 			}
 		} finally {
 			connection.commit()
@@ -142,47 +142,50 @@ open class SQLiteHelper
 		}
 	}
 	
-	override fun <T : Any> insert(value: T) {
+	override fun <T : Any> insert(value: T): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val column = fields.fieldStr()
-		val valueStr = fields.valueStr(value) ?: return
+		val valueStr = fields.valueStr(value) ?: return 0
 		val sql = "INSERT INTO ${value.tableName} ($column) VALUES ($valueStr);"
-		insert(connection, sql, clazz)
+		return insert(connection, sql, clazz)
 	}
 	
-	override fun insert(valueList: Iterable<*>) {
-		val first = valueList.firstOrNull() ?: return
+	override fun insert(valueList: Iterable<*>): Int {
+		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
 		val field = clazz.declaredFields
-		val values = valueList.valueStr(field) ?: return
-		if (values.isEmpty()) return
+		val values = valueList.valueStr(field) ?: return 0
+		if (values.isEmpty()) return 0
 		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
-		insert(connection, sql, clazz)
+		return insert(connection, sql, clazz)
 	}
 	
-	override fun insert(table: String, fields: String, values: String) {
+	override fun insert(table: String, fields: String, values: String): Int {
 		val sql = "INSERT INTO $table ($fields) VALUES $values;"
 		val statement = connection.createStatement()
-		try {
+		return try {
 			statement.executeUpdate(sql)
-			commit()
 		} finally {
+			commit()
 			statement.closeOnCompletion()
 		}
 	}
 	
-	override fun update(table: String, set: String, where: String) {
+	override fun update(table: String, set: String, where: String): Int {
 		val sql = "UPDATE $table SET $set WHERE $where;"
 		val statement = connection.createStatement()
-		statement.executeUpdate(sql)
-		commit()
-		statement.closeOnCompletion()
+		return try {
+			statement.executeUpdate(sql)
+		} finally {
+			commit()
+			statement.closeOnCompletion()
+		}
 	}
 	
 	override fun <T : Any> update(
 		value: T, where: Clause
-	) {
+	): Int {
 		val set = StringBuilder()
 		value.javaClass.declaredFields.forEach {
 			it.isAccessible = true
@@ -193,18 +196,22 @@ open class SQLiteHelper
 		if (set.isNotEmpty()) {
 			set.delete(set.length - 1, set.length)
 		}
-		update(value.tableName, set.toString(), where.sqlStr)
+		return update(value.tableName, set.toString(), where.sqlStr)
 	}
 	
-	override fun delete(table: String, where: String?) {
+	override fun delete(table: String, where: String?): Int {
+		val sql = "DELETE FROM $table${if (where?.isNotEmpty() == true) " WHERE $where" else ""};"
 		val statement = connection.createStatement()
-		statement.executeUpdate("DELETE FROM $table${if (where?.isNotEmpty() == true) " WHERE $where" else ""};")
-		commit()
-		statement.closeOnCompletion()
+		return try {
+			statement.executeUpdate(sql)
+		} finally {
+			commit()
+			statement.closeOnCompletion()
+		}
 	}
 	
-	override fun delete(table: String, where: Clause?) {
-		delete(table, where?.sqlStr)
+	override fun delete(table: String, where: Clause?): Int {
+		return delete(table, where?.sqlStr)
 	}
 	
 	override fun commit() {

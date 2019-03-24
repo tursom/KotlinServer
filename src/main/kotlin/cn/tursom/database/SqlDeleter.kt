@@ -19,7 +19,6 @@ class SqlDeleter(
 		this@SqlDeleter.where = ClauseMaker.where()
 	}
 	
-	fun delete() {
-		helper.delete(table!!, where)
-	}
+	fun delete() = helper.delete(table!!, where)
+	
 }
