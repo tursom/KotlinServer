@@ -47,6 +47,16 @@ open class SQLiteHelper
 			false
 		}
 	
+	private fun doSql(sql: String): Int {
+		val statement = connection.createStatement()
+		return try {
+			statement.executeUpdate(sql)
+		} finally {
+			commit()
+			statement.closeOnCompletion()
+		}
+	}
+	
 	/**
 	 * 创建表格
 	 * @param table: 表格名
@@ -54,9 +64,7 @@ open class SQLiteHelper
 	 */
 	override fun createTable(table: String, keys: Iterable<String>) {
 		val sql = "CREATE TABLE if not exists $table (${keys.fieldStr()})"
-		val statement = connection.createStatement()
-		statement.executeUpdate(sql)
-		commit()
+		doSql(sql)
 	}
 	
 	/**
@@ -65,19 +73,15 @@ open class SQLiteHelper
 	 */
 	override fun createTable(fields: Class<*>) {
 		val sql = createTableStr(fields)
-		println(sql)
-		val statement = connection.createStatement()
-		statement.executeUpdate(sql)
-		commit()
+		doSql(sql)
 	}
 	
 	/**
 	 * 删除表格
 	 */
 	override fun deleteTable(table: String) {
-		val statement = connection.createStatement()
-		statement.executeUpdate("DROP TABLE if exists $table")
-		commit()
+		val sql = "DROP TABLE if exists $table"
+		doSql(sql)
 	}
 	
 	/**
@@ -162,24 +166,12 @@ open class SQLiteHelper
 	
 	override fun insert(table: String, fields: String, values: String): Int {
 		val sql = "INSERT INTO $table ($fields) VALUES $values;"
-		val statement = connection.createStatement()
-		return try {
-			statement.executeUpdate(sql)
-		} finally {
-			commit()
-			statement.closeOnCompletion()
-		}
+		return doSql(sql)
 	}
 	
 	override fun update(table: String, set: String, where: String): Int {
 		val sql = "UPDATE $table SET $set WHERE $where;"
-		val statement = connection.createStatement()
-		return try {
-			statement.executeUpdate(sql)
-		} finally {
-			commit()
-			statement.closeOnCompletion()
-		}
+		return doSql(sql)
 	}
 	
 	override fun <T : Any> update(
@@ -200,13 +192,7 @@ open class SQLiteHelper
 	
 	override fun delete(table: String, where: String?): Int {
 		val sql = "DELETE FROM $table${if (where?.isNotEmpty() == true) " WHERE $where" else ""};"
-		val statement = connection.createStatement()
-		return try {
-			statement.executeUpdate(sql)
-		} finally {
-			commit()
-			statement.closeOnCompletion()
-		}
+		return doSql(sql)
 	}
 	
 	override fun delete(table: String, where: Clause?): Int {
@@ -283,7 +269,7 @@ open class SQLiteHelper
 		
 		private fun StringBuilder.appendField(
 			field: Field,
-			foreignKeyList: java.util.AbstractCollection<Pair<String, String>>
+			foreignKeyList: java.util.AbstractCollection<in Pair<String, String>>
 		) {
 			val fieldName = field.fieldName
 			append("`$fieldName` ${field.fieldType ?: return}")

@@ -1,6 +1,7 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.annotation.*
+import cn.tursom.database.clauses.ClauseMaker
 import cn.tursom.database.clauses.clause
 import cn.tursom.database.delete
 import cn.tursom.database.select
@@ -18,35 +19,34 @@ data class TableStruckTestClass(
 )
 
 class MySQLHelperTest {
-	@ExperimentalUnsignedTypes
 	@Test
 	fun createStrTest() {
 		println(MySQLHelper.createTableStr(TableStruckTestClass::class.java))
 	}
 	
 	@Test
-	fun mysqlHelpertest() {
+	fun mysqlHelperTest() {
 		val helper = MySQLHelper("127.0.0.1", "test", "test", "test")
 		// 清空表
-//		try {
-//			helper.delete(TableStruckTestClass::class.java.tableName)
-//		} catch (e: Exception) {
-//		}
-//
-//		val fieldList = ArrayList<TableStruckTestClass>()
-//		for (i in 1..10000) {
-//			fieldList.add(TableStruckTestClass(null, i.toDouble(), "233"))
-//		}
-//
-//		println("insert: ${System.currentTimeMillis()}")
-//		helper.insert(fieldList)
-//		println("update: ${System.currentTimeMillis()}")
-//		helper.update(
-//			TableStruckTestClass(null, 20.toDouble(), "还行"),
-//			ClauseMaker.make { TableStruckTestClass::ele2 equal "20" }
-//		)
-//		println("select: ${System.currentTimeMillis()}")
-//		println(helper.select<TableStruckTestClass>().size)
+		try {
+			helper.delete(TableStruckTestClass::class.java.tableName)
+		} catch (e: Exception) {
+		}
+
+		val fieldList = ArrayList<TableStruckTestClass>()
+		for (i in 1..10000) {
+			fieldList.add(TableStruckTestClass(null, i.toDouble(), "233"))
+		}
+
+		println("insert: ${System.currentTimeMillis()}")
+		helper.insert(fieldList)
+		println("update: ${System.currentTimeMillis()}")
+		helper.update(
+			TableStruckTestClass(null, 20.toDouble(), "还行"),
+			ClauseMaker.make { !TableStruckTestClass::ele2 equal !"20" }
+		)
+		println("select: ${System.currentTimeMillis()}")
+		println(helper.select<TableStruckTestClass>().size)
 		
 		println("select: ${System.currentTimeMillis()}")
 		println(helper.select<TableStruckTestClass> { where { !TableStruckTestClass::ele2 equal !11 } })

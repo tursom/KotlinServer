@@ -9,6 +9,9 @@ passcode
 kotlin_server.iml
 .gradle/
 build/
+classes
 gradle/
 KotlinServer.iml
 src/main/kotlin/META-INF/
+将删除 classes/
+将删除 test.db

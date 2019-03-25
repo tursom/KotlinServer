@@ -31,6 +31,22 @@ data class TestClass(
 
 class SqliteTest {
 	@Test
+	fun tryFinallyTest() {
+		var finally = false
+		try {
+			try {
+				throw Exception()
+			} catch (e: Exception) {
+				throw e
+			} finally {
+				finally = true
+			}
+		} catch (e: Exception) {
+		}
+		assert(finally)
+	}
+	
+	@Test
 	fun sqliteTest() {
 		
 		SQLiteHelper("test.db").use { sqLiteHelper ->
