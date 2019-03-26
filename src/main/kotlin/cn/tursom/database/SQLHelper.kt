@@ -3,8 +3,10 @@ package cn.tursom.database
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
+import jdk.nashorn.internal.objects.NativeArray.forEach
 import java.io.Closeable
 import java.lang.reflect.Field
+import java.lang.reflect.Method
 import java.util.AbstractCollection
 import kotlin.collections.forEach
 import kotlin.reflect.KClass
@@ -72,7 +74,7 @@ interface SQLHelper : Closeable {
 	 * 插入
 	 * @param value 值
 	 */
-	fun <T : Any> insert(value: T): Int
+	fun insert(value: Any): Int
 	
 	fun insert(valueList: Iterable<*>): Int
 	
@@ -80,7 +82,7 @@ interface SQLHelper : Closeable {
 	
 	fun update(table: String, set: String, where: String = ""): Int
 	
-	fun <T : Any> update(value: T, where: Clause): Int
+	fun update(value: Any, where: Clause): Int
 	
 	fun delete(table: String, where: String? = null): Int
 	
@@ -237,6 +239,23 @@ fun Iterable<String>.fieldNameStr(): String? {
 	}
 }
 
+fun Class<*>.valueStr(value: Any): String? {
+	val values = StringBuilder()
+	declaredFields.forEach field@{ field ->
+		field.isAccessible = true
+		values.append(field.getAnnotation(Getter::class.java)?.let {
+			getDeclaredMethod(field.name).invoke(null) as String
+		} ?: field.get(value)?.fieldValue)
+		values.append(',')
+	}
+	if (values.isNotEmpty()) {
+		values.deleteCharAt(values.length - 1)
+	} else {
+		return null
+	}
+	return values.toString()
+}
+
 fun Array<out Field>.valueStr(value: Any): String? {
 	val values = StringBuilder()
 	forEach field@{ field ->
@@ -266,6 +285,33 @@ fun Iterable<*>.valueStr(sqlFieldMap: Array<out Field>): String? {
 	return values.toString()
 }
 
+data class SqlFieldData(val field: Field, val getter: Method? = null)
+
+fun Iterable<SqlFieldData>.valueStr(value: Iterable<*>): String? {
+	val values = StringBuilder()
+	forEach field@{ (field, _) ->
+		field.isAccessible = true
+	}
+	value.forEach { obj ->
+		values.append('(')
+		val iterator = iterator()
+		if (!iterator.hasNext()) return@forEach
+		iterator.next().let { (field, getter) ->
+			values.append(getter?.invoke(obj) ?: field.get(obj)?.fieldValue)
+		}
+		for ((field, getter) in iterator) {
+			values.append(',')
+			values.append(getter?.invoke(obj) ?: field.get(obj)?.fieldValue)
+		}
+		values.append("),")
+	}
+	if (values.isNotEmpty()) {
+		values.deleteCharAt(values.length - 1)
+	} else {
+		return null
+	}
+	return values.toString()
+}
 
 fun Iterable<SQLHelper.Where>.whereStr(): String {
 	val stringBuilder = StringBuilder()
@@ -294,7 +340,7 @@ fun StringBuilder.appendField(
 	field: Field,
 	fieldType: Field.() -> String?,
 	foreignKeyList: AbstractCollection<Pair<String, String>>,
-	autoIncrement: String="AUTO_INCREMENT",
+	autoIncrement: String = "AUTO_INCREMENT",
 	primaryKey: Field.() -> Unit
 ) {
 	val fieldName = field.fieldName

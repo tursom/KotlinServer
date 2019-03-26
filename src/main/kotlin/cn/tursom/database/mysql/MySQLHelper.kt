@@ -3,6 +3,7 @@ package cn.tursom.database.mysql
 import cn.tursom.database.*
 import cn.tursom.database.annotation.FieldType
 import cn.tursom.database.annotation.ForeignKey
+import cn.tursom.database.annotation.Getter
 import cn.tursom.database.annotation.TextLength
 import cn.tursom.database.clauses.Clause
 import java.lang.reflect.Field
@@ -160,7 +161,7 @@ class MySQLHelper(
 	 * @param value 用来存储数据的bean对象
 	 * @param where SQL语句的一部分，用来限定查找的条件。每一条String储存一个条件
 	 */
-	override fun <T : Any> update(value: T, where: Clause): Int {
+	override fun update(value: Any, where: Clause): Int {
 		val sb = StringBuilder()
 		value.javaClass.declaredFields.forEach {
 			it.isAccessible = true
@@ -199,21 +200,24 @@ class MySQLHelper(
 		}
 	}
 	
-	override fun <T : Any> insert(value: T): Int {
+	override fun insert(value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
-		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${
-		fields.valueStr(value) ?: return 0});"
+		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${clazz.valueStr(value) ?: return 0});"
 		return insert(connection, sql, clazz)
 	}
 	
 	override fun insert(valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
-		val field = clazz.declaredFields
-		val values = valueList.valueStr(field) ?: return 0
+		val fields = ArrayList<SqlFieldData>()
+		clazz.declaredFields.forEach { field ->
+			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(field.name) }
+			fields.add(SqlFieldData(field, getter))
+		}
+		val values = fields.valueStr(valueList) ?: return 0
 		if (values.isEmpty()) return 0
-		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
+		val sql = "INSERT INTO ${first.tableName} (${first.javaClass.declaredFields.fieldStr()}) VALUES $values;"
 		return insert(connection, sql, clazz)
 	}
 	
@@ -246,10 +250,10 @@ class MySQLHelper(
 			Class.forName("com.mysql.cj.jdbc.Driver")
 		}
 		
-		fun <T> createTableStr(keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8"): String =
+		fun createTableStr(keys: Class<*>, engine: String = "InnoDB", charset: String = "utf8"): String =
 			createTableStr(keys.tableName, keys, engine, charset)
 		
-		fun <T> createTableStr(table: String, keys: Class<T>, engine: String = "InnoDB", charset: String = "utf8"): String {
+		fun createTableStr(table: String, keys: Class<*>, engine: String = "InnoDB", charset: String = "utf8"): String {
 			val fieldSet = keys.declaredFields
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS `$table`(")

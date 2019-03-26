@@ -145,7 +145,7 @@ open class SQLiteHelper
 		}
 	}
 	
-	override fun <T : Any> insert(value: T): Int {
+	override fun insert(value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val column = fields.fieldStr()
@@ -157,10 +157,14 @@ open class SQLiteHelper
 	override fun insert(valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
-		val field = clazz.declaredFields
-		val values = valueList.valueStr(field) ?: return 0
+		val fields = ArrayList<SqlFieldData>()
+		clazz.declaredFields.forEach { field ->
+			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(field.name) }
+			fields.add(SqlFieldData(field, getter))
+		}
+		val values = fields.valueStr(valueList) ?: return 0
 		if (values.isEmpty()) return 0
-		val sql = "INSERT INTO ${first.tableName} (${field.fieldStr()}) VALUES $values;"
+		val sql = "INSERT INTO ${first.tableName} (${clazz.declaredFields.fieldStr()}) VALUES $values;"
 		return insert(connection, sql, clazz)
 	}
 	
@@ -174,8 +178,8 @@ open class SQLiteHelper
 		return doSql(sql)
 	}
 	
-	override fun <T : Any> update(
-		value: T, where: Clause
+	override fun update(
+		value: Any, where: Clause
 	): Int {
 		val set = StringBuilder()
 		value.javaClass.declaredFields.forEach {
@@ -292,8 +296,7 @@ open class SQLiteHelper
 			append(',')
 		}
 		
-		@Suppress("NestedLambdaShadowedImplicitParameter")
-		fun <T> createTableStr(keys: Class<T>): String {
+		fun createTableStr(keys: Class<*>): String {
 			val foreignKey = keys.getAnnotation(ForeignKey::class.java)?.let {
 				if (it.target.isNotEmpty()) it.target else null
 			}
