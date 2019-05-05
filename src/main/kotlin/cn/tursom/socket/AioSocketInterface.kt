@@ -10,12 +10,17 @@ import java.util.concurrent.TimeUnit
  * 将异步操作分为一个个按顺序执行的代码块，实现异步操作语法同步化
  * 执行顺序除 next 外为皆代码块书写的先后顺序
  * 而 next 代码块都是在函数最后执行的代码块后执行
+ * 构造流程时每个函数的返回值是当前函数的索引
+ * next 代码块接受当前函数的索引，返回下一个函数的索引，默认为索引+1
  */
 
 interface AioSocketInterface : Closeable, Runnable {
 	var timeout: Long
 	var timeUnit: TimeUnit
-	fun send(next: (Int) -> Int = { it + 1 }, bufferGetter: AioSocketInterface.() -> ByteBuffer): Int
+	fun send(
+		next: (Int) -> Int = { it + 1 },
+		bufferGetter: AioSocketInterface.() -> ByteBuffer
+	): Int
 	
 	fun recv(
 		bufferGetter: AioSocketInterface.() -> ByteBuffer,

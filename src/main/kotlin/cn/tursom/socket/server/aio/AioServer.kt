@@ -27,7 +27,6 @@ class AioServer(
 				socket.tryCatch {
 					when (this) {
 						is StringIndexOutOfBoundsException -> {
-							println("server socket closed")
 						}
 						is ClosedChannelException -> {
 						}
