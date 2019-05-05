@@ -9,16 +9,24 @@ class AioServerTest {
 	fun testServer() {
 		val port = 12345
 		val server = AioServer(port) {
-			recvStr { str -> println("server recved $str") }
-			send {
+			timeout = 1000L
+			val startIndex = recvStr { str -> println("server recved $str") }
+			// 执行完应当循环执行第一步
+			send(next = { startIndex }) {
 				buffer.flip()
 				buffer
 			}
 		}
-		Thread(server).start()
-		val client = SocketClient("127.0.0.1", port)
-		client.send("hi")
-		println("client recving: ${client.recvString()}")
+		server.run()
+		
+		for (i in 1..2) {
+			SocketClient("127.0.0.1", port).use {
+				for (j in 1..3) {
+					send("client $i, loop $j")
+					println("client recving: ${recvString()}")
+				}
+			}
+		}
 		server.close()
 	}
 }

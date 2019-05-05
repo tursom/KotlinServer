@@ -3,47 +3,89 @@ package cn.tursom.socket
 import java.io.Closeable
 import java.nio.ByteBuffer
 import java.nio.channels.CompletionHandler
+import java.util.concurrent.TimeUnit
 
+
+/**
+ * 将异步操作分为一个个按顺序执行的代码块，实现异步操作语法同步化
+ * 执行顺序除 next 外为皆代码块书写的先后顺序
+ * 而 next 代码块都是在函数最后执行的代码块后执行
+ */
 
 interface AioSocketInterface : Closeable, Runnable {
-	//	val buffer: ByteBuffer
-	infix fun send(bufferGetter: AioSocketInterface.() -> ByteBuffer)
+	var timeout: Long
+	var timeUnit: TimeUnit
+	fun send(next: (Int) -> Int = { it + 1 }, bufferGetter: AioSocketInterface.() -> ByteBuffer): Int
 	
 	fun recv(
 		bufferGetter: AioSocketInterface.() -> ByteBuffer,
-		handler: (size: Int, buffer: ByteBuffer) -> Unit
-	)
+		next: (Int) -> Int = { it + 1 },
+		handler: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
+	): Int
 	
 	infix fun tryCatch(exceptionHandler: Throwable.() -> Unit)
-	infix fun run(runBlock: AioSocketInterface.() -> Unit)
+	fun run(
+		next: (Int) -> Int = { it + 1 },
+		runBlock: AioSocketInterface.() -> Unit
+	): Int
 }
 
 fun AioSocketInterface.recv(
 	buffer: ByteBuffer,
-	a: (size: Int, buffer: ByteBuffer) -> Unit
-) {
-	recv({ buffer }, a)
-}
+	next: (Int) -> Int = { it + 1 },
+	a: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
+) = recv({ buffer }, next, a)
 
-fun AioSocketInterface.recvStr(bufferGetter: AioSocketInterface.() -> ByteBuffer, handler: (String) -> Unit) {
-	recv(bufferGetter) { size, buffer ->
+fun AioSocketInterface.recvStr(
+	bufferGetter: AioSocketInterface.() -> ByteBuffer,
+	next: (Int) -> Int = { it + 1 },
+	handler: (String) -> Unit
+) = recv(bufferGetter, next) { size, buffer, failed ->
+	try {
 		handler(String(buffer.array(), 0, size))
+	} catch (e: Throwable) {
+		e.failed()
 	}
 }
 
-fun AioSocketInterface.recvStr(buffer: ByteBuffer, handler: (String) -> Unit) {
-	recv(buffer) { size, recvBuffer ->
+fun AioSocketInterface.recvStr(
+	buffer: ByteBuffer,
+	next: (Int) -> Int = { it + 1 },
+	handler: (String) -> Unit
+) = recv(buffer, next) { size, recvBuffer, failed ->
+	try {
 		handler(String(recvBuffer.array(), 0, size))
+	} catch (e: Throwable) {
+		e.failed()
 	}
 }
 
-infix fun AioSocketInterface.sendStr(str: String) {
-	send { ByteBuffer.wrap(str.toByteArray()) }
-}
+fun AioSocketInterface.sendStr(
+	str: String,
+	next: (Int) -> Int = { it + 1 }
+) = send(next) { ByteBuffer.wrap(str.toByteArray()) }
 
-infix fun AioSocketInterface.sendStr(str: () -> String) {
-	send { ByteBuffer.wrap(str().toByteArray()) }
-}
+
+infix fun AioSocketInterface.sendStr(
+	str: String
+) = send { ByteBuffer.wrap(str.toByteArray()) }
+
+
+fun AioSocketInterface.sendStr(
+	next: (Int) -> Int = { it + 1 },
+	str: () -> String
+) = send(next) { ByteBuffer.wrap(str().toByteArray()) }
+
+
+infix fun AioSocketInterface.send(bufferGetter: AioSocketInterface.() -> ByteBuffer
+) = send({ it + 1 }, bufferGetter)
+
+
+fun AioSocketInterface.recv(
+	bufferGetter: AioSocketInterface.() -> ByteBuffer,
+	handler: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
+) = recv(bufferGetter, { it + 1 }, handler)
+
 
 class AioHandler<T>(
 	val failed: Throwable.(buffer: T) -> Unit = { printStackTrace() },
