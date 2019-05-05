@@ -22,7 +22,7 @@ class NioClient(
 	private val buffer = ByteBuffer.allocate(bufferSize)
 	
 	init {
-		channel.connect(InetSocketAddress(host, port))
+		channel.connect(InetSocketAddress(host, port)).get()
 	}
 	
 	fun write(buffer: ByteBuffer) {

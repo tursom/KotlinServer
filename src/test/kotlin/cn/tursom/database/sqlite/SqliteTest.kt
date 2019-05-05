@@ -33,12 +33,6 @@ data class TestClass(
 
 class SqliteTest {
 	@Test
-	fun getterTest() {
-		val obj = TestClass(null, 0, "test")
-		println(TestClass::class.java.getDeclaredMethod("ele2").invoke(obj))
-	}
-	
-	@Test
 	fun tryFinallyTest() {
 		var finally = false
 		try {

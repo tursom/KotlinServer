@@ -27,7 +27,7 @@ class SingleThreadSocketServer(
 					}
 				}
 			} catch (e: SocketException) {
-				if (e.message == "Socket closed") {
+				if (e.message == "Socket closed" || e.message == "socket closed") {
 					break
 				} else {
 					e.exception()
