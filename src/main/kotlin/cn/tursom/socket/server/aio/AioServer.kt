@@ -16,6 +16,10 @@ class AioServer(
 		.open()
 		.bind(InetSocketAddress("0.0.0.0", port))
 	
+	init {
+		run()
+	}
+	
 	override fun run() {
 		server.accept(0, object : CompletionHandler<AsynchronousSocketChannel, Int> {
 			override fun completed(result: AsynchronousSocketChannel?, attachment: Int?) {
@@ -30,7 +34,12 @@ class AioServer(
 						}
 						is ClosedChannelException -> {
 						}
-						else -> printStackTrace()
+						is InterruptedByTimeoutException -> {
+						}
+						else -> {
+							System.err.println("AioServer caused an exception:")
+							printStackTrace()
+						}
 					}
 					socket.close()
 				}

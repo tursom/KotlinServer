@@ -1,6 +1,5 @@
 package cn.tursom.socket.client
 
-import cn.tursom.regex.RegexMaker.str
 import cn.tursom.socket.recvStr
 import cn.tursom.socket.sendStr
 import cn.tursom.socket.server.SingleThreadSocketServer

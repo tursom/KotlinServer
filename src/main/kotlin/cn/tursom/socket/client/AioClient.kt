@@ -5,6 +5,7 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.CompletionHandler
+import java.nio.channels.InterruptedByTimeoutException
 
 
 class AioClient(
@@ -21,6 +22,11 @@ class AioClient(
 	) : this(host, port, ByteBuffer.allocate(bufferSize), process)
 	
 	init {
+		tryCatch {
+			System.err.println("AioClient caused an exception:")
+			printStackTrace()
+			close()
+		}
 		process()
 		channel.connect(InetSocketAddress(host, port), 0, object : CompletionHandler<Void, Int> {
 			override fun completed(result: Void?, attachment: Int?) {
@@ -28,7 +34,11 @@ class AioClient(
 			}
 			
 			override fun failed(exc: Throwable?, attachment: Int?) {
-				exc?.printStackTrace()
+				when (exc) {
+					is InterruptedByTimeoutException -> {
+					}
+					else -> exc?.printStackTrace()
+				}
 			}
 		})
 	}

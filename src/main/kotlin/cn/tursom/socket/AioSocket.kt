@@ -43,7 +43,7 @@ open class AioSocket(
 			recvBuffer.clear()
 			channel.read(recvBuffer, timeout, timeUnit, it, AioHandler({ this.failed() }) { size, index ->
 				handler(size, recvBuffer, failed)
-				doNext(index + 1)
+				doNext(next(index))
 			})
 		}
 		return processList.size - 1
