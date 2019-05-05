@@ -11,14 +11,42 @@ interface AioClientInterface : Closeable {
 	infix fun send(bufferGetter: AioClientInterface.() -> ByteBuffer)
 	fun recv(
 		bufferGetter: AioClientInterface.() -> ByteBuffer,
-		handler: AioClientInterface.(size: Int, buffer: ByteBuffer) -> Unit
+		handler: (size: Int, buffer: ByteBuffer) -> Unit
 	)
+	
 	infix fun tryCatch(exceptionHandler: Throwable.() -> Unit)
 	infix fun run(runBlock: AioClientInterface.() -> Unit)
 }
 
-infix fun AioClientInterface.recv(a: AioClientInterface.(size: Int, buffer: ByteBuffer) -> Unit) {
+infix fun AioClientInterface.recv(a: (size: Int, buffer: ByteBuffer) -> Unit) {
 	recv({ buffer }, a)
+}
+
+fun AioClientInterface.recv(
+	buffer: ByteBuffer,
+	a: (size: Int, buffer: ByteBuffer) -> Unit
+) {
+	recv({ buffer }, a)
+}
+
+fun AioClientInterface.recvStr(bufferGetter: AioClientInterface.() -> ByteBuffer, handler: (String) -> Unit) {
+	recv(bufferGetter) { size, buffer ->
+		handler(String(buffer.array(), 0, size))
+	}
+}
+
+fun AioClientInterface.recvStr(buffer:  ByteBuffer, handler: (String) -> Unit) {
+	recv(buffer) { size, recvBuffer ->
+		handler(String(recvBuffer.array(), 0, size))
+	}
+}
+
+infix fun AioClientInterface.sendStr(str: String) {
+	send { ByteBuffer.wrap(str.toByteArray()) }
+}
+
+infix fun AioClientInterface.sendStr(str: () -> String) {
+	send { ByteBuffer.wrap(str().toByteArray()) }
 }
 
 class AioClient(
@@ -60,11 +88,12 @@ class AioClient(
 			doNext(index + 1)
 		}
 		processList.add {
-			channel.write(bufferGetter(), it, handler)
+			val buffer = bufferGetter()
+			channel.write(buffer, it, handler)
 		}
 	}
 	
-	override fun recv(bufferGetter: AioClientInterface.() -> ByteBuffer, handler: AioClientInterface.(size: Int, buffer: ByteBuffer) -> Unit) {
+	override fun recv(bufferGetter: AioClientInterface.() -> ByteBuffer, handler: (size: Int, buffer: ByteBuffer) -> Unit) {
 		val failed = this.failed
 		processList.add {
 			val recvBuffer = bufferGetter()

@@ -1,5 +1,6 @@
 package cn.tursom.socket.client
 
+import cn.tursom.regex.RegexMaker.str
 import cn.tursom.socket.server.SingleThreadSocketServer
 import org.junit.Test
 import java.lang.Thread.sleep
@@ -10,16 +11,26 @@ class AioClientTest {
 	fun testAioClient() {
 		val port = 12345
 		val server = SingleThreadSocketServer(port) {
-			val recv = recvString()
-			println("${System.currentTimeMillis()}: server recved: $recv")
-			send(recv)
+			while (true) {
+				val recv = recvString()
+				println("${System.currentTimeMillis()}: server recved: $recv")
+				send(recv)
+			}
 		}
 		Thread(server).start()
 		AioClient("127.0.0.1", port) {
 			tryCatch { printStackTrace() }
-			send { ByteBuffer.wrap("Hello".toByteArray()) }
-			recv { size, buffer ->
-				println("${System.currentTimeMillis()}: ${String(buffer.array(), 0, size)}")
+			this sendStr "Hello, NIO!"
+			val recvBuffer = ByteBuffer.allocate(4096)
+			recvStr(recvBuffer) { str ->
+				println("${System.currentTimeMillis()}: recv 1: $str")
+			}
+			send {
+				recvBuffer.flip()
+				recvBuffer
+			}
+			recvStr(recvBuffer) { str ->
+				println("${System.currentTimeMillis()}: recv 2: $str")
 			}
 			run {
 				println("${System.currentTimeMillis()}: client run()")
@@ -29,6 +40,6 @@ class AioClientTest {
 			println("${System.currentTimeMillis()}: end process: $this")
 		}
 		
-		sleep(1000)
+		sleep(2000)
 	}
 }

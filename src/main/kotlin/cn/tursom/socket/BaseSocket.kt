@@ -155,6 +155,9 @@ open class BaseSocket(
 		
 		try {
 			val readSize = inputStream.read(buffer)
+			if (readSize < 0) {
+				throw IOException("cannot read data")
+			}
 			outputStream.write(buffer, 0, readSize)
 			socket.soTimeout = readTimeout
 			while (true) {
