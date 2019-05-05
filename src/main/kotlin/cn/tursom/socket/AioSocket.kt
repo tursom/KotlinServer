@@ -19,7 +19,7 @@ open class AioSocket(
 	
 	override fun send(
 		next: (Int) -> Int,
-		bufferGetter: AioSocketInterface.() -> ByteBuffer
+		bufferGetter: () -> ByteBuffer
 	): Int {
 		val failed = this.failed
 		val handler = AioHandler<Int>({ failed() }) { _, index ->
@@ -33,7 +33,7 @@ open class AioSocket(
 	}
 	
 	override fun recv(
-		bufferGetter: AioSocketInterface.() -> ByteBuffer,
+		bufferGetter: () -> ByteBuffer,
 		next: (Int) -> Int,
 		handler: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
 	): Int {
@@ -66,7 +66,7 @@ open class AioSocket(
 	
 	override fun run(
 		next: (Int) -> Int,
-		runBlock: AioSocketInterface.() -> Unit
+		runBlock: () -> Unit
 	): Int {
 		val failed = this.failed
 		processList.add { index ->

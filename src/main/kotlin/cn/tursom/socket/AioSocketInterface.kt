@@ -19,11 +19,11 @@ interface AioSocketInterface : Closeable, Runnable {
 	var timeUnit: TimeUnit
 	fun send(
 		next: (Int) -> Int = { it + 1 },
-		bufferGetter: AioSocketInterface.() -> ByteBuffer
+		bufferGetter: () -> ByteBuffer
 	): Int
 	
 	fun recv(
-		bufferGetter: AioSocketInterface.() -> ByteBuffer,
+		bufferGetter: () -> ByteBuffer,
 		next: (Int) -> Int = { it + 1 },
 		handler: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
 	): Int
@@ -31,7 +31,7 @@ interface AioSocketInterface : Closeable, Runnable {
 	infix fun tryCatch(exceptionHandler: Throwable.() -> Unit)
 	fun run(
 		next: (Int) -> Int = { it + 1 },
-		runBlock: AioSocketInterface.() -> Unit
+		runBlock: () -> Unit
 	): Int
 }
 
@@ -42,7 +42,7 @@ fun AioSocketInterface.recv(
 ) = recv({ buffer }, next, a)
 
 fun AioSocketInterface.recvStr(
-	bufferGetter: AioSocketInterface.() -> ByteBuffer,
+	bufferGetter: () -> ByteBuffer,
 	next: (Int) -> Int = { it + 1 },
 	handler: (String) -> Unit
 ) = recv(bufferGetter, next) { size, buffer, failed ->
@@ -82,12 +82,12 @@ fun AioSocketInterface.sendStr(
 ) = send(next) { ByteBuffer.wrap(str().toByteArray()) }
 
 
-infix fun AioSocketInterface.send(bufferGetter: AioSocketInterface.() -> ByteBuffer
+infix fun AioSocketInterface.send(bufferGetter: () -> ByteBuffer
 ) = send({ it + 1 }, bufferGetter)
 
 
 fun AioSocketInterface.recv(
-	bufferGetter: AioSocketInterface.() -> ByteBuffer,
+	bufferGetter: () -> ByteBuffer,
 	handler: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
 ) = recv(bufferGetter, { it + 1 }, handler)
 
