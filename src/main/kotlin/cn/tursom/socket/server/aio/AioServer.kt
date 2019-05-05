@@ -5,12 +5,14 @@ import java.io.Closeable
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.*
+import java.util.*
 
 class AioServer(
 	port: Int,
 	val bufferSize: Int = 4096,
 	val handler: AioSocket.() -> Unit
 ) : Runnable, Closeable {
+	private val socketQueue: Queue<AioSocket> = LinkedList<AioSocket>()
 	
 	private val server = AsynchronousServerSocketChannel
 		.open()
@@ -22,12 +24,13 @@ class AioServer(
 	
 	override fun run() {
 		server.accept(0, object : CompletionHandler<AsynchronousSocketChannel, Int> {
-			override fun completed(result: AsynchronousSocketChannel?, attachment: Int?) {
+			override fun completed(result: AsynchronousSocketChannel?, attachment: Int) {
 				try {
-					server.accept(0, this)
+					server.accept(attachment + 1, this)
 				} catch (e: Throwable) {
 				}
-				val socket = AioSocket(result!!, ByteBuffer.allocate(bufferSize))
+				result ?: return
+				val socket = AioSocket(result, ByteBuffer.allocate(bufferSize))
 				socket.tryCatch {
 					when (this) {
 						is StringIndexOutOfBoundsException -> {
@@ -51,9 +54,7 @@ class AioServer(
 				when (exc) {
 					is AsynchronousCloseException -> {
 					}
-					else -> {
-						exc?.printStackTrace()
-					}
+					else -> exc?.printStackTrace()
 				}
 			}
 		})

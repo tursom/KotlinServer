@@ -25,7 +25,7 @@ interface AioSocketInterface : Closeable, Runnable {
 	fun recv(
 		bufferGetter: () -> ByteBuffer,
 		next: (Int) -> Int = { it + 1 },
-		handler: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
+		handler: (size: Int, buffer: ByteBuffer) -> Unit
 	): Int
 	
 	infix fun tryCatch(exceptionHandler: Throwable.() -> Unit)
@@ -38,31 +38,23 @@ interface AioSocketInterface : Closeable, Runnable {
 fun AioSocketInterface.recv(
 	buffer: ByteBuffer,
 	next: (Int) -> Int = { it + 1 },
-	a: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
+	a: (size: Int, buffer: ByteBuffer) -> Unit
 ) = recv({ buffer }, next, a)
 
 fun AioSocketInterface.recvStr(
 	bufferGetter: () -> ByteBuffer,
 	next: (Int) -> Int = { it + 1 },
 	handler: (String) -> Unit
-) = recv(bufferGetter, next) { size, buffer, failed ->
-	try {
-		handler(String(buffer.array(), 0, size))
-	} catch (e: Throwable) {
-		e.failed()
-	}
+) = recv(bufferGetter, next) { size, buffer ->
+	handler(String(buffer.array(), 0, size))
 }
 
 fun AioSocketInterface.recvStr(
 	buffer: ByteBuffer,
 	next: (Int) -> Int = { it + 1 },
 	handler: (String) -> Unit
-) = recv(buffer, next) { size, recvBuffer, failed ->
-	try {
-		handler(String(recvBuffer.array(), 0, size))
-	} catch (e: Throwable) {
-		e.failed()
-	}
+) = recv(buffer, next) { size, recvBuffer ->
+	handler(String(recvBuffer.array(), 0, size))
 }
 
 fun AioSocketInterface.sendStr(
@@ -70,27 +62,22 @@ fun AioSocketInterface.sendStr(
 	next: (Int) -> Int = { it + 1 }
 ) = send(next) { ByteBuffer.wrap(str.toByteArray()) }
 
-
 infix fun AioSocketInterface.sendStr(
 	str: String
 ) = send { ByteBuffer.wrap(str.toByteArray()) }
-
 
 fun AioSocketInterface.sendStr(
 	next: (Int) -> Int = { it + 1 },
 	str: () -> String
 ) = send(next) { ByteBuffer.wrap(str().toByteArray()) }
 
-
 infix fun AioSocketInterface.send(bufferGetter: () -> ByteBuffer
 ) = send({ it + 1 }, bufferGetter)
 
-
 fun AioSocketInterface.recv(
 	bufferGetter: () -> ByteBuffer,
-	handler: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
+	handler: (size: Int, buffer: ByteBuffer) -> Unit
 ) = recv(bufferGetter, { it + 1 }, handler)
-
 
 class AioHandler<T>(
 	val failed: Throwable.(buffer: T) -> Unit = { printStackTrace() },

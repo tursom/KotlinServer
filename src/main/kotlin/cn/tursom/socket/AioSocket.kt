@@ -8,26 +8,27 @@ open class AioSocket(
 	protected val channel: AsynchronousSocketChannel,
 	val buffer: ByteBuffer,
 	override var timeout: Long = 0L,
-	override var timeUnit: TimeUnit = TimeUnit.MILLISECONDS
+	override var timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
+	private val processList: ArrayList<(index: Int) -> Unit> = ArrayList()
 ) : AioSocketInterface {
-	private val processList = ArrayList<(index: Int) -> Unit>()
 	private var failed: Throwable.() -> Unit = {
 		throw this
 	}
 	val processLength
 		get() = processList.size
+	val id = size
 	
 	override fun send(
 		next: (Int) -> Int,
 		bufferGetter: () -> ByteBuffer
 	): Int {
 		val failed = this.failed
-		val handler = AioHandler<Int>({ failed() }) { _, index ->
+		val handler = AioHandler<Int>({ failed(this) }) { _, index ->
 			doNext(next(index))
 		}
-		processList.add {
+		processList.add { index: Int ->
 			val buffer = bufferGetter()
-			channel.write(buffer, timeout, timeUnit, it, handler)
+			channel.write(buffer, timeout, timeUnit, index, handler)
 		}
 		return processList.size - 1
 	}
@@ -35,24 +36,30 @@ open class AioSocket(
 	override fun recv(
 		bufferGetter: () -> ByteBuffer,
 		next: (Int) -> Int,
-		handler: (size: Int, buffer: ByteBuffer, failed: Throwable.() -> Unit) -> Unit
+		handler: (
+			size: Int,
+			buffer: ByteBuffer
+		) -> Unit
 	): Int {
 		val failed = this.failed
-		processList.add {
+		processList.add { index: Int ->
 			val recvBuffer = bufferGetter()
 			recvBuffer.clear()
-			channel.read(recvBuffer, timeout, timeUnit, it, AioHandler({ this.failed() }) { size, index ->
-				handler(size, recvBuffer, failed)
-				doNext(next(index))
+			channel.read(recvBuffer, timeout, timeUnit, index, AioHandler({ failed(this) }) { size, _ ->
+				try {
+					handler(size, recvBuffer)
+					doNext(next(index))
+				} catch (e: Throwable) {
+					failed(e)
+				}
 			})
 		}
 		return processList.size - 1
 	}
 	
 	infix fun recv(
-		a: (size: Int, buffer: ByteBuffer,
-		    failed: Throwable.() -> Unit) -> Unit
-	) = recv({ buffer }, a)
+		handler: (size: Int, buffer: ByteBuffer) -> Unit
+	) = recv({ buffer }, handler)
 	
 	
 	infix fun recvStr(
@@ -69,11 +76,11 @@ open class AioSocket(
 		runBlock: () -> Unit
 	): Int {
 		val failed = this.failed
-		processList.add { index ->
+		processList.add { index: Int ->
 			try {
 				runBlock()
 			} catch (e: Throwable) {
-				e.failed()
+				failed(e)
 			}
 			doNext(next(index))
 		}
@@ -92,9 +99,23 @@ open class AioSocket(
 	}
 	
 	override fun toString() =
-		"AioClient(processLength=${processList.size})"
+		"AioSocket(id=$id, processLength=${processList.size})"
 	
 	private fun doNext(index: Int) {
-		if (index < processList.size) processList[index](index)
+		if (index < processList.size) {
+			processList[index](index)
+		}
+	}
+	
+	companion object {
+		private var size = 0
+			get() = synchronized(field) { field++ }
+		
+		val maxId: Int
+			get() {
+				val id = size
+				size = id
+				return id
+			}
 	}
 }
