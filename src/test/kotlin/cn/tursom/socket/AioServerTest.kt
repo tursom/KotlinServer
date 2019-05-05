@@ -21,7 +21,6 @@ class AioServerTest {
 			}
 		}
 		
-		
 		for (i in 1..10000) {
 			var j = 1
 			AioClient("127.0.0.1", port) {

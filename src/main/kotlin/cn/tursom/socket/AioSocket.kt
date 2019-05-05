@@ -101,10 +101,30 @@ open class AioSocket(
 	override fun toString() =
 		"AioSocket(id=$id, processLength=${processList.size})"
 	
+	override fun hashCode() = id
+	
+	
 	private fun doNext(index: Int) {
 		if (index < processList.size) {
 			processList[index](index)
 		}
+	}
+	
+	override fun equals(other: Any?): Boolean {
+		if (this === other) return true
+		if (javaClass != other?.javaClass) return false
+		
+		other as AioSocket
+		
+		if (channel != other.channel) return false
+		if (buffer != other.buffer) return false
+		if (timeout != other.timeout) return false
+		if (timeUnit != other.timeUnit) return false
+		if (processList != other.processList) return false
+		if (failed != other.failed) return false
+		if (id != other.id) return false
+		
+		return true
 	}
 	
 	companion object {
