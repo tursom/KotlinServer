@@ -16,7 +16,7 @@ class AioUdpServerTest {
 				send(channel, address, it)
 			}
 		}
-		server.run()
+		Thread(server).start()
 		UdpClient("127.0.0.1", port).use {
 			it.send("hello".toByteArray()) { bytes, size ->
 				println(String(bytes, 0, size))
@@ -24,6 +24,7 @@ class AioUdpServerTest {
 			it.send("hello2".toByteArray()) { bytes, size ->
 				println(String(bytes, 0, size))
 			}
+			server.close()
 		}
 	}
 }

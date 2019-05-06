@@ -1,6 +1,7 @@
 package cn.tursom.datagram.server
 
 import io.netty.util.HashedWheelTimer
+import java.io.Closeable
 import java.net.DatagramPacket
 import java.net.InetSocketAddress
 import java.net.SocketAddress
@@ -29,10 +30,11 @@ class AioUdpServer(
 		) -> Unit
 		> = HashMap(),
 	private val handler: AioUdpServer.(channel: DatagramChannel, address: SocketAddress, buffer: ByteBuffer) -> Unit
-) : Runnable {
+) : Runnable, Closeable {
 	private val excWheelTimer = HashedWheelTimer()
 	private val channel = DatagramChannel.open()!!
 	private val selector = Selector.open()!!
+	private var closed: Boolean = false
 	
 	init {
 		excWheelTimer.start()
@@ -42,46 +44,50 @@ class AioUdpServer(
 	}
 	
 	override fun run() {
-		Thread {
-			while (true) {
-				try {
-					val taskQueue = queue.iterator()
-					val byteBuffer = ByteBuffer.allocateDirect(2048)
-					while (taskQueue.hasNext()) {
-						taskQueue.next()()
-						taskQueue.remove()
-					}
+		val byteBuffer = ByteBuffer.allocateDirect(2048)
+		
+		while (!closed) {
+			try {
+				val taskQueue = queue.iterator()
+				while (taskQueue.hasNext()) {
+					taskQueue.next()()
+					taskQueue.remove()
+				}
+				
+				// 进行选择
+				val select = selector.select(60000)
+				if (select > 0) {
+					// 获取以选择的键的集合
+					val iterator = selector.selectedKeys().iterator()
 					
-					// 进行选择
-					val select = selector.select(60000)
-					if (select > 0) {
-						// 获取以选择的键的集合
-						val iterator = selector.selectedKeys().iterator()
-						
-						while (iterator.hasNext()) {
-							val key = iterator.next() as SelectionKey
-							// 必须手动删除
-							iterator.remove()
-							if (key.isReadable) {
-								val datagramChannel = key.channel() as DatagramChannel
-								// 读取
-								byteBuffer.clear()
-								val address = datagramChannel.receive(byteBuffer) ?: continue
-								threadPool.execute {
-									val handler =
-										synchronized(connectionMap) {
-											connectionMap[address]
-										} ?: handler
-									handler(datagramChannel, address, byteBuffer)
-								}
-							}
+					while (iterator.hasNext()) {
+						val key = iterator.next() as SelectionKey
+						// 必须手动删除
+						iterator.remove()
+						if (key.isReadable) {
+							val datagramChannel = key.channel() as DatagramChannel
+							// 读取
+							byteBuffer.clear()
+							println(datagramChannel === channel)
+							val address = datagramChannel.receive(byteBuffer) ?: continue
+							val handler =
+								connectionMap[address] ?: handler
+							threadPool.execute { handler(datagramChannel, address, byteBuffer) }
 						}
 					}
-				} catch (e: Exception) {
-					e.printStackTrace()
 				}
+			} catch (e: Exception) {
+				e.printStackTrace()
 			}
-		}.start()
+		}
+	}
+	
+	override fun close() {
+		closed = true
+		channel.close()
+		threadPool.shutdown()
+		selector.close()
+		excWheelTimer.stop()
 	}
 	
 	fun read(
