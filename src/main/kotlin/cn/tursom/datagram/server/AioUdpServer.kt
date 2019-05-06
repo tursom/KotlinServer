@@ -1,16 +1,14 @@
 package cn.tursom.datagram.server
 
 import io.netty.util.HashedWheelTimer
+import java.net.DatagramPacket
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.DatagramChannel
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.ThreadPoolExecutor
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.*
 
 class AioUdpServer(
 	val port: Int,
@@ -19,69 +17,62 @@ class AioUdpServer(
 		1,
 		0L,
 		TimeUnit.MILLISECONDS,
-		LinkedBlockingQueue(16)
+		LinkedBlockingQueue(32)
 	),
 	private val queue: BlockingQueue<() -> Unit> = LinkedBlockingQueue(128),
-	private val connectionMap: java.util.AbstractMap<SocketAddress, () -> Unit> = HashMap(),
-	private val handler: Connection.() -> Unit
+	private val connectionMap: java.util.AbstractMap<
+		SocketAddress,
+		AioUdpServer.(
+			channel: DatagramChannel,
+			address: SocketAddress,
+			buffer: ByteBuffer
+		) -> Unit
+		> = HashMap(),
+	private val handler: AioUdpServer.(channel: DatagramChannel, address: SocketAddress, buffer: ByteBuffer) -> Unit
 ) : Runnable {
 	private val excWheelTimer = HashedWheelTimer()
+	private val channel = DatagramChannel.open()!!
+	private val selector = Selector.open()!!
 	
 	init {
 		excWheelTimer.start()
-		excWheelTimer.newTimeout({
-		
-		}, 100L, TimeUnit.MILLISECONDS)
+		channel.configureBlocking(false)
+		channel.socket().bind(InetSocketAddress(port))
+		channel.register(selector, SelectionKey.OP_READ)
 	}
 	
 	override fun run() {
-		
-		val channel = DatagramChannel.open()
-		channel.configureBlocking(false)
-		channel.socket().bind(InetSocketAddress(port))
-		val selector = Selector.open()
-		channel.register(selector, SelectionKey.OP_READ)
-		
-		val byteBuffer = ByteBuffer.allocate(65536)
 		Thread {
 			while (true) {
 				try {
+					val taskQueue = queue.iterator()
+					val byteBuffer = ByteBuffer.allocateDirect(2048)
+					while (taskQueue.hasNext()) {
+						taskQueue.next()()
+						taskQueue.remove()
+					}
+					
 					// 进行选择
-					if (selector.select() > 0) {
+					val select = selector.select(60000)
+					if (select > 0) {
 						// 获取以选择的键的集合
 						val iterator = selector.selectedKeys().iterator()
 						
 						while (iterator.hasNext()) {
 							val key = iterator.next() as SelectionKey
-							
 							// 必须手动删除
 							iterator.remove()
-							
-							queue.forEach {
-								it()
-							}
-							
 							if (key.isReadable) {
 								val datagramChannel = key.channel() as DatagramChannel
+								// 读取
+								byteBuffer.clear()
+								val address = datagramChannel.receive(byteBuffer) ?: continue
 								threadPool.execute {
-									// 读取
-									byteBuffer.clear()
-									val address = datagramChannel.receive(byteBuffer) ?: return@execute
-									
-									val handler = synchronized(connectionMap) { connectionMap[address] } ?: run {
-										val newConnection = Connection(address)
-										newConnection.handler()
-										newConnection.run
-									}
-									
-									// 删除缓冲区中的数据
-									byteBuffer.clear()
-									val message = "data come from server"
-									byteBuffer.put(message.toByteArray())
-									byteBuffer.flip()
-									
-									// 发送数据
-									datagramChannel.send(byteBuffer, address)
+									val handler =
+										synchronized(connectionMap) {
+											connectionMap[address]
+										} ?: handler
+									handler(datagramChannel, address, byteBuffer)
 								}
 							}
 						}
@@ -93,44 +84,37 @@ class AioUdpServer(
 		}.start()
 	}
 	
-	private fun read(
-		socket: SocketAddress,
+	fun read(
+		address: SocketAddress,
 		timeout: Long = 0L,
 		timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
-		onTimeout: () -> Unit,
-		onComplete: () -> Unit
+		exc: (e: Exception) -> Unit = { it.printStackTrace() },
+		onComplete: (byteBuffer: ByteBuffer) -> Unit
 	) {
 		val timeoutTask = if (timeout > 0) {
 			excWheelTimer.newTimeout({
 				queue.offer {
 					synchronized(connectionMap) {
-						connectionMap.remove(socket)
+						connectionMap.remove(address)
 					}
 				}
-				onTimeout()
+				exc(TimeoutException("datagram address $address read time out"))
 			}, timeout, timeUnit)
 		} else {
 			null
 		}
-		connectionMap[socket] = {
+		connectionMap[address] = { _, _, buffer ->
 			timeoutTask?.cancel()
-			onComplete()
+			onComplete(buffer)
 		}
 	}
 	
-	inner class Connection(val socket: SocketAddress) {
-		private lateinit var init: () -> Unit
-		
-		val run
-			get() = init
-		
-		fun read(
-			timeout: Long = 0L,
-			timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
-			onTimeout: () -> Unit,
-			onComplete: () -> Unit
-		) {
-			read(timeout, timeUnit, onTimeout, onComplete)
-		}
+	
+	fun send(
+		channel: DatagramChannel,
+		address: SocketAddress,
+		buffer: ByteBuffer
+	) {
+		channel.send(buffer, address)
 	}
 }
