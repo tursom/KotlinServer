@@ -22,10 +22,10 @@ class UDPServer(
 			try {
 				//读取inPacket的数据
 				socket.receive(inPacket)
-				val sendData = handle(inBuff)
+				val sendData = handle(inBuff) ?: continue
 				val outPacket = DatagramPacket(
 					sendData,
-					(sendData ?: continue).size,
+					sendData.size,
 					inPacket.socketAddress)
 				//发送数据
 				socket.send(outPacket)

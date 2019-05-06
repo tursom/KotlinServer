@@ -1,8 +1,19 @@
 package cn.tursom.socket
 
+import cn.tursom.datagram.client.UdpClient
+import cn.tursom.socket.BaseSocket.Companion.timeout
 import cn.tursom.socket.client.AioClient
 import cn.tursom.socket.server.aio.AioServer
 import org.junit.Test
+import java.lang.Thread.sleep
+import java.net.InetSocketAddress
+import java.nio.ByteBuffer
+import java.nio.channels.DatagramChannel
+import java.nio.channels.SelectionKey
+import java.nio.channels.Selector
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 class AioServerTest {
 	@Test
@@ -52,5 +63,71 @@ class AioServerTest {
 //		sleep(15000)
 		println(AioSocket.maxId)
 		server.close()
+	}
+	
+	fun datagramServer(port: Int) {
+		val threadPool = ThreadPoolExecutor(
+			1,
+			1,
+			0L,
+			TimeUnit.MILLISECONDS,
+			LinkedBlockingQueue(16)
+		)
+		val channel = DatagramChannel.open()
+		channel.configureBlocking(false)
+		channel.socket().bind(InetSocketAddress(port))
+		val selector = Selector.open()
+		channel.register(selector, SelectionKey.OP_READ)
+		
+		val byteBuffer = ByteBuffer.allocate(65536)
+		Thread {
+			while (true) {
+				try {
+					// 进行选择
+					if (selector.select() > 0) {
+						// 获取以选择的键的集合
+						val iterator = selector.selectedKeys().iterator()
+						
+						while (iterator.hasNext()) {
+							val key = iterator.next() as SelectionKey
+							
+							// 必须手动删除
+							iterator.remove()
+							
+							if (key.isReadable) {
+								val datagramChannel = key.channel() as DatagramChannel
+								threadPool.execute {
+									// 读取
+									byteBuffer.clear()
+									val address = datagramChannel.receive(byteBuffer) ?: return@execute
+									
+									// 删除缓冲区中的数据
+									byteBuffer.clear()
+									val message = "data come from server"
+									byteBuffer.put(message.toByteArray())
+									byteBuffer.flip()
+									
+									// 发送数据
+									datagramChannel.send(byteBuffer, address)
+								}
+							}
+						}
+					}
+				} catch (e: Exception) {
+					e.printStackTrace()
+				}
+			}
+		}.start()
+	}
+	
+	@Test
+	fun a() {
+		val port = 12345
+		datagramServer(port)
+		val udpClient = UdpClient("127.0.0.1", port)
+		println("server started")
+		udpClient.send("hello".toByteArray()) { it, size ->
+			println(String(it, 0, size))
+		}
 	}
 }

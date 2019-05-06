@@ -14,7 +14,7 @@ class UdpClient(
 	
 	private val socket = DatagramSocket()
 	
-	fun send(data: ByteArray, callback: ((ByteArray) -> Unit)? = null) {
+	fun send(data: ByteArray, callback: ((ByteArray, size: Int) -> Unit)? = null) {
 		socket.send(DatagramPacket(data, data.size, InetAddress.getByName(host), port))
 		callback?.let {
 			//定义接受网络数据的字节数组
@@ -22,7 +22,7 @@ class UdpClient(
 			//已指定字节数组创建准备接受数据的DatagramPacket对象
 			val inPacket = DatagramPacket(inBuff, inBuff.size)
 			socket.receive(inPacket)
-			it(inPacket.data ?: return)
+			it(inPacket.data ?: return, inPacket.length)
 		}
 	}
 	
