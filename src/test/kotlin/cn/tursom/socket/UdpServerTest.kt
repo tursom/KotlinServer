@@ -25,7 +25,7 @@ class UdpServerTest {
 		}
 		
 		// 启动服务
-		Thread(server, "ThreadPoolUDPServer").start()
+		server.start()
 		println("UDP Server started")
 		
 		UdpClient("127.0.0.1", port).use {

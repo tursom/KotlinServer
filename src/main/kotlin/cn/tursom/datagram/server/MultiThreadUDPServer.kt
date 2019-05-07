@@ -50,7 +50,7 @@ class MultiThreadUDPServer(
 	
 	override fun start() {
 		for (i in 1..thread) {
-			Thread(this, "UDPServer$i").start()
+			Thread(this, "MTUdpSer$i").start()
 		}
 	}
 	

@@ -81,7 +81,7 @@ class AioUdpServer(
 	}
 	
 	override fun start() {
-		Thread(this, "AioUdpServer").start()
+		Thread(this, "AioUdpSer").start()
 	}
 	
 	override fun close() {

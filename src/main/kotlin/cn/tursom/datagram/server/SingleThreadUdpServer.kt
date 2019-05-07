@@ -91,7 +91,7 @@ class SingleThreadUdpServer(
 	}
 	
 	override fun start() {
-		Thread(this, "UDPServer").start()
+		Thread(this, "STUdpSer").start()
 	}
 	
 	override fun close() {
