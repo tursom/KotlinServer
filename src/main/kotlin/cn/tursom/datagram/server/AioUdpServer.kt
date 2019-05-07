@@ -1,8 +1,6 @@
 package cn.tursom.datagram.server
 
 import io.netty.util.HashedWheelTimer
-import java.io.Closeable
-import java.net.DatagramPacket
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.nio.ByteBuffer
@@ -12,7 +10,7 @@ import java.nio.channels.Selector
 import java.util.concurrent.*
 
 class AioUdpServer(
-	val port: Int,
+	override val port: Int,
 	private val threadPool: ThreadPoolExecutor = ThreadPoolExecutor(
 		1,
 		1,
@@ -30,7 +28,7 @@ class AioUdpServer(
 		) -> Unit
 		> = HashMap(),
 	private val handler: AioUdpServer.(channel: DatagramChannel, address: SocketAddress, buffer: ByteBuffer) -> Unit
-) : Runnable, Closeable {
+) : UDPServer {
 	private val excWheelTimer = HashedWheelTimer()
 	private val channel = DatagramChannel.open()!!
 	private val selector = Selector.open()!!
@@ -80,6 +78,10 @@ class AioUdpServer(
 				e.printStackTrace()
 			}
 		}
+	}
+	
+	override fun start() {
+		Thread(this, "AioUdpServer").start()
 	}
 	
 	override fun close() {

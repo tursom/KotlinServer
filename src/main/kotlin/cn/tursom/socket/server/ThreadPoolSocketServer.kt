@@ -45,7 +45,7 @@ open class ThreadPoolSocketServer : SocketServer {
 	 * @param port 运行端口，必须指定
 	 * @param threads 线程池最大线程数
 	 * @param queueSize 线程池任务队列大小
-	 * @param timeout 超时
+	 * @param keepAliveTime 线程最长存活时间
 	 * @param timeUnit timeout的单位，默认毫秒
 	 * @param startImmediately 是否立即启动
 	 */
@@ -53,12 +53,12 @@ open class ThreadPoolSocketServer : SocketServer {
 		port: Int,
 		threads: Int = 1,
 		queueSize: Int = 1,
-		timeout: Long = 0L,
+		keepAliveTime: Long = 60_000L,
 		timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
 		startImmediately: Boolean = false,
 		handler: BaseSocket.() -> Unit
 	) : super(handler) {
-		pool = ThreadPoolExecutor(threads, threads, timeout, timeUnit, LinkedBlockingQueue(queueSize))
+		pool = ThreadPoolExecutor(threads, threads, keepAliveTime, timeUnit, LinkedBlockingQueue(queueSize))
 		serverSocket = ServerSocket(port)
 		if (startImmediately) {
 			start()
