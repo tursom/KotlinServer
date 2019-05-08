@@ -14,13 +14,13 @@ class UdpServerTest {
 		@Suppress("NAME_SHADOWING") val server = MultiThreadUDPServer(port) { address, buffer, size ->
 			// 先设定下一次接收数据的处理方法
 			recv(address) { address, buffer, size ->
-				println("server recv twice: ${String(buffer, 0, size)}\n" +
+				println("server read twice: ${String(buffer, 0, size)}\n" +
 					"server thread: ${Thread.currentThread()}")
 				send(address, buffer, size)
 			}
 			
 			// 然后处理数据
-			println("server first recv: ${String(buffer, 0, size)}\nserver thread: ${Thread.currentThread()}")
+			println("server first read: ${String(buffer, 0, size)}\nserver thread: ${Thread.currentThread()}")
 			send(address, buffer, size)
 		}
 		
@@ -58,13 +58,13 @@ class UdpServerTest {
 		@Suppress("NAME_SHADOWING") val server = MultiThreadUDPServer(port) { address, buffer, size ->
 			// 先设定下一次接收数据的处理方法
 			recv(address) { address, buffer, size ->
-				println("server recv twice: ${String(buffer, 0, size)}\n" +
+				println("server read twice: ${String(buffer, 0, size)}\n" +
 					"server thread: ${Thread.currentThread()}")
 				send(address, buffer, size)
 			}
 			
 			// 然后处理数据
-			println("server first recv: ${String(buffer, 0, size)}\n" +
+			println("server first read: ${String(buffer, 0, size)}\n" +
 				"server thread: ${Thread.currentThread()}")
 			send(address, buffer, size)
 		}

@@ -51,9 +51,9 @@ class AioServerTest {
 //				for (k in 1..200) {
 //					SocketClient("127.0.0.1", port).use {
 //						for (j in 1..1) {
-//							send("client $i$k, loop $j")
-//							val recv = recvString()
-////						println("${System.currentTimeMillis()}: client recving: $recv")
+//							write("client $i$k, loop $j")
+//							val read = recvString()
+////						println("${System.currentTimeMillis()}: client recving: $read")
 //						}
 //					}
 //				}

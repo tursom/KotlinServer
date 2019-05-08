@@ -14,9 +14,9 @@ class AsyncClientTest {
 		val port = 12345
 		val server = AsyncSocketServer(port) {
 			val buffer = ByteBuffer.allocate(100)
-			recv(buffer)
+			read(buffer)
 			buffer.flip()
-			send(buffer)
+			write(buffer)
 		}
 		Thread(server).start()
 		println("server started")
@@ -27,9 +27,9 @@ class AsyncClientTest {
 			try {
 				AsyncClient.connect("127.0.0.1", port).useNonBlock {
 					val buffer = ByteBuffer.allocate(100)
-					send("client $i say hello!")
+					write("client $i say hello!")
 					buffer.clear()
-					recv(buffer)
+					read(buffer)
 					//				println(String(buffer.array(), 0, buffer.position()))
 					val t = System.currentTimeMillis()
 					close()

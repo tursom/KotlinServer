@@ -59,7 +59,7 @@ open class AioSocket(
 	
 	infix fun recv(
 		handler: (size: Int, buffer: ByteBuffer) -> Unit
-	) = recv({ buffer }, handler)
+	) = read({ buffer }, handler)
 	
 	
 	infix fun recvStr(

@@ -7,11 +7,13 @@ class AsyncHttpRequestTest {
 	@Test
 	fun test() {
 		runBlocking {
-			val response = AsyncHttpRequest.getStr(
-				url = "https://github.com/tursom/KotlinServer/blob/master/src/main/kotlin/cn/tursom/socket/AsyncSocket.kt",
-				client = AsyncHttpRequest.defaultClient
+			val response = AsyncHttpRequest.get(
+				url = "https://gayhub.com",
+				client = AsyncHttpRequest.socketClient
 			)
 			println(response)
+			@Suppress("BlockingMethodInNonBlockingContext")
+			println(response.body()?.string())
 		}
 	}
 }

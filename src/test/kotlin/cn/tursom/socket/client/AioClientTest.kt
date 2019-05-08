@@ -24,14 +24,14 @@ class AioClientTest {
 			this sendStr "Hello, NIO!"
 			val recvBuffer = ByteBuffer.allocate(4096)
 			recvStr(recvBuffer) { str ->
-				println("${System.currentTimeMillis()}: recv 1: $str")
+				println("${System.currentTimeMillis()}: read 1: $str")
 			}
 			send {
 				recvBuffer.flip()
 				recvBuffer
 			}
 			recvStr(recvBuffer) { str ->
-				println("${System.currentTimeMillis()}: recv 2: $str")
+				println("${System.currentTimeMillis()}: read 2: $str")
 			}
 			run {
 				println("${System.currentTimeMillis()}: client run()")

@@ -35,7 +35,7 @@ interface AioSocketInterface : Closeable, Runnable {
 	): Int
 }
 
-fun AioSocketInterface.recv(
+fun AioSocketInterface.read(
 	buffer: ByteBuffer,
 	next: (Int) -> Int = { it + 1 },
 	a: (size: Int, buffer: ByteBuffer) -> Unit
@@ -53,7 +53,7 @@ fun AioSocketInterface.recvStr(
 	buffer: ByteBuffer,
 	next: (Int) -> Int = { it + 1 },
 	handler: (String) -> Unit
-) = recv(buffer, next) { size, recvBuffer ->
+) = read(buffer, next) { size, recvBuffer ->
 	handler(String(recvBuffer.array(), 0, size))
 }
 
@@ -71,10 +71,10 @@ fun AioSocketInterface.sendStr(
 	str: () -> String
 ) = send(next) { ByteBuffer.wrap(str().toByteArray()) }
 
-infix fun AioSocketInterface.send(bufferGetter: () -> ByteBuffer
+infix fun AioSocketInterface.write(bufferGetter: () -> ByteBuffer
 ) = send({ it + 1 }, bufferGetter)
 
-fun AioSocketInterface.recv(
+fun AioSocketInterface.read(
 	bufferGetter: () -> ByteBuffer,
 	handler: (size: Int, buffer: ByteBuffer) -> Unit
 ) = recv(bufferGetter, { it + 1 }, handler)

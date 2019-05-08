@@ -1,6 +1,7 @@
 package cn.tursom.socket.server
 
 import cn.tursom.socket.AsyncSocket
+import cn.tursom.socket.useNonBlock
 import java.io.Closeable
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousCloseException
