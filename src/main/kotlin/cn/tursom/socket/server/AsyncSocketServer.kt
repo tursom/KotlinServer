@@ -1,22 +1,21 @@
-package cn.tursom.socket.server.aio
+package cn.tursom.socket.server
 
-import cn.tursom.socket.AioSocket
+import cn.tursom.socket.AsyncSocket
 import java.io.Closeable
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
-import java.nio.channels.*
-import java.util.*
+import java.nio.channels.AsynchronousCloseException
+import java.nio.channels.AsynchronousServerSocketChannel
+import java.nio.channels.AsynchronousSocketChannel
+import java.nio.channels.CompletionHandler
 
-class AioServer(
+class AsyncSocketServer(
 	port: Int,
-	val bufferSize: Int = 4096,
-	val handler: AioSocket.() -> Unit
+	private val handler: suspend AsyncSocket.() -> Unit
 ) : Runnable, Closeable {
-	private val socketQueue: Queue<AioSocket> = LinkedList<AioSocket>()
-	
 	private val server = AsynchronousServerSocketChannel
 		.open()
 		.bind(InetSocketAddress("0.0.0.0", port))
+	
 	
 	override fun run() {
 		server.accept(0, object : CompletionHandler<AsynchronousSocketChannel, Int> {
@@ -26,24 +25,9 @@ class AioServer(
 				} catch (e: Throwable) {
 				}
 				result ?: return
-				val socket = AioSocket(result, ByteBuffer.allocate(bufferSize))
-				socket.tryCatch {
-					when (this) {
-						is StringIndexOutOfBoundsException -> {
-						}
-						is ClosedChannelException -> {
-						}
-						is InterruptedByTimeoutException -> {
-						}
-						else -> {
-							System.err.println("AioServer caused an exception:")
-							printStackTrace()
-						}
-					}
-					socket.close()
+				AsyncSocket(result).useNonBlock {
+					handler()
 				}
-				socket.handler()
-				socket.run()
 			}
 			
 			override fun failed(exc: Throwable?, attachment: Int?) {

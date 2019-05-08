@@ -5,8 +5,6 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-var debug = false
-
 /**
  * 向指定URL发送GET方法的请求
  *

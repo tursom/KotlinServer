@@ -5,10 +5,7 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.SocketAddress
 import java.net.SocketException
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.*
 
 class SingleThreadUdpServer(
 	override val port: Int,
@@ -20,7 +17,7 @@ class SingleThreadUdpServer(
 			size: Int
 		) -> Unit
 		> = HashMap(),
-	private val queue: BlockingQueue<() -> Unit> = LinkedBlockingQueue(128),
+	private val queue: BlockingQueue<() -> Unit> = ArrayBlockingQueue(128),
 	private val packageSize: Int = UdpPackageSize.defaultLen,
 	private val exception: Exception.() -> Unit = { printStackTrace() },
 	private val handler: SingleThreadUdpServer.(address: SocketAddress, buffer: ByteArray, size: Int) -> Unit

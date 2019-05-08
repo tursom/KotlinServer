@@ -4,6 +4,7 @@ import io.netty.util.HashedWheelTimer
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.nio.ByteBuffer
+import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.DatagramChannel
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
@@ -18,21 +19,18 @@ class AioUdpServer(
 		TimeUnit.MILLISECONDS,
 		LinkedBlockingQueue(32)
 	),
-	private val queue: BlockingQueue<() -> Unit> = LinkedBlockingQueue(128),
-	private val connectionMap: java.util.AbstractMap<
-		SocketAddress,
-		AioUdpServer.(
-			channel: DatagramChannel,
-			address: SocketAddress,
-			buffer: ByteBuffer
-		) -> Unit
-		> = HashMap(),
+	private val queue: BlockingQueue<() -> Unit> = ArrayBlockingQueue(128),
 	private val handler: AioUdpServer.(channel: DatagramChannel, address: SocketAddress, buffer: ByteBuffer) -> Unit
 ) : UDPServer {
 	private val excWheelTimer = HashedWheelTimer()
 	private val channel = DatagramChannel.open()!!
 	private val selector = Selector.open()!!
 	private var closed: Boolean = false
+	private val connectionMap = ConcurrentHashMap<SocketAddress, AioUdpServer.(
+		channel: DatagramChannel,
+		address: SocketAddress,
+		buffer: ByteBuffer
+	) -> Unit>()
 	
 	init {
 		excWheelTimer.start()
@@ -68,9 +66,9 @@ class AioUdpServer(
 							byteBuffer.clear()
 							println(datagramChannel === channel)
 							val address = datagramChannel.receive(byteBuffer) ?: continue
-							val handler =
+							val action =
 								connectionMap[address] ?: handler
-							threadPool.execute { handler(datagramChannel, address, byteBuffer) }
+							threadPool.execute { action(datagramChannel, address, byteBuffer) }
 						}
 					}
 				}
@@ -101,11 +99,7 @@ class AioUdpServer(
 	) {
 		val timeoutTask = if (timeout > 0) {
 			excWheelTimer.newTimeout({
-				queue.offer {
-					synchronized(connectionMap) {
-						connectionMap.remove(address)
-					}
-				}
+				connectionMap.remove(address)
 				exc(TimeoutException("datagram address $address read time out"))
 			}, timeout, timeUnit)
 		} else {

@@ -5,12 +5,18 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.SocketAddress
 import java.net.SocketException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
 class MultiThreadUDPServer(
 	override val port: Int,
 	val thread: Int = Runtime.getRuntime().availableProcessors(),
+	private val packageSize: Int = UdpPackageSize.defaultLen,
+	private val exception: Exception.() -> Unit = { printStackTrace() },
+	private val handler: MultiThreadUDPServer.(address: SocketAddress, buffer: ByteArray, size: Int) -> Unit
+) : UDPServer {
+	private val excWheelTimer = HashedWheelTimer()
 	private val connectionMap: java.util.AbstractMap<
 		SocketAddress,
 		MultiThreadUDPServer.(
@@ -18,12 +24,7 @@ class MultiThreadUDPServer(
 			buffer: ByteArray,
 			size: Int
 		) -> Unit
-		> = HashMap(),
-	private val packageSize: Int = UdpPackageSize.defaultLen,
-	private val exception: Exception.() -> Unit = { printStackTrace() },
-	private val handler: MultiThreadUDPServer.(address: SocketAddress, buffer: ByteArray, size: Int) -> Unit
-) : UDPServer {
-	private val excWheelTimer = HashedWheelTimer()
+		> = ConcurrentHashMap()
 	
 	private val socket = DatagramSocket(port)
 	
@@ -35,7 +36,7 @@ class MultiThreadUDPServer(
 				//读取inPacket的数据
 				socket.receive(inPacket)
 				val address = inPacket.socketAddress
-				(synchronized(connectionMap) { connectionMap[address] } ?: handler)(address, inPacket.data, inPacket.length)
+				(connectionMap[address] ?: handler)(address, inPacket.data, inPacket.length)
 			} catch (e: SocketException) {
 				if (e.message == "Socket closed" || e.message == "socket closed") {
 					break
@@ -62,6 +63,7 @@ class MultiThreadUDPServer(
 		})
 	}
 	
+	@Suppress("NAME_SHADOWING")
 	fun recv(
 		address: SocketAddress,
 		timeout: Long = 0L,
@@ -76,11 +78,9 @@ class MultiThreadUDPServer(
 		} else {
 			null
 		}
-		synchronized(connectionMap) {
-			connectionMap[address] = { address: SocketAddress, buffer: ByteArray, size: Int ->
-				timeoutTask?.cancel()
-				handler(address, buffer, size)
-			}
+		connectionMap[address] = { address: SocketAddress, buffer: ByteArray, size: Int ->
+			timeoutTask?.cancel()
+			handler(address, buffer, size)
 		}
 	}
 	
