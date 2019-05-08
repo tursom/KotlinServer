@@ -7,7 +7,10 @@ class AsyncHttpRequestTest {
 	@Test
 	fun test() {
 		runBlocking {
-			val response = AsyncHttpRequest.getStr("https://www.baidu.com")
+			val response = AsyncHttpRequest.getStr(
+				url = "https://github.com/tursom/KotlinServer/blob/master/src/main/kotlin/cn/tursom/socket/AsyncSocket.kt",
+				client = AsyncHttpRequest.defaultClient
+			)
 			println(response)
 		}
 	}

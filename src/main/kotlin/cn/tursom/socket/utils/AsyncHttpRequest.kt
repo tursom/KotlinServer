@@ -3,15 +3,28 @@ package cn.tursom.socket.utils
 import okhttp3.*
 import java.io.File
 import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Proxy
 import java.net.URLEncoder
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 
-@Suppress("unused")
+@Suppress("unused", "MemberVisibilityCanBePrivate")
 object AsyncHttpRequest {
-	private val client = OkHttpClient()
+	
+	val defaultClient = OkHttpClient()
+	val socketClient = proxyClient()
+	val httpProxyClient = proxyClient(port = 8080, type = Proxy.Type.HTTP)
+	
+	fun proxyClient(
+		host: String = "127.0.0.1",
+		port: Int = 1080,
+		type: Proxy.Type = Proxy.Type.SOCKS
+	): OkHttpClient = OkHttpClient().newBuilder()
+		.proxy(Proxy(type, InetSocketAddress(host, port)))
+		.build()
 	
 	private suspend fun sendRequest(call: Call): Response = suspendCoroutine {
 		call.enqueue(object : Callback {
@@ -44,7 +57,8 @@ object AsyncHttpRequest {
 	suspend fun get(
 		url: String,
 		param: Map<String, String>? = null,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	): Response {
 		val paramSB = StringBuilder()
 		param?.forEach {
@@ -66,7 +80,8 @@ object AsyncHttpRequest {
 	private suspend fun post(
 		url: String,
 		body: RequestBody,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	): Response {
 		val requestBuilder = Request.Builder()
 			.post(body)
@@ -82,39 +97,45 @@ object AsyncHttpRequest {
 	suspend fun post(
 		url: String,
 		param: Map<String, String>,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	): Response {
 		val formBuilder = FormBody.Builder()
 		param.forEach { (t, u) ->
 			formBuilder.add(t, u)
 		}
-		return post(url, formBuilder.build(), headers)
+		return post(url, formBuilder.build(), headers, client)
 	}
 	
 	suspend fun post(
 		url: String,
 		body: String,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	) = post(
 		url,
 		RequestBody.create(MediaType.parse("text/plain;charset=utf-8"), body),
-		headers
+		headers,
+		client
 	)
 	
 	suspend fun post(
 		url: String,
 		body: File,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	) = post(
 		url,
 		RequestBody.create(MediaType.parse("application/octet-stream"), body),
-		headers
+		headers,
+		client
 	)
 	
 	suspend fun getStr(
 		url: String,
 		param: Map<String, String>? = null,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	): String {
 		val paramSB = StringBuilder()
 		param?.forEach {
@@ -136,7 +157,8 @@ object AsyncHttpRequest {
 	private suspend fun postStr(
 		url: String,
 		body: RequestBody,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	): String {
 		val requestBuilder = Request.Builder()
 			.post(body)
@@ -152,32 +174,38 @@ object AsyncHttpRequest {
 	suspend fun postStr(
 		url: String,
 		param: Map<String, String>,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	): String {
 		val formBuilder = FormBody.Builder()
 		param.forEach { (t, u) ->
 			formBuilder.add(t, u)
 		}
-		return postStr(url, formBuilder.build(), headers)
+		return postStr(url, formBuilder.build(), headers, client)
 	}
 	
 	suspend fun postStr(
 		url: String,
 		body: String,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	): String = postStr(
 		url,
 		RequestBody.create(MediaType.parse("text/plain;charset=utf-8"), body),
-		headers
+		headers,
+		client
 	)
 	
 	suspend fun postStr(
 		url: String,
 		body: File,
-		headers: Map<String, String>? = null
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
 	): String = postStr(
 		url,
 		RequestBody.create(MediaType.parse("application/octet-stream"), body),
-		headers
+		headers,
+		client
 	)
+	
 }
