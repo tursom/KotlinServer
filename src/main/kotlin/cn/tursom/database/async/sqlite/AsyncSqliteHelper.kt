@@ -35,9 +35,9 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 					val connField = conn.javaClass.getDeclaredField("conn")
 					connField.isAccessible = true
 					val fieldConn = connField.get(conn)
-					val inner = fieldConn.javaClass.getDeclaredField("inner")
-					inner.isAccessible = true
-					org.sqlite.Function.create(inner.get(fieldConn) as Connection, "REGEXP", regexp)
+					val innerField = fieldConn.javaClass.getDeclaredField("inner")
+					innerField.isAccessible = true
+					org.sqlite.Function.create(innerField.get(fieldConn) as Connection, "REGEXP", regexp)
 					
 					cont.resume(conn)
 				} else {
