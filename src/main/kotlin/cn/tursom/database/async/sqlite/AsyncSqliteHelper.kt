@@ -4,9 +4,9 @@ import cn.tursom.database.*
 import cn.tursom.database.annotation.*
 import cn.tursom.database.async.AsyncSqlAdapter
 import cn.tursom.database.async.AsyncSqlHelper
+import cn.tursom.database.async.vertx
 import cn.tursom.database.clauses.Clause
 import cn.tursom.tools.simplifyPath
-import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.jdbc.JDBCClient
 import io.vertx.ext.sql.SQLConnection
@@ -27,7 +27,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		config.put("url", "jdbc:sqlite:$path")
 		config.put("_driver class", "org.sqlite.JDBC")
 		suspendCoroutine<SQLConnection> { cont ->
-			JDBCClient.createShared(Vertx.vertx(), config).getConnection {
+			JDBCClient.createShared(vertx, config).getConnection {
 				if (!it.failed()) {
 					val conn = it.result()
 					

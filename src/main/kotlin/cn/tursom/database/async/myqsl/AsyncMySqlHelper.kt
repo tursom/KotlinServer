@@ -1,12 +1,14 @@
-package cn.tursom.database.async
+package cn.tursom.database.async.myqsl
 
 import cn.tursom.database.*
 import cn.tursom.database.annotation.FieldType
 import cn.tursom.database.annotation.ForeignKey
 import cn.tursom.database.annotation.Getter
 import cn.tursom.database.annotation.TextLength
+import cn.tursom.database.async.AsyncSqlAdapter
+import cn.tursom.database.async.AsyncSqlHelper
+import cn.tursom.database.async.vertx
 import cn.tursom.database.clauses.Clause
-import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.jdbc.JDBCClient
 import io.vertx.ext.sql.SQLConnection
@@ -26,7 +28,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		config.put("user", user)
 		config.put("password", password)
 		suspendCoroutine<SQLConnection> { cont ->
-			JDBCClient.createShared(Vertx.vertx(), config).getConnection {
+			JDBCClient.createShared(vertx, config).getConnection {
 				if (!it.failed()) {
 					cont.resume(it.result())
 				} else {
