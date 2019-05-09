@@ -14,6 +14,7 @@ import kotlinx.coroutines.runBlocking
 import org.sqlite.SQLiteException
 import java.io.File
 import java.lang.reflect.Field
+import java.sql.Connection
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -28,7 +29,17 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		suspendCoroutine<SQLConnection> { cont ->
 			JDBCClient.createShared(Vertx.vertx(), config).getConnection {
 				if (!it.failed()) {
-					cont.resume(it.result())
+					val conn = it.result()
+					
+					// 我们要利用反射强行把我们需要的方法注入进去
+					val connField = conn.javaClass.getDeclaredField("conn")
+					connField.isAccessible = true
+					val fieldConn = connField.get(conn)
+					val inner = fieldConn.javaClass.getDeclaredField("inner")
+					inner.isAccessible = true
+					org.sqlite.Function.create(inner.get(fieldConn) as Connection, "REGEXP", regexp)
+					
+					cont.resume(conn)
 				} else {
 					cont.resumeWithException(it.cause())
 				}
