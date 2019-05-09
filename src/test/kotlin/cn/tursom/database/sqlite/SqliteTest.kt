@@ -1,12 +1,8 @@
 package cn.tursom.database.sqlite
 
-import cn.tursom.database.SQLAdapter
-import cn.tursom.database.SQLHelper.SqlField
+import cn.tursom.database.*
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.clause
-import cn.tursom.database.select
-import cn.tursom.database.tableName
-import cn.tursom.database.update
 import org.junit.Test
 import java.sql.ResultSet
 
@@ -32,21 +28,6 @@ data class TestClass(
 }
 
 class SqliteTest {
-	@Test
-	fun tryFinallyTest() {
-		var finally = false
-		try {
-			try {
-				throw Exception()
-			} catch (e: Exception) {
-				throw e
-			} finally {
-				finally = true
-			}
-		} catch (e: Exception) {
-		}
-		assert(finally)
-	}
 	
 	@Test
 	fun sqliteTest() {

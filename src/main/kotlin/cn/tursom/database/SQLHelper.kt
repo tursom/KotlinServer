@@ -3,15 +3,11 @@ package cn.tursom.database
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
-import jdk.nashorn.internal.objects.NativeArray.forEach
 import java.io.Closeable
 import java.lang.reflect.Field
-import java.lang.reflect.Method
 import java.util.AbstractCollection
 import kotlin.collections.forEach
 import kotlin.reflect.KClass
-import kotlin.reflect.KProperty
-import kotlin.reflect.jvm.javaField
 
 /**
  * MySQLHelper，SQLite辅助使用类
@@ -89,21 +85,7 @@ interface SQLHelper : Closeable {
 	fun delete(table: String, where: Clause?): Int
 	
 	fun commit()
-	
-	interface SqlField<T> {
-		fun get(): T
-		val sqlValue: String
-	}
-	
-	interface Where {
-		val sqlStr: String
-	}
 }
-
-val Field.fieldName: String
-	get() = getAnnotation(FieldName::class.java)?.name ?: name
-val KProperty<*>.fieldName: String
-	get() = javaField!!.fieldName
 
 val Any.tableName: String
 	get() = javaClass.tableName
@@ -113,18 +95,6 @@ val Class<*>.tableName: String
 
 val KClass<*>.tableName: String
 	get() = java.tableName
-
-val Any.fieldValue: String
-	get() = when (this) {
-		is SQLHelper.SqlField<*> -> this.javaClass.getAnnotation(StringField::class.java)?.let {
-			sqlValue.sqlStr
-		} ?: sqlValue
-		is String -> sqlStr
-		else -> toString()
-	}
-
-val Class<*>.isSqlField
-	get() = interfaces.contains(SQLHelper.SqlField::class.java)
 
 /**
  * 用于支持灵活查询
@@ -285,43 +255,6 @@ fun Iterable<*>.valueStr(sqlFieldMap: Array<out Field>): String? {
 	return values.toString()
 }
 
-data class SqlFieldData(val field: Field, val getter: Method? = null)
-
-fun Iterable<SqlFieldData>.valueStr(value: Iterable<*>): String? {
-	val values = StringBuilder()
-	forEach field@{ (field, _) ->
-		field.isAccessible = true
-	}
-	value.forEach { obj ->
-		values.append('(')
-		val iterator = iterator()
-		if (!iterator.hasNext()) return@forEach
-		iterator.next().let { (field, getter) ->
-			values.append(getter?.invoke(obj) ?: field.get(obj)?.fieldValue)
-		}
-		for ((field, getter) in iterator) {
-			values.append(',')
-			values.append(getter?.invoke(obj) ?: field.get(obj)?.fieldValue)
-		}
-		values.append("),")
-	}
-	if (values.isNotEmpty()) {
-		values.deleteCharAt(values.length - 1)
-	} else {
-		return null
-	}
-	return values.toString()
-}
-
-fun Iterable<SQLHelper.Where>.whereStr(): String {
-	val stringBuilder = StringBuilder()
-	forEach {
-		stringBuilder.append("${it.sqlStr} AND ")
-	}
-	if (stringBuilder.isNotEmpty())
-		stringBuilder.delete(stringBuilder.length - 5, stringBuilder.length)
-	return stringBuilder.toString()
-}
 
 fun List<Pair<String, String>>.fieldStr(): Pair<String, String> {
 	val first = StringBuilder()
