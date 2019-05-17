@@ -50,6 +50,9 @@ dependencies {
 	// vert.x-jdbc-client
 	implementation 'io.vertx:vertx-jdbc-client:3.7.0'
 
+	// vert.x-web
+	implementation "io.vertx:vertx-web:3.7.0"
+
 	testImplementation group: 'junit', name: 'junit', version: '4.12'
 }
 
