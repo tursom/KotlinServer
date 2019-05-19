@@ -1,0 +1,7 @@
+<root
+	encodePort="1"
+	decodePort="456"
+>
+	hi 2
+	<hi>还行</hi>
+</root>

@@ -33,3 +33,6 @@ annotation class Setter(val setter: String)
 
 @Target(AnnotationTarget.FIELD)
 annotation class FieldName(val name: String)
+
+@Target(AnnotationTarget.CLASS)
+annotation class ElementName(val name: String)
