@@ -79,6 +79,59 @@ object Xml {
 			else -> null
 		}
 	
+	private fun Class<*>.parse(value: String?, element: Element, fieldName: String? = null): Any? {
+		return when (this) {
+			Byte::class.java -> value?.toByteOrNull()
+			Short::class.java -> value?.toShortOrNull()
+			Int::class.java -> value?.toIntOrNull()
+			Long::class.java -> value?.toLongOrNull()
+			Float::class.java -> value?.toFloatOrNull()
+			Double::class.java -> value?.toDoubleOrNull()
+			Boolean::class.java -> value?.toBoolean()
+			Char::class.java -> value?.toIntOrNull()?.toChar()
+			String::class.java -> value
+			
+			java.lang.Byte::class.java -> value?.toByteOrNull()
+			java.lang.Short::class.java -> value?.toShortOrNull()
+			Integer::class.java -> value?.toIntOrNull()
+			java.lang.Long::class.java -> value?.toLongOrNull()
+			java.lang.Float::class.java -> value?.toFloatOrNull()
+			java.lang.Double::class.java -> value?.toDoubleOrNull()
+			java.lang.Boolean::class.java -> value?.toBoolean()
+			java.lang.Character::class.java -> value?.toIntOrNull()?.toChar()
+			java.lang.String::class.java -> value
+			
+			else -> if (isEnum) {
+				val valueOf = getDeclaredMethod("valueOf", String::class.java)
+				try {
+					valueOf.invoke(null, value ?: return null)
+				} catch (e: Exception) {
+					null
+				}
+			} else {
+				parse(this, if (fieldName != null) element.element(fieldName) ?: return null else element)
+			}
+		}
+	}
+	
+	private fun Field.parse(target: ElementTarget, element: Element, fieldName: String): Any? {
+		return if (type.isArray) {
+			val list = if (getAnnotation(MultipleField::class.java) != null) {
+				element.elements(fieldName)
+			} else {
+				element.element(fieldName).elements()
+			}
+			val array = Array.newInstance(type.componentType, list.size)
+			list.forEachIndexed { index, any ->
+				any as Element
+				Array.set(array, index, type.componentType.parse(any.text ?: return null, any))
+			}
+			array
+		} else {
+			type.parse(getData(element, fieldName, target), element, fieldName)
+		}
+	}
+	
 	fun getData(element: Element, name: String, target: ElementTarget): String? = when (target) {
 		ElementTarget.Attribute -> element.attribute(name)?.value
 		ElementTarget.ElementText -> element.text
@@ -112,39 +165,7 @@ object Xml {
 					setMethod.invoke(instance, getData(root, fieldName, target) ?: return@forEach)
 				}
 			} else {
-				val value = getData(root, fieldName, target)
-				when (field.type) {
-					Byte::class.java -> value?.toByteOrNull()
-					Short::class.java -> value?.toShortOrNull()
-					Int::class.java -> value?.toIntOrNull()
-					Long::class.java -> value?.toLongOrNull()
-					Float::class.java -> value?.toFloatOrNull()
-					Double::class.java -> value?.toDoubleOrNull()
-					Boolean::class.java -> value?.toBoolean()
-					Char::class.java -> value?.toIntOrNull()?.toChar()
-					String::class.java -> value ?: return@forEach
-					
-					java.lang.Byte::class.java -> value?.toByteOrNull()
-					java.lang.Short::class.java -> value?.toShortOrNull()
-					Integer::class.java -> value?.toIntOrNull()
-					java.lang.Long::class.java -> value?.toLongOrNull()
-					java.lang.Float::class.java -> value?.toFloatOrNull()
-					java.lang.Double::class.java -> value?.toDoubleOrNull()
-					java.lang.Boolean::class.java -> value?.toBoolean()
-					java.lang.Character::class.java -> value?.toIntOrNull()?.toChar()
-					java.lang.String::class.java -> value ?: return@forEach
-					
-					else -> if (field.type.isEnum) {
-						val valueOf = field.type.getDeclaredMethod("valueOf", String::class.java)
-						try {
-							valueOf.invoke(null, value ?: return@forEach)
-						} catch (e: Exception) {
-							null
-						}
-					} else {
-						parse(field.type, root.element(fieldName) ?: return@forEach)
-					}
-				}
+				field.parse(target, root, fieldName)
 			} ?: return@forEach
 			field.set(instance, value)
 		}
@@ -248,7 +269,7 @@ object Xml {
 	
 	
 	fun arrayXml(
-		obj: Any,
+		obj: kotlin.Array<*>,
 		rootName: String = obj.javaClass.elementName,
 		indentation: String = "    ",
 		fieldName: String? = "i"
@@ -258,39 +279,59 @@ object Xml {
 		return stringBuilder.toString()
 	}
 	
+	fun arrayXmlOnce(
+		obj: kotlin.Array<*>,
+		value: Any,
+		subElementName: String,
+		builder: StringBuilder,
+		subIndentation: String,
+		advanceIndentation: String
+	) {
+		val type = value.javaClass
+		
+		if (type.getAnnotation(CompressionXml::class.java) != null) {
+			builder.append("\n")
+			builder.append(subIndentation)
+			arrayXmlCom(obj, subElementName, builder)
+			return
+		}
+		
+		if ((value.javaClass.isJustValue))
+			builder.append("\n$subIndentation<$subElementName>$value</$subElementName>")
+		else {
+			builder.append("\n")
+			toXml(value, subElementName, builder, subIndentation, advanceIndentation)
+		}
+	}
+	
 	fun arrayXml(
-		obj: Any,
+		obj: kotlin.Array<*>,
 		elementName: String,
 		builder: StringBuilder,
 		indentation: String,
 		advanceIndentation: String,
-		fieldName: String? = "i"
+		fieldName: String? = "i",
+		multipleField: Boolean = false
 	) {
+		if (obj.isEmpty()) return
 		val clazz = obj.javaClass
 		if (clazz.isArray) {
 			val subIndentation = "$advanceIndentation$indentation"
-			
-			builder.append("$indentation<$elementName>")
-			(0 until Array.getLength(obj)).forEach { i ->
-				val value = Array.get(obj, i) ?: return@forEach
-				val type = value.javaClass
-				val subElementName = fieldName ?: type.elementName
-				
-				if (type.getAnnotation(CompressionXml::class.java) != null) {
-					builder.append("\n")
-					builder.append(subIndentation)
-					arrayXmlCom(obj, subElementName, builder)
-					return@forEach
+			if (multipleField) {
+				if (builder.isNotEmpty()) builder.deleteCharAt(builder.length - 1)
+				obj.forEach { value ->
+					arrayXmlOnce(obj, value ?: return@forEach, elementName, builder, indentation, advanceIndentation)
 				}
-				
-				if ((value.javaClass.isJustValue))
-					builder.append("\n$subIndentation<$subElementName>$value</$subElementName>")
-				else {
-					builder.append("\n")
-					toXml(value, elementName, builder, subIndentation, advanceIndentation)
+			} else {
+				builder.append("$indentation<$elementName>")
+				(0 until Array.getLength(obj)).forEach { i ->
+					val value = Array.get(obj, i) ?: return@forEach
+					val type = value.javaClass
+					val subElementName = fieldName ?: type.elementName
+					arrayXmlOnce(obj, value, subElementName, builder, subIndentation, advanceIndentation)
 				}
+				builder.append("\n$indentation</$elementName>")
 			}
-			builder.append("\n$indentation</$elementName>")
 		}
 	}
 	
@@ -322,7 +363,7 @@ object Xml {
 			if (type.getAnnotation(CompressionXml::class.java) != null) {
 				builder.append("\n")
 				builder.append(subIndentation)
-				arrayXmlCom(obj, elementName, builder)
+				iterableXmlCom(obj, elementName, builder)
 				return@forEach
 			}
 			
@@ -409,7 +450,7 @@ object Xml {
 			if (it.getAnnotation(CompressionXml::class.java) != null) {
 				builder.append("\n")
 				builder.append(subIndentation)
-				toXmlCom(value, eleName, builder)
+				toXmlCom(value, eleName, builder, it)
 				return@forEach
 			}
 			
@@ -419,7 +460,7 @@ object Xml {
 			}
 			
 			builder.append("\n")
-			toXml(value, eleName, builder, subIndentation, advanceIndentation)
+			toXml(value, eleName, builder, subIndentation, advanceIndentation, it)
 		}
 		
 		if (textField != null) run {
@@ -431,7 +472,14 @@ object Xml {
 			builder.append("\n$indentation</$elementName>")
 	}
 	
-	fun toXml(obj: Any, elementName: String, builder: StringBuilder, indentation: String, advanceIndentation: String) {
+	fun toXml(
+		obj: Any,
+		elementName: String,
+		builder: StringBuilder,
+		indentation: String,
+		advanceIndentation: String,
+		field: Field? = null
+	) {
 		try {
 			obj as Pair<*, *>
 			builder.append("$indentation<${obj.first}>${obj.second}</${obj.first}>")
@@ -442,12 +490,20 @@ object Xml {
 		val clazz = obj.javaClass
 		
 		if (clazz.getAnnotation(CompressionXml::class.java) != null) {
-			toXmlCom(obj, elementName, builder)
+			toXmlCom(obj, elementName, builder, field)
 			return
 		}
 		
 		if (clazz.isArray) {
-			arrayXml(obj, elementName, builder, indentation, advanceIndentation)
+			arrayXml(
+				obj as kotlin.Array<*>,
+				elementName,
+				builder,
+				indentation,
+				advanceIndentation,
+				"a",
+				field?.getAnnotation(MultipleField::class.java) != null
+			)
 			return
 		}
 		
@@ -472,24 +528,31 @@ object Xml {
 		return stringBuilder.toString()
 	}
 	
+	fun arrayXmlComOnce(value: Any, fieldName: String?, builder: StringBuilder) {
+		val type = value.javaClass
+		val subElementName = fieldName ?: type.elementName
+		if (type.isJustValue)
+			builder.append("<$subElementName>$value</$subElementName>")
+		else {
+			toXmlCom(value, subElementName, builder)
+		}
+	}
 	
-	fun arrayXmlCom(obj: Any, elementName: String, builder: StringBuilder, fieldName: String? = "i") {
+	fun arrayXmlCom(obj: kotlin.Array<*>, elementName: String, builder: StringBuilder, fieldName: String? = "i", multi: Boolean = false) {
 		val clazz = obj.javaClass
 		if (clazz.isArray) {
-			
-			builder.append("<$elementName>")
-			for (i in 0 until Array.getLength(obj)) {
-				val value = Array.get(obj, i) ?: continue
-				val type = value.javaClass
-				val subElementName = fieldName ?: type.elementName
-				if (type.isJustValue)
-					builder.append("<$subElementName>$value</$subElementName>")
-				else {
-					toXmlCom(value, elementName, builder)
+			if (multi) {
+				obj.forEach {
+					arrayXmlComOnce(it ?: return@forEach, elementName, builder)
 				}
+			} else {
+				builder.append("<$elementName>")
+				
+				obj.forEach {
+					arrayXmlComOnce(it ?: return@forEach, fieldName, builder)
+				}
+				builder.append("</$elementName>")
 			}
-			builder.append("</$elementName>")
-			
 			return
 		}
 	}
@@ -598,16 +661,21 @@ object Xml {
 				return@forEach
 			}
 			
-			toXmlCom(value, eleName, builder)
+			toXmlCom(value, eleName, builder, it)
 		}
 		
 		builder.append("</$elementName>")
 	}
 	
-	fun toXmlCom(obj: Any, elementName: String, builder: StringBuilder) {
+	fun toXmlCom(obj: Any, elementName: String, builder: StringBuilder, field: Field? = null) {
 		val clazz = obj.javaClass
 		if (clazz.isArray) {
-			arrayXmlCom(obj, elementName, builder)
+			arrayXmlCom(
+				obj as kotlin.Array<*>,
+				elementName, builder,
+				"a",
+				field?.getAnnotation(MultipleField::class.java) != null
+			)
 			return
 		}
 		
