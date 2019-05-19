@@ -23,7 +23,7 @@ annotation class Attribute
  * String
  */
 @Target(AnnotationTarget.FIELD)
-annotation class Data
+annotation class Text
 
 /**
  * 指定转换函数的名称
@@ -36,3 +36,27 @@ annotation class FieldName(val name: String)
 
 @Target(AnnotationTarget.CLASS)
 annotation class ElementName(val name: String)
+
+@Target(AnnotationTarget.CLASS, AnnotationTarget.FIELD)
+annotation class CompressionXml
+
+/**
+ * fun #getter(
+ *   obj: T,
+ *   elementName: String,
+ *   builder: StringBuilder,
+ *   indentation: String,
+ *   advanceIndentation: String
+ * )
+ *
+ * or
+ *
+ * fun #getter(
+ *   obj: T,
+ *   elementName: String,
+ *   builder: StringBuilder
+ * )
+ *
+ */
+@Target(AnnotationTarget.FIELD)
+annotation class ToXml(val getter: String)

@@ -103,7 +103,7 @@ class AioServerTest {
 									
 									// 删除缓冲区中的数据
 									byteBuffer.clear()
-									val message = "data come from server"
+									val message = "text come from server"
 									byteBuffer.put(message.toByteArray())
 									byteBuffer.flip()
 									
