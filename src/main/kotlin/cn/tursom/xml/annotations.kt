@@ -42,7 +42,7 @@ annotation class CompressionXml
 
 /**
  * fun #getter(
- *   obj: T,
+ *   obj: FieldType,
  *   elementName: String,
  *   builder: StringBuilder,
  *   indentation: String,
@@ -52,7 +52,7 @@ annotation class CompressionXml
  * or
  *
  * fun #getter(
- *   obj: T,
+ *   obj: FieldType,
  *   elementName: String,
  *   builder: StringBuilder
  * )

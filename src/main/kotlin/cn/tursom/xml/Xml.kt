@@ -253,7 +253,6 @@ object Xml {
 			else -> builder.append(">")
 		}
 		
-		
 		if (dataFieldList.isNotEmpty()) run {
 			val dataField = dataFieldList[0]
 			dataField.isAccessible = true
