@@ -30,12 +30,12 @@ annotation class SubElement
 
 /**
  * 指定转换函数的名称
- * fun setter(text: String): FieldType
- * or ( advance setter )
- * fun setter(element: Element): FieldType
+ * fun callback(text: String): FieldType
+ * or ( advance callback )
+ * fun callback(element: Element): FieldType
  */
 @Target(AnnotationTarget.FIELD)
-annotation class Setter(val setter: String)
+annotation class Setter(val callback: String)
 
 @Target(AnnotationTarget.FIELD)
 annotation class FieldName(val name: String)
@@ -47,7 +47,7 @@ annotation class ElementName(val name: String)
 annotation class CompressionXml
 
 /**
- * fun #getter(
+ * fun callback(
  *   obj: FieldType,
  *   elementName: String,
  *   builder: StringBuilder,
@@ -57,7 +57,7 @@ annotation class CompressionXml
  *
  * or
  *
- * fun #getter(
+ * fun callback(
  *   obj: FieldType,
  *   elementName: String,
  *   builder: StringBuilder
@@ -65,7 +65,7 @@ annotation class CompressionXml
  *
  * simplify:
  *
- * fun #getter(
+ * fun callback(
  *   obj: FieldType,
  *   elementName: String,
  *   indentation: String,
@@ -74,10 +74,10 @@ annotation class CompressionXml
  *
  * or
  *
- * fun #getter(
+ * fun callback(
  *   obj: FieldType,
  *   elementName: String
  * ): Any
  */
 @Target(AnnotationTarget.FIELD)
-annotation class ToXml(val getter: String)
+annotation class ToXml(val callback: String)

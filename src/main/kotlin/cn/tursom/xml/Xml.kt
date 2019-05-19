@@ -99,7 +99,7 @@ object Xml {
 			val setter = field.getAnnotation(Setter::class.java)
 			val value = if (setter != null) {
 				val advanceSetMethod = try {
-					clazz.getDeclaredMethod(setter.setter, Element::class.java)
+					clazz.getDeclaredMethod(setter.callback, Element::class.java)
 				} catch (e: NoSuchMethodException) {
 					null
 				}
@@ -107,7 +107,7 @@ object Xml {
 					advanceSetMethod.isAccessible = true
 					advanceSetMethod.invoke(instance, root.element(fieldName) ?: return@forEach)
 				} else {
-					val setMethod = clazz.getDeclaredMethod(setter.setter, String::class.java)
+					val setMethod = clazz.getDeclaredMethod(setter.callback, String::class.java)
 					setMethod.isAccessible = true
 					setMethod.invoke(instance, getData(root, fieldName, target) ?: return@forEach)
 				}
@@ -175,7 +175,7 @@ object Xml {
 		getAnnotation(ToXml::class.java)?.let { getter ->
 			val method = try {
 				clazz.getDeclaredMethod(
-					getter.getter,
+					getter.callback,
 					type,
 					String::class.java,
 					String::class.java,
@@ -193,7 +193,7 @@ object Xml {
 			}
 			val method2 = try {
 				clazz.getDeclaredMethod(
-					getter.getter,
+					getter.callback,
 					type,
 					String::class.java,
 					StringBuilder::class.java,
@@ -212,7 +212,7 @@ object Xml {
 			}
 			val method3 = try {
 				clazz.getDeclaredMethod(
-					getter.getter,
+					getter.callback,
 					type,
 					String::class.java
 				)
@@ -227,7 +227,7 @@ object Xml {
 			}
 			val method4 = try {
 				clazz.getDeclaredMethod(
-					getter.getter,
+					getter.callback,
 					type,
 					String::class.java,
 					StringBuilder::class.java
@@ -565,7 +565,7 @@ object Xml {
 			it.getAnnotation(ToXml::class.java)?.let { getter ->
 				val method3 = try {
 					clazz.getDeclaredMethod(
-						getter.getter,
+						getter.callback,
 						it.type,
 						String::class.java
 					)
@@ -580,7 +580,7 @@ object Xml {
 				
 				val method = try {
 					clazz.getDeclaredMethod(
-						getter.getter,
+						getter.callback,
 						it.type,
 						String::class.java,
 						StringBuilder::class.java
