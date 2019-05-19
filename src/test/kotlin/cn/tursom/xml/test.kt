@@ -2,6 +2,7 @@ package cn.tursom.xml
 
 import cn.tursom.tools.fromJson
 import com.google.gson.Gson
+import java.util.concurrent.TimeUnit
 
 
 @Suppress("unused")
@@ -11,6 +12,7 @@ data class Root(
 	@Attribute val encodePort: Int,
 	@Attribute val decodePort: Int,
 	@Attribute @FieldName("hi") val subElement: String,
+	@FieldName("char") val enumTest: TimeUnit,
 	@CompressionXml @Setter("element") @ToXml("toXml") val map: HashMap<String, String>
 ) {
 	fun element(text: String) = Gson().fromJson<HashMap<String, String>>(text)
@@ -31,6 +33,7 @@ fun main() {
     <encodePort>123</encodePort>
     <decodePort>456</decodePort>
     <hi>还行</hi>
+		<char>MILLISECONDS</char>
     <map>{"a":"1","b":"2"}</map>
 </root>
 	""")

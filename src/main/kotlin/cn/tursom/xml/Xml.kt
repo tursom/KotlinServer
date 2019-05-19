@@ -51,7 +51,7 @@ object Xml {
 		get() = getAnnotation(ElementName::class.java)?.name ?: if (isArray) componentType.name else name
 	
 	private val Class<*>.textField
-		get() = declaredFields.filter {
+		get() = declaredFields.find {
 			it.target ?: defaultTarget == ElementTarget.ElementText
 		}
 	
@@ -62,9 +62,11 @@ object Xml {
 	
 	private val Class<*>.subElementField
 		get() = declaredFields.filter {
-			!parseSet.contains(it.type) ||
-				it.target ?: defaultTarget == ElementTarget.SubElement
+			it.target ?: defaultTarget == ElementTarget.SubElement
 		}
+	
+	private val Class<*>.isJustValue
+		get() = parseSet.contains(this) || isEnum
 	
 	private val Field.elementName: String
 		get() = getAnnotation(FieldName::class.java)?.name ?: name
@@ -110,28 +112,38 @@ object Xml {
 					setMethod.invoke(instance, getData(root, fieldName, target) ?: return@forEach)
 				}
 			} else {
+				val value = getData(root, fieldName, target)
 				when (field.type) {
-					Byte::class.java -> getData(root, fieldName, target)?.toByteOrNull()
-					Short::class.java -> getData(root, fieldName, target)?.toShortOrNull()
-					Int::class.java -> getData(root, fieldName, target)?.toIntOrNull()
-					Long::class.java -> getData(root, fieldName, target)?.toLongOrNull()
-					Float::class.java -> getData(root, fieldName, target)?.toFloatOrNull()
-					Double::class.java -> getData(root, fieldName, target)?.toDoubleOrNull()
-					Boolean::class.java -> getData(root, fieldName, target)?.toBoolean()
-					Char::class.java -> getData(root, fieldName, target)?.toIntOrNull()?.toChar()
-					String::class.java -> getData(root, fieldName, target)
+					Byte::class.java -> value?.toByteOrNull()
+					Short::class.java -> value?.toShortOrNull()
+					Int::class.java -> value?.toIntOrNull()
+					Long::class.java -> value?.toLongOrNull()
+					Float::class.java -> value?.toFloatOrNull()
+					Double::class.java -> value?.toDoubleOrNull()
+					Boolean::class.java -> value?.toBoolean()
+					Char::class.java -> value?.toIntOrNull()?.toChar()
+					String::class.java -> value ?: return@forEach
 					
-					java.lang.Byte::class.java -> getData(root, fieldName, target)?.toByteOrNull()
-					java.lang.Short::class.java -> getData(root, fieldName, target)?.toShortOrNull()
-					Integer::class.java -> getData(root, fieldName, target)?.toIntOrNull()
-					java.lang.Long::class.java -> getData(root, fieldName, target)?.toLongOrNull()
-					java.lang.Float::class.java -> getData(root, fieldName, target)?.toFloatOrNull()
-					java.lang.Double::class.java -> getData(root, fieldName, target)?.toDoubleOrNull()
-					java.lang.Boolean::class.java -> getData(root, fieldName, target)?.toBoolean()
-					java.lang.Character::class.java -> getData(root, fieldName, target)?.toIntOrNull()?.toChar()
-					java.lang.String::class.java -> getData(root, fieldName, target)
+					java.lang.Byte::class.java -> value?.toByteOrNull()
+					java.lang.Short::class.java -> value?.toShortOrNull()
+					Integer::class.java -> value?.toIntOrNull()
+					java.lang.Long::class.java -> value?.toLongOrNull()
+					java.lang.Float::class.java -> value?.toFloatOrNull()
+					java.lang.Double::class.java -> value?.toDoubleOrNull()
+					java.lang.Boolean::class.java -> value?.toBoolean()
+					java.lang.Character::class.java -> value?.toIntOrNull()?.toChar()
+					java.lang.String::class.java -> value ?: return@forEach
 					
-					else -> parse(field.type, root.element(fieldName) ?: return@forEach)
+					else -> if (field.type.isEnum) {
+						val valueOf = field.type.getDeclaredMethod("valueOf", String::class.java)
+						try {
+							valueOf.invoke(null, value ?: return@forEach)
+						} catch (e: Exception) {
+							null
+						}
+					} else {
+						parse(field.type, root.element(fieldName) ?: return@forEach)
+					}
 				}
 			} ?: return@forEach
 			field.set(instance, value)
@@ -271,7 +283,7 @@ object Xml {
 					return@forEach
 				}
 				
-				if (parseSet.contains(value.javaClass))
+				if ((value.javaClass.isJustValue))
 					builder.append("\n$subIndentation<$subElementName>$value</$subElementName>")
 				else {
 					builder.append("\n")
@@ -315,7 +327,7 @@ object Xml {
 			}
 			
 			val subElementName = fieldName ?: type.elementName
-			if (parseSet.contains(type))
+			if (type.isJustValue)
 				builder.append("\n$subIndentation<$subElementName>$it</$subElementName>")
 			else {
 				builder.append("\n")
@@ -354,7 +366,7 @@ object Xml {
 				return@forEach
 			}
 			
-			if (parseSet.contains(type))
+			if (type.isJustValue)
 				builder.append("\n$subIndentation<$k>$v</$k>")
 			else {
 				builder.append("\n")
@@ -366,7 +378,7 @@ object Xml {
 	
 	fun normalXml(obj: Any, elementName: String, builder: StringBuilder, indentation: String, advanceIndentation: String) {
 		val clazz = obj.javaClass
-		val dataFieldList = clazz.textField
+		val textField = clazz.textField
 		val attributeField = clazz.attributeField
 		val subElement = clazz.subElementField
 		val subIndentation = "$advanceIndentation$indentation"
@@ -379,7 +391,7 @@ object Xml {
 		}
 		
 		when {
-			dataFieldList.isEmpty() && subElement.isEmpty() -> {
+			textField != null && subElement.isEmpty() -> {
 				builder.append(if (attributeField.isEmpty()) " />\n" else "\n$indentation/>")
 				return
 			}
@@ -401,7 +413,7 @@ object Xml {
 				return@forEach
 			}
 			
-			if (parseSet.contains(it.type)) {
+			if (it.type.isJustValue) {
 				builder.append("\n$subIndentation<$eleName>$value</$eleName>")
 				return@forEach
 			}
@@ -410,10 +422,9 @@ object Xml {
 			toXml(value, eleName, builder, subIndentation, advanceIndentation)
 		}
 		
-		if (dataFieldList.isNotEmpty()) run {
-			val dataField = dataFieldList[0]
-			dataField.isAccessible = true
-			val value = dataField.get(obj) ?: return@run
+		if (textField != null) run {
+			textField.isAccessible = true
+			val value = textField.get(obj) ?: return@run
 			builder.append(value)
 			builder.append("</$elementName>\n")
 		} else
@@ -471,7 +482,7 @@ object Xml {
 				val value = Array.get(obj, i) ?: continue
 				val type = value.javaClass
 				val subElementName = fieldName ?: type.elementName
-				if (parseSet.contains(type))
+				if (type.isJustValue)
 					builder.append("<$subElementName>$value</$subElementName>")
 				else {
 					toXmlCom(value, elementName, builder)
@@ -488,7 +499,7 @@ object Xml {
 		obj.forEach {
 			val type = (it ?: return@forEach).javaClass
 			val subElementName = fieldName ?: type.elementName
-			if (parseSet.contains(type))
+			if (type.isJustValue)
 				builder.append("<$subElementName>$it</$subElementName>")
 			else {
 				toXmlCom(it, subElementName, builder)
@@ -501,7 +512,7 @@ object Xml {
 		builder.append("<$elementName>")
 		obj.forEach { (k, v) ->
 			val type = (v ?: return@forEach).javaClass
-			if (parseSet.contains(type))
+			if (type.isJustValue)
 				builder.append("<$k>$v</$k>")
 			else {
 				toXmlCom(v, (k ?: return@forEach).toString(), builder)
@@ -519,7 +530,7 @@ object Xml {
 		}
 		
 		val clazz = obj.javaClass
-		val dataFieldList = clazz.textField
+		val textField = clazz.textField
 		val attributeField = clazz.attributeField
 		val subElement = clazz.subElementField
 		
@@ -530,7 +541,7 @@ object Xml {
 		}
 		
 		when {
-			dataFieldList.isEmpty() && subElement.isEmpty() -> {
+			textField != null && subElement.isEmpty() -> {
 				builder.append(" />")
 				return
 			}
@@ -538,10 +549,9 @@ object Xml {
 		}
 		
 		
-		if (dataFieldList.isNotEmpty()) {
-			val dataField = dataFieldList[0]
-			dataField.isAccessible = true
-			val value = dataField.get(obj)
+		if (textField != null) {
+			textField.isAccessible = true
+			val value = textField.get(obj)
 			if (value != null) {
 				builder.append(value)
 			}
@@ -583,7 +593,7 @@ object Xml {
 				return@forEach
 			}
 			
-			if (parseSet.contains(it.type)) {
+			if (it.type.isJustValue) {
 				builder.append("<$eleName>$value</$eleName>")
 				return@forEach
 			}
