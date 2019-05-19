@@ -1,7 +1,7 @@
 package cn.tursom.xml
 
 enum class ElementTarget {
-	Attribute, Data
+	Attribute, ElementText, SubElement
 }
 
 @Target(AnnotationTarget.CLASS)
@@ -23,10 +23,16 @@ annotation class Attribute
  * String
  */
 @Target(AnnotationTarget.FIELD)
-annotation class Text
+annotation class ElementText
+
+@Target(AnnotationTarget.FIELD)
+annotation class SubElement
 
 /**
  * 指定转换函数的名称
+ * fun setter(text: String): FieldType
+ * or ( advance setter )
+ * fun setter(element: Element): FieldType
  */
 @Target(AnnotationTarget.FIELD)
 annotation class Setter(val setter: String)
@@ -57,6 +63,21 @@ annotation class CompressionXml
  *   builder: StringBuilder
  * )
  *
+ * simplify:
+ *
+ * fun #getter(
+ *   obj: FieldType,
+ *   elementName: String,
+ *   indentation: String,
+ *   advanceIndentation: String
+ * ): Any
+ *
+ * or
+ *
+ * fun #getter(
+ *   obj: FieldType,
+ *   elementName: String
+ * ): Any
  */
 @Target(AnnotationTarget.FIELD)
 annotation class ToXml(val getter: String)

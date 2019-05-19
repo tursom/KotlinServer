@@ -1,9 +1,10 @@
 package cn.tursom.socket.server
 
 import cn.tursom.socket.BaseSocket
-import cn.tursom.socket.utils.parseXmlAttribute
 import cn.tursom.tools.getTAG
-import org.dom4j.io.SAXReader
+import cn.tursom.xml.DefaultTarget
+import cn.tursom.xml.ElementTarget
+import cn.tursom.xml.Xml
 import java.io.File
 import java.io.IOException
 import java.net.ServerSocket
@@ -81,12 +82,19 @@ open class ThreadPoolSocketServer : SocketServer {
 		configPath: String,
 		handler: BaseSocket.() -> Unit
 	) : super(handler) {
-		val configData = ServerConfigData()
+		val configFile = File(configPath)
+		if (!configFile.exists()) {
+			configFile.outputStream().write(Xml.toXml(ServerConfigData()).toByteArray())
+		}
+		val configData = Xml.parse(ServerConfigData::class.java, File(configPath))
 		
-		val rootElement = SAXReader().read(File(configPath)).rootElement
-		parseXmlAttribute(configData, rootElement)
-		
-		pool = ThreadPoolExecutor(configData.threads, configData.threads, configData.timeout, TimeUnit.MILLISECONDS, LinkedBlockingQueue(configData.queueSize))
+		pool = ThreadPoolExecutor(
+			configData.threads,
+			configData.threads,
+			configData.timeout,
+			TimeUnit.MILLISECONDS,
+			LinkedBlockingQueue(configData.queueSize)
+		)
 		serverSocket = ServerSocket(configData.port)
 		if (configData.startImmediately) {
 			start()
@@ -182,11 +190,14 @@ open class ThreadPoolSocketServer : SocketServer {
 	open val poolIsFull
 		get() = Companion.poolIsFull
 	
+	@DefaultTarget(ElementTarget.Attribute)
 	private data class ServerConfigData(
-		val port: Int = 0, val threads: Int = 1,
+		val port: Int = 0,
+		val threads: Int = 1,
 		val queueSize: Int = 1,
 		val timeout: Long = 0L,
-		val startImmediately: Boolean = false)
+		val startImmediately: Boolean = false
+	)
 	
 	companion object {
 		val TAG = getTAG(this::class.java)

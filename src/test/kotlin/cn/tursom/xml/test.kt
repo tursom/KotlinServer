@@ -1,63 +1,43 @@
 package cn.tursom.xml
 
+import cn.tursom.tools.fromJson
 import com.google.gson.Gson
-import org.dom4j.Element
 
-
-@DefaultTarget(ElementTarget.Attribute)
-data class SubElement(
-	@Text val text: String
-)
 
 @Suppress("unused")
-@DefaultTarget(ElementTarget.Attribute)
+@DefaultTarget(ElementTarget.SubElement)
 @ElementName("root")
 data class Root(
-	@Text val text: String,
-	val encodePort: Int,
-	val decodePort: Int,
-	@FieldName("hi") val subElement: SubElement,
+	@Attribute val encodePort: Int,
+	@Attribute val decodePort: Int,
+	@Attribute @FieldName("hi") val subElement: String,
 	@CompressionXml @Setter("element") @ToXml("toXml") val map: HashMap<String, String>
 ) {
-	fun element(element: Element): HashMap<String, String> {
-		val map = HashMap<String, String>()
-		element.elements().forEach {
-			val ele = it as Element
-			map[ele.name] = ele.text
-		}
-		return map
-	}
-	
+	fun element(text: String) = Gson().fromJson<HashMap<String, String>>(text)
 	fun toXml(
 		obj: HashMap<String, String>,
-		elementName: String,
-		builder: StringBuilder,
-		indentation: String,
-		@Suppress("UNUSED_PARAMETER") advanceIndentation: String
-	) {
-		builder.append("$indentation<$elementName>${Gson().toJson(obj)}</$elementName>\n")
-	}
-	
-	fun toXml(
-		obj: HashMap<String, String>,
-		elementName: String,
-		builder: StringBuilder
-	) {
-		builder.append("<$elementName>${Gson().toJson(obj)}</$elementName>")
-	}
+		elementName: String
+	) = "<$elementName>${Gson().toJson(obj)}</$elementName>"
 }
 
 @ElementName("date")
 data class Date(
-	@Text val time: Long = System.currentTimeMillis()
+	@ElementText val time: Long = System.currentTimeMillis()
 )
 
 fun main() {
 	val xml = Xml.parse(Root::class.java, """
-		<root encodePort="1" decodePort="456">hi<hi>还行</hi> <map><a>1</a><b>2</b></map>2</root>
+		<root encodePort="123" decodePort="456" hi="还行">
+    <encodePort>123</encodePort>
+    <decodePort>456</decodePort>
+    <hi>还行</hi>
+    <map>{"a":"1","b":"2"}</map>
+</root>
 	""")
 	println(xml)
 	println(Xml.toXml(xml))
 	println(Xml.toXmlCom(xml))
-//	println(Xml.toXml(mapOf(123 to 456, 1 to 2, 454345 to 12, "abc" to 4), rootName = "map", indentation = "\t"))
+	println(Xml.toXmlCom(arrayOf(1, 2, 3, 4, "海星"), "array"))
+	println(Xml.toXml(listOf(9 to 2, 666 to 777, 9 to 3, 4, "海星"), "array"))
+	println(Xml.toXml(mapOf(123 to 456, 1 to 2, 454345 to 12, "abc" to "海星"), rootName = "map", indentation = "\t"))
 }
