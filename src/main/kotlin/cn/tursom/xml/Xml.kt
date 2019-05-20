@@ -80,43 +80,45 @@ object Xml {
 		}
 	
 	private fun Class<*>.parse(value: String?, element: Element, fieldName: String? = null): Any? {
-		return when (this) {
-			Byte::class.java -> value?.toByteOrNull()
-			Short::class.java -> value?.toShortOrNull()
-			Int::class.java -> value?.toIntOrNull()
-			Long::class.java -> value?.toLongOrNull()
-			Float::class.java -> value?.toFloatOrNull()
-			Double::class.java -> value?.toDoubleOrNull()
-			Boolean::class.java -> value?.toBoolean()
-			Char::class.java -> value?.toIntOrNull()?.toChar()
-			String::class.java -> value
-			
-			java.lang.Byte::class.java -> value?.toByteOrNull()
-			java.lang.Short::class.java -> value?.toShortOrNull()
-			Integer::class.java -> value?.toIntOrNull()
-			java.lang.Long::class.java -> value?.toLongOrNull()
-			java.lang.Float::class.java -> value?.toFloatOrNull()
-			java.lang.Double::class.java -> value?.toDoubleOrNull()
-			java.lang.Boolean::class.java -> value?.toBoolean()
-			java.lang.Character::class.java -> value?.toIntOrNull()?.toChar()
-			java.lang.String::class.java -> value
-			
-			else -> if (isEnum) {
+		return when {
+			parseSet.contains(this) -> when (this) {
+				Byte::class.java -> value?.toByteOrNull()
+				Short::class.java -> value?.toShortOrNull()
+				Int::class.java -> value?.toIntOrNull()
+				Long::class.java -> value?.toLongOrNull()
+				Float::class.java -> value?.toFloatOrNull()
+				Double::class.java -> value?.toDoubleOrNull()
+				Boolean::class.java -> value?.toBoolean()
+				Char::class.java -> value?.toIntOrNull()?.toChar()
+				String::class.java -> value
+				
+				java.lang.Byte::class.java -> value?.toByteOrNull()
+				java.lang.Short::class.java -> value?.toShortOrNull()
+				Integer::class.java -> value?.toIntOrNull()
+				java.lang.Long::class.java -> value?.toLongOrNull()
+				java.lang.Float::class.java -> value?.toFloatOrNull()
+				java.lang.Double::class.java -> value?.toDoubleOrNull()
+				java.lang.Boolean::class.java -> value?.toBoolean()
+				java.lang.Character::class.java -> value?.toIntOrNull()?.toChar()
+				java.lang.String::class.java -> value
+				
+				else -> null
+			}
+			isEnum -> {
 				val valueOf = getDeclaredMethod("valueOf", String::class.java)
 				try {
 					valueOf.invoke(null, value ?: return null)
 				} catch (e: Exception) {
 					null
 				}
-			} else {
-				parse(this, if (fieldName != null) element.element(fieldName) ?: return null else element)
 			}
+			else -> parse(this, if (fieldName != null) element.element(fieldName) ?: return null else element)
 		}
 	}
 	
 	private fun Field.parse(target: ElementTarget, element: Element, fieldName: String): Any? {
 		return if (type.isArray) {
-			val list = if (getAnnotation(MultipleField::class.java) != null) {
+			val list = if (getAnnotation(Vararg::class.java) != null) {
 				element.elements(fieldName)
 			} else {
 				element.element(fieldName).elements()
@@ -433,7 +435,7 @@ object Xml {
 		
 		when {
 			textField != null && subElement.isEmpty() -> {
-				builder.append(if (attributeField.isEmpty()) " />\n" else "\n$indentation/>")
+				builder.append(if (attributeField.isEmpty()) "/>" else "\n$indentation/>")
 				return
 			}
 			else -> builder.append(">")
@@ -467,7 +469,7 @@ object Xml {
 			textField.isAccessible = true
 			val value = textField.get(obj) ?: return@run
 			builder.append(value)
-			builder.append("</$elementName>\n")
+			builder.append("</$elementName>")
 		} else
 			builder.append("\n$indentation</$elementName>")
 	}
@@ -502,7 +504,7 @@ object Xml {
 				indentation,
 				advanceIndentation,
 				"a",
-				field?.getAnnotation(MultipleField::class.java) != null
+				field?.getAnnotation(Vararg::class.java) != null
 			)
 			return
 		}
@@ -674,7 +676,7 @@ object Xml {
 				obj as kotlin.Array<*>,
 				elementName, builder,
 				"a",
-				field?.getAnnotation(MultipleField::class.java) != null
+				field?.getAnnotation(Vararg::class.java) != null
 			)
 			return
 		}

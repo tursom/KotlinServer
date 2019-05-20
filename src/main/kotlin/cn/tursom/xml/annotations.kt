@@ -86,4 +86,4 @@ annotation class ToXml(val callback: String)
  * 数组所有的元素都同名，在同一个父节点下
  */
 @Target(AnnotationTarget.FIELD)
-annotation class MultipleField
+annotation class Vararg
