@@ -1,181 +1,301 @@
 package cn.tursom.web.router
 
-interface Router<T> {
-	val route: String
-	var value: T?
-	val wildSubRouter: Router<T>?
-	val placeholderRouter: List<PlaceholderRouter<T>>
-	val subRouterMap: Map<String, Router<T>>
+import java.lang.Exception
+
+fun <T> List<T>.binarySearch(comparison: (T) -> Int): T? {
+	val index = binarySearch(0, size, comparison)
+	return if (index < 0) null
+	else get(index)
+}
+
+class Router<T> {
+	val rootNode = RouteNode<T>("", null)
 	
-	fun addSubRoute(router: Router<T>)
-	fun delRouter(route: String)
-	fun match(route: String): Boolean
-	fun getSubRouter(route: String): Router<T>?
-}
-
-operator fun <T> Router<T>.set(fullRoute: String, value: T) = addRoute(fullRoute, value)
-operator fun <T> Router<T>.get(fullRoute: String) = findRouter(fullRoute)
-
-fun <T> Router<T>.findRouter(
-	fullRoute: String,
-	forEachRouter: ((route: String, router: Router<T>) -> Unit)? = null
-) = findRouter(fullRoute.split('/').drop(0), forEachRouter)
-
-fun <T> Router<T>.findRouter(
-	fullRoute: List<String>,
-	forEachRouter: ((route: String, router: Router<T>) -> Unit)? = null
-): Router<T>? {
-	var router = this
-	var index = -1
-	while (++index < fullRoute.size) {
-		val r = fullRoute[index]
-		router = when {
-			r.isEmpty() -> router
-			r[0] == ':' -> {
-				var subRouter: Router<T> = router.placeholderRouter.find {
-					it.length == fullRoute.matchLength(index)
-				} ?: return null
-				while (subRouter is PlaceholderRouter) {
-					forEachRouter?.invoke(r, subRouter)
-					
+	fun addSubRoute(route: String, value: T) {
+		val routeList = route.split('/').drop(0)
+		var routeNode = rootNode
+		var index = 0
+		while (index < routeList.size) {
+			val r = routeList[index]
+			routeNode = when {
+				r.isEmpty() -> routeNode
+				
+				r == "*" -> routeNode.wildSubRouter ?: {
+					val node = AnyRouteNode<T>()
+					routeNode.wildSubRouter = node
+					node
+				}()
+				
+				r[0] == ':' -> synchronized(routeNode.placeholderRouterList!!) {
+					val matchLength = PlaceholderRouteNode.matchLength(routeList, index)
+					routeNode.placeholderRouterList!!.binarySearch { it.routeList.size - matchLength } ?: {
+						index += routeNode.addNode(routeList, index) - 1
+						routeNode.placeholderRouterList!!.binarySearch { it.routeList.size - matchLength }!!
+					}()
 				}
-				subRouter
-			}
-			else -> router.getSubRouter(r)
-		} ?: return null
-		forEachRouter?.invoke(r, router)
-	}
-	return router
-}
-
-fun List<String>.matchLength(startIndex: Int = 0): Int {
-	var endIndex = startIndex
-	var length = 1
-	while (++endIndex < size && this[endIndex][0] == ':') length++
-	return length
-}
-
-fun <T> buildPlaceholderRouter(routeList: List<String>, index: Int): PlaceholderRouter<T>? {
-	var endIndex = index
-	while (++endIndex < routeList.size && routeList[endIndex][0] == ':');
-	var rootRouter: PlaceholderRouter<T>? = null
-	var router: PlaceholderRouter<T>
-	while (endIndex-- > index) {
-		router = PlaceholderRouter(routeList[endIndex].substring(1))
-		rootRouter?.addSubRoute(router)
-		rootRouter = router
-	}
-	return rootRouter
-}
-
-fun <T> Router<T>.addRoute(fullRoute: String, value: T?) {
-	val routeList = fullRoute.split('/').drop(0)
-	var router: Router<T> = this
-	var index = 0
-	while (index < routeList.size) {
-		val r = routeList[index]
-		val subRouter = router.getSubRouter(r)
-		router = when (subRouter) {
-			null -> run {
-				val newRouter = when {
-					r == "*" -> AnyRouter<T>(null)
-					r[0] == ':' -> buildPlaceholderRouter(routeList, index)!!
-					else -> DefaultRouter<T>(r, null)
+				
+				else -> synchronized(routeNode.subRouterMap) {
+					routeNode.subRouterMap[r] ?: {
+						val node = RouteNode<T>(r)
+						routeNode.subRouterMap[r] = node
+						node
+					}()
 				}
-				router.addSubRoute(newRouter)
-				newRouter
 			}
-			is PlaceholderRouter -> {
-				router.placeholderRouter.forEach {
-					// TODO
-					if (routeList.matchLength(index) == it.length) throw Exception()
-				}
-				val newRouter = buildPlaceholderRouter<T>(routeList, index)!!
-				router.addSubRoute(newRouter)
-				newRouter
-			}
-			else -> subRouter
+			index++
 		}
-		index++
+		routeNode.value = value
 	}
-	router.value = value
+	
+	fun delRoute(route: String) {
+		val routeList = route.split('/').drop(0)
+		var index = 0
+		var routeNode = rootNode
+		while (index < routeList.size) {
+			if (routeList[index].isEmpty()) {
+				index++
+				continue
+			}
+			val (node, size) = routeNode[routeList, index]
+			node ?: return
+			if (index + size >= routeList.size) {
+				routeNode.deleteNode(routeList, index)
+				break
+			}
+			routeNode = node
+		}
+	}
+	
+	operator fun set(route: String, value: T) = addSubRoute(route, value)
+	operator fun get(route: String): Pair<RouteNode<T>?, ArrayList<RouteNode<T>>> {
+		val list = ArrayList<RouteNode<T>>()
+		val router = rootNode.getRoute(route.split('/'), routeList = list)
+		return router to list
+	}
 }
 
-open class DefaultRouter<T>(
-	override val route: String = "",
-	override var value: T? = null
-) : Router<T> {
-	override val subRouterMap = HashMap<String, Router<T>>(1)
-	override var wildSubRouter: AnyRouter<T>? = null
-	override val placeholderRouter: ArrayList<PlaceholderRouter<T>> = ArrayList(1)
+open class RouteNode<T>(
+	val route: String,
+	var value: T? = null
+) {
+	var wildSubRouter: AnyRouteNode<T>? = null
+	open val placeholderRouterList: ArrayList<PlaceholderRouteNode<T>>? = ArrayList(0)
+	val subRouterMap = HashMap<String, RouteNode<T>>(0)
 	
-	override fun addSubRoute(router: Router<T>) {
-		when (router) {
-			is AnyRouter -> {
-				wildSubRouter = router
+	open fun match(
+		route: List<String>,
+		startIndex: Int = 0
+	): Pair<Boolean, Int> =
+		(startIndex < route.size && route[0] == this.route) to 1
+	
+	fun addNode(route: List<String>, startIndex: Int, value: T? = null): Int {
+		val r = route[startIndex]
+		return when {
+			r.isEmpty() -> return addNode(route, startIndex + 1)
+			r == "*" -> {
+				wildSubRouter = AnyRouteNode(value)
+				1
 			}
-			is PlaceholderRouter -> synchronized(placeholderRouter) {
-				if (placeholderRouter.binarySearch { it.length - router.length } > 0)
-					throw Exception("route exist")
-				placeholderRouter.add(router)
-				placeholderRouter.sortBy { it.length }
+			r[0] == ':' -> synchronized(placeholderRouterList!!) {
+				val node = PlaceholderRouteNode(route, startIndex, value = value)
+				// 必须保证 placeholderRouterList 存在，而且还不能有这个长度的节点
+				if (placeholderRouterList!!.binarySearch { it.routeList.size - node.routeList.size } != null) {
+					throw Exception()
+				}
+				placeholderRouterList?.add(node)
+				placeholderRouterList?.sortBy { it.routeList.size }
+				node.routeList.size
 			}
 			else -> synchronized(subRouterMap) {
-				val route = router.route
-				subRouterMap[route] = router
+				subRouterMap[r] = RouteNode(r, value)
+				1
 			}
 		}
 	}
 	
-	override fun delRouter(route: String) {
-		subRouterMap.remove(route)
-	}
-	
-	override fun match(route: String): Boolean {
-		return route == this.route
-	}
-	
-	override fun getSubRouter(route: String) =
+	fun deleteNode(route: List<String>, startIndex: Int = 0) {
+		val r = route[startIndex]
 		when {
-			route.isEmpty() -> this
-			route == "*" -> wildSubRouter
-			route[0] == ':' -> synchronized(placeholderRouter) { placeholderRouter.find { it.match(route) } }
-			else -> synchronized(subRouterMap) { subRouterMap[route] }
+			r.isEmpty() -> Unit
+			r == "*" -> {
+				wildSubRouter = null
+			}
+			r[0] == ':' -> synchronized(placeholderRouterList ?: return) {
+				val length = PlaceholderRouteNode.matchLength(route, startIndex)
+				placeholderRouterList?.removeIf { it.routeList.size == length }
+				placeholderRouterList?.sortBy { it.routeList.size }
+			}
+			else -> synchronized(subRouterMap) {
+				subRouterMap.remove(r)
+			}
 		}
+	}
+	
+	fun findPlaceholderRouter(route: List<String>, startIndex: Int = 0) = placeholderRouterList?.let { node ->
+		val length = PlaceholderRouteNode.matchLength(route, startIndex)
+		synchronized(node) { node.binarySearch { it.routeList.size - length } }
+	}
+	
+	operator fun get(route: List<String>, startIndex: Int = 0): Pair<RouteNode<T>?, Int> {
+		val r = route[startIndex]
+		if (r.isEmpty()) return this to 1
+		
+		val value = subRouterMap[r]
+		if (value != null) return value to 1
+		
+		val matchLength = route.size - startIndex
+		val exactRoute = placeholderRouterList?.let { list ->
+			list.binarySearch { matchLength - it.routeList.size }
+		}
+		if (exactRoute != null) return exactRoute to matchLength
+		
+		placeholderRouterList?.forEach {
+			val subRoute = it.getRoute(route, startIndex + it.routeList.size)
+			if (subRoute != null) return subRoute to route.size - startIndex
+		}
+		
+		return wildSubRouter to 1
+	}
+	
+	fun getRoute(route: List<String>, startIndex: Int = 0): RouteNode<T>? {
+		var index = startIndex
+		var routeNode = this
+		while (index < route.size) {
+			val (node, size) = routeNode[route, index]
+			routeNode = node ?: return null
+			index += size
+		}
+		return routeNode
+	}
+	
+	operator fun get(
+		route: List<String>,
+		startIndex: Int = 0,
+		routeList: ArrayList<RouteNode<T>>
+	): Pair<RouteNode<T>?, Int> {
+		val r = route[startIndex]
+		if (r.isEmpty()) {
+			return this to 1
+		}
+		
+		val value = subRouterMap[r]
+		if (value != null) {
+			routeList.add(value)
+			return value to 1
+		}
+		
+		val matchLength = route.size - startIndex
+		val exactRoute = placeholderRouterList?.let { list ->
+			list.binarySearch { matchLength - it.routeList.size }
+		}
+		if (exactRoute != null) {
+			routeList.add(exactRoute)
+			return exactRoute to matchLength
+		}
+		
+		val list = ArrayList<RouteNode<T>>()
+		placeholderRouterList?.forEach {
+			list.clear()
+			val subRoute = it.getRoute(route, startIndex + it.routeList.size, list)
+			if (subRoute != null) {
+				routeList.add(it)
+				list.forEach { routeList.add(it) }
+				return subRoute to route.size - startIndex
+			}
+		}
+		
+		return wildSubRouter to 1
+	}
+	
+	fun getRoute(
+		route: List<String>,
+		startIndex: Int = 0,
+		routeList: ArrayList<RouteNode<T>>
+	): RouteNode<T>? {
+		var index = startIndex
+		var routeNode = this
+		while (index < route.size) {
+			val (node, size) = routeNode[route, index, routeList]
+			routeNode = node ?: return null
+			index += size
+		}
+		return routeNode
+	}
+	
+	override fun toString() = "/$route"
+}
+
+class PlaceholderRouteNode<T>(
+	route: List<String>,
+	startIndex: Int = 0,
+	endIndex: Int = run {
+		var index = startIndex
+		while (++index < route.size && (route[index].isEmpty() || route[index][0] == ':'));
+		index
+	},
+	value: T? = null
+) : RouteNode<T>(route.str(startIndex, endIndex), value) {
+	override val placeholderRouterList: ArrayList<PlaceholderRouteNode<T>>?
+		get() = null
+	val routeList: List<String> = run {
+		val list = ArrayList<String>()
+		for (i in startIndex until endIndex) {
+			if (route[i].isNotEmpty()) list.add(route[i])
+		}
+		list
+	}
+	
+	override fun match(
+		route: List<String>,
+		startIndex: Int
+	): Pair<Boolean, Int> =
+		(routeList.size == route.matchLength(startIndex)) to routeList.size
+	
 	
 	override fun toString(): String {
-		return "DefaultRouter(route='$route', value=$value, subRouterMap=$subRouterMap, wildSubRouter=$wildSubRouter, placeholderRouter=$placeholderRouter)"
+		val stringBuilder = StringBuilder()
+		routeList.forEach {
+			stringBuilder.append("/$it")
+		}
+		return stringBuilder.toString()
 	}
-}
-
-class AnyRouter<T>(value: T? = null) : DefaultRouter<T>("*", value) {
-	override fun match(route: String) = true
-	override fun getSubRouter(route: String) = this
-	override fun toString() = "AnyRouter(value='$value')"
-	override fun addSubRoute(router: Router<T>) = Unit
-}
-
-class PlaceholderRouter<T>(
-	@Suppress("MemberVisibilityCanBePrivate") val matchRoute: String,
-	value: T? = null
-) : DefaultRouter<T>(":$matchRoute", value) {
-	private var routeSize: Int = 1
-	val length: Int
-		get() = routeSize
 	
-	override fun match(route: String) = true
-	override fun toString() = "PlaceholderRouter(route='$route', value='$value')"
-	override fun addSubRoute(router: Router<T>) {
-		super.addSubRoute(router)
-		if (router is PlaceholderRouter)
-			routeSize = router.routeSize + 1
+	companion object {
+		@JvmStatic
+		private fun List<String>.str(startIndex: Int, endIndex: Int): String {
+			val stringBuilder = StringBuilder()
+			for (i in startIndex until endIndex) {
+				if (this[i].isNotEmpty()) stringBuilder.append("/${this[i]}")
+			}
+			return stringBuilder.toString()
+		}
+		
+		@JvmStatic
+		private fun List<String>.matchLength(startIndex: Int, endIndex: Int = size): Int {
+			var length = 0
+			for (i in startIndex until endIndex) {
+				if (this[i].isEmpty()) continue
+				else if (this[i][0] != ':') return length
+				else length++
+			}
+			return length
+		}
+		
+		@JvmStatic
+		fun matchLength(route: List<String>, startIndex: Int): Int {
+			var length = 0
+			for (i in startIndex until route.size) {
+				if (route[i].isEmpty()) continue
+				else if (route[i][0] != ':') return length
+				else length++
+			}
+			return length
+		}
 	}
 }
 
-fun main() {
-	val router = DefaultRouter("", 1)
-	router["/:123"] = 2
-	router["/:456/:789"] = 3
-	router["/:456/:789"] = 3
-	println(router)
+class AnyRouteNode<T>(
+	value: T? = null
+) : RouteNode<T>("*", value) {
+	override fun match(route: List<String>, startIndex: Int) = true to 1
 }

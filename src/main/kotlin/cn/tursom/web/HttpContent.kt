@@ -20,8 +20,3 @@ interface HttpContent {
 
     fun finish()
 }
-
-fun HttpContent.setResponseCode(code: Int, message: String) {
-    responseCode = code
-    responseMessage = message
-}
