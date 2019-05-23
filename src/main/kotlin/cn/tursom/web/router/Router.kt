@@ -81,9 +81,11 @@ class Router<T> {
 			return
 		}
 		
-		val subIndentation = "$indentation|- "
-		
 		stringBuilder.append("$indentation$node\n")
+		
+		if (node is AnyRouteNode) return
+		
+		val subIndentation = "$indentation|- "
 		
 		node.subRouterMap.forEach { (_, u) ->
 			toString(u, stringBuilder, subIndentation)
@@ -91,7 +93,6 @@ class Router<T> {
 		node.placeholderRouterList?.forEach {
 			toString(it, stringBuilder, subIndentation)
 		}
-		
 		toString(node.wildSubRouter ?: return, stringBuilder, indentation)
 	}
 	
