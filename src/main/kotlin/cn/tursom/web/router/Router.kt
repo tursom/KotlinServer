@@ -216,7 +216,9 @@ open class RouteNode<T>(
 					if (subRoute != null) {
 						subRoute.routeList.forEachIndexed { index, s ->
 							if (s.isNotEmpty()) when {
-								s == "*" -> routeList.add(s to route[index])
+								s == "*" -> for (i in index until route.size) {
+									routeList.add("*" to route[i])
+								}
 								s[0] == ':' -> routeList.add(s.substring(1) to route[index])
 							}
 						}
@@ -335,5 +337,5 @@ fun main() {
 	println(router["/aaa/bbb"])
 	println(router["/aaa/abc"])
 	println(router["/aaa/abc/aa"])
-	println(router["/aaa/abc/an/8"])
+	println(router["/aaa/abc/an/8/9"])
 }
