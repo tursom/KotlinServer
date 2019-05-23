@@ -1,7 +1,5 @@
 package cn.tursom.web.router
 
-import java.lang.Exception
-
 fun <T> List<T>.binarySearch(comparison: (T) -> Int): T? {
 	val index = binarySearch(0, size, comparison)
 	return if (index < 0) null
@@ -25,6 +23,7 @@ class Router<T> {
 				r == "*" -> routeNode.wildSubRouter ?: {
 					val node = AnyRouteNode<T>(routeList, index)
 					routeNode.wildSubRouter = node
+					index = routeList.size - 1
 					node
 				}()
 				
@@ -152,18 +151,22 @@ open class RouteNode<T>(
 		val r = route[startIndex]
 		if (r.isEmpty()) return this to 1
 		
-		val value = subRouterMap[r]
+		val value = synchronized(subRouterMap) { subRouterMap[r] }
 		if (value != null) return value to 1
 		
 		val matchLength = route.size - startIndex
 		val exactRoute = placeholderRouterList?.let { list ->
-			list.binarySearch { matchLength - it.size }
+			synchronized(list) { list.binarySearch { matchLength - it.size } }
 		}
 		if (exactRoute != null) return exactRoute to matchLength
 		
-		placeholderRouterList?.forEach {
-			val subRoute = it.getRoute(route, startIndex + it.size)
-			if (subRoute != null) return subRoute to route.size - startIndex
+		placeholderRouterList?.let { list ->
+			synchronized(list) {
+				list.forEach {
+					val subRoute = it.getRoute(route, startIndex + it.size)
+					if (subRoute != null) return subRoute to route.size - startIndex
+				}
+			}
 		}
 		
 		return wildSubRouter to 1
@@ -190,13 +193,12 @@ open class RouteNode<T>(
 			return this to 1
 		}
 		
-		val value = subRouterMap[r]
+		val value = synchronized(subRouterMap) { subRouterMap[r] }
 		if (value != null) return value to 1
-		
 		
 		val matchLength = route.size - startIndex
 		val exactRoute = placeholderRouterList?.let { list ->
-			list.binarySearch { matchLength - it.size }
+			synchronized(list) { list.binarySearch { matchLength - it.size } }
 		}
 		if (exactRoute != null) {
 			exactRoute.routeList.forEachIndexed { index, s ->
@@ -206,25 +208,33 @@ open class RouteNode<T>(
 		}
 		
 		val list = ArrayList<Pair<String, String>>()
-		placeholderRouterList?.forEach {
-			list.clear()
-			val subRoute = it.getRoute(route, startIndex + it.size, list)
-			if (subRoute != null) {
-				subRoute.routeList.forEachIndexed { index, s ->
-					if (s.isNotEmpty() && s[0] == ':') routeList.add(s.substring(1) to route[index])
-				}
-				var listIndex = 0
-				var routeIndex = 0
-				while (listIndex < list.size && routeIndex <= index) {
-					val s = this.routeList[routeIndex++]
-					if (s.isNotEmpty() && s[0] == ':') {
-						routeList.add(s to list[listIndex++].second)
+		placeholderRouterList?.let { routerList ->
+			synchronized(routerList) {
+				routerList.forEach {
+					list.clear()
+					val subRoute = it.getRoute(route, startIndex + it.size, list)
+					if (subRoute != null) {
+						subRoute.routeList.forEachIndexed { index, s ->
+							if (s.isNotEmpty()) when {
+								s == "*" -> routeList.add(s to route[index])
+								s[0] == ':' -> routeList.add(s.substring(1) to route[index])
+							}
+						}
+						var listIndex = 0
+						var routeIndex = 0
+						while (listIndex < list.size && routeIndex <= index) {
+							val s = this.routeList[routeIndex++]
+							if (s.isNotEmpty() && s[0] == ':') {
+								routeList.add(s to list[listIndex++].second)
+							}
+						}
+						return subRoute to route.size - startIndex
 					}
 				}
-				return subRoute to route.size - startIndex
 			}
 		}
 		
+		routeList.add("*" to route[startIndex])
 		return wildSubRouter to 1
 	}
 	
@@ -240,7 +250,7 @@ open class RouteNode<T>(
 	): RouteNode<T>? {
 		var index = startIndex
 		var routeNode = this
-		while (index < route.size) {
+		while (routeNode !is AnyRouteNode && index < route.size) {
 			val (node, size) = routeNode[route, index, routeList]
 			routeNode = node ?: return null
 			index += size
@@ -320,11 +330,10 @@ fun main() {
 	router["/:abc/:deff"] = 5
 	router["/:abcd/abc"] = 6
 	router["/:abcd/abc/:ddd"] = 7
-	router["/:abcd/abc/:ddd", {
-		println("$it on destroy")
-	}] = 8
+	router["/:abcd/abc/:ddd/*"] = 8
 	println(router)
 	println(router["/aaa/bbb"])
 	println(router["/aaa/abc"])
 	println(router["/aaa/abc/aa"])
+	println(router["/aaa/abc/an/8"])
 }
