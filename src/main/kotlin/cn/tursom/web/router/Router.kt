@@ -8,35 +8,41 @@ fun <T> List<T>.binarySearch(comparison: (T) -> Int): T? {
 	else get(index)
 }
 
+@Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
 class Router<T> {
-	val rootNode = RouteNode<T>("", null)
+	val rootNode = RouteNode<T>(listOf(""), 0)
 	
-	fun addSubRoute(route: String, value: T) {
+	fun addSubRoute(route: String, value: T?, onDestroy: ((oldValue: T) -> Unit)? = null) {
 		val routeList = route.split('/').drop(0)
 		var routeNode = rootNode
+		var r: String
 		var index = 0
 		while (index < routeList.size) {
-			val r = routeList[index]
+			r = routeList[index]
 			routeNode = when {
 				r.isEmpty() -> routeNode
 				
 				r == "*" -> routeNode.wildSubRouter ?: {
-					val node = AnyRouteNode<T>()
+					val node = AnyRouteNode<T>(routeList, index)
 					routeNode.wildSubRouter = node
 					node
 				}()
 				
-				r[0] == ':' -> synchronized(routeNode.placeholderRouterList!!) {
-					val matchLength = PlaceholderRouteNode.matchLength(routeList, index)
-					routeNode.placeholderRouterList!!.binarySearch { it.routeList.size - matchLength } ?: {
-						index += routeNode.addNode(routeList, index) - 1
-						routeNode.placeholderRouterList!!.binarySearch { it.routeList.size - matchLength }!!
-					}()
+				r[0] == ':' -> run {
+					val node = synchronized(routeNode.placeholderRouterList!!) {
+						val matchLength = PlaceholderRouteNode.matchLength(routeList, index)
+						routeNode.placeholderRouterList!!.binarySearch { it.size - matchLength } ?: {
+							routeNode.addNode(routeList, index, null)
+							routeNode.placeholderRouterList!!.binarySearch { it.size - matchLength }!!
+						}()
+					}
+					index += node.size - 1
+					node
 				}
 				
 				else -> synchronized(routeNode.subRouterMap) {
 					routeNode.subRouterMap[r] ?: {
-						val node = RouteNode<T>(r)
+						val node = RouteNode<T>(routeList, index)
 						routeNode.subRouterMap[r] = node
 						node
 					}()
@@ -44,96 +50,102 @@ class Router<T> {
 			}
 			index++
 		}
+		val oldValue = routeNode.value
+		if (oldValue != null) onDestroy?.invoke(oldValue)
 		routeNode.value = value
+		routeNode.routeList = routeList
+		routeNode.index = index - 1
 	}
 	
 	fun delRoute(route: String) {
-		val routeList = route.split('/').drop(0)
-		var index = 0
-		var routeNode = rootNode
-		while (index < routeList.size) {
-			if (routeList[index].isEmpty()) {
-				index++
-				continue
-			}
-			val (node, size) = routeNode[routeList, index]
-			node ?: return
-			if (index + size >= routeList.size) {
-				routeNode.deleteNode(routeList, index)
-				break
-			}
-			routeNode = node
-		}
+		this[route] = null
 	}
 	
-	operator fun set(route: String, value: T) = addSubRoute(route, value)
-	operator fun get(route: String): Pair<RouteNode<T>?, ArrayList<RouteNode<T>>> {
-		val list = ArrayList<RouteNode<T>>()
-		val router = rootNode.getRoute(route.split('/'), routeList = list)
-		return router to list
+	operator fun set(
+		route: String,
+		onDestroy: ((oldValue: T) -> Unit)? = null,
+		value: T?
+	) = addSubRoute(route, value, onDestroy)
+	
+	operator fun get(route: String): Pair<T?, List<Pair<String, String>>> {
+		val list = ArrayList<Pair<String, String>>()
+		return rootNode[route.split('/'), list]?.value to list
+	}
+	
+	fun toString(node: RouteNode<T>, stringBuilder: StringBuilder, indentation: String) {
+		if (
+			node.value == null &&
+			node.subRouterMap.isEmpty() &&
+			node.placeholderRouterList?.isEmpty() != false &&
+			node.wildSubRouter == null
+		) {
+			return
+		}
+		
+		val subIndentation = "$indentation|- "
+		
+		stringBuilder.append("$indentation$node\n")
+		
+		node.subRouterMap.forEach { (_, u) ->
+			toString(u, stringBuilder, subIndentation)
+		}
+		node.placeholderRouterList?.forEach {
+			toString(it, stringBuilder, subIndentation)
+		}
+		
+		toString(node.wildSubRouter ?: return, stringBuilder, indentation)
+	}
+	
+	override fun toString(): String {
+		val stringBuilder = StringBuilder()
+		toString(rootNode, stringBuilder, "")
+		return stringBuilder.toString()
 	}
 }
 
+@Suppress("MemberVisibilityCanBePrivate")
 open class RouteNode<T>(
-	val route: String,
+	var routeList: List<String>,
+	var index: Int,
 	var value: T? = null
 ) {
+	val route: String = routeList[index]
 	var wildSubRouter: AnyRouteNode<T>? = null
 	open val placeholderRouterList: ArrayList<PlaceholderRouteNode<T>>? = ArrayList(0)
 	val subRouterMap = HashMap<String, RouteNode<T>>(0)
 	
 	open fun match(
 		route: List<String>,
-		startIndex: Int = 0
-	): Pair<Boolean, Int> =
-		(startIndex < route.size && route[0] == this.route) to 1
+		startIndex: Int
+	): Pair<Boolean, Int> = (route.size > startIndex && route[startIndex] == this.route) to 1
 	
 	fun addNode(route: List<String>, startIndex: Int, value: T? = null): Int {
 		val r = route[startIndex]
 		return when {
 			r.isEmpty() -> return addNode(route, startIndex + 1)
 			r == "*" -> {
-				wildSubRouter = AnyRouteNode(value)
+				wildSubRouter = AnyRouteNode(route, startIndex)
 				1
 			}
-			r[0] == ':' -> synchronized(placeholderRouterList!!) {
+			r[0] == ':' -> {
 				val node = PlaceholderRouteNode(route, startIndex, value = value)
 				// 必须保证 placeholderRouterList 存在，而且还不能有这个长度的节点
-				if (placeholderRouterList!!.binarySearch { it.routeList.size - node.routeList.size } != null) {
+				if (synchronized(placeholderRouterList!!) {
+						placeholderRouterList!!.binarySearch { it.size - node.size }
+					} != null) {
 					throw Exception()
 				}
-				placeholderRouterList?.add(node)
-				placeholderRouterList?.sortBy { it.routeList.size }
-				node.routeList.size
+				synchronized(placeholderRouterList!!) {
+					placeholderRouterList?.add(node)
+					placeholderRouterList?.sortBy { it.size }
+				}
+				node.size
 			}
 			else -> synchronized(subRouterMap) {
-				subRouterMap[r] = RouteNode(r, value)
+				subRouterMap[r] = RouteNode(route, startIndex, value)
 				1
 			}
 		}
-	}
-	
-	fun deleteNode(route: List<String>, startIndex: Int = 0) {
-		val r = route[startIndex]
-		when {
-			r.isEmpty() -> Unit
-			r == "*" -> {
-				wildSubRouter = null
-			}
-			r[0] == ':' -> synchronized(placeholderRouterList ?: return) {
-				val length = PlaceholderRouteNode.matchLength(route, startIndex)
-				placeholderRouterList?.removeIf { it.routeList.size == length }
-				placeholderRouterList?.sortBy { it.routeList.size }
-			}
-			else -> synchronized(subRouterMap) {
-				subRouterMap.remove(r)
-			}
-		}
-	}
-	
-	fun findPlaceholderRouter(route: List<String>, startIndex: Int = 0) = placeholderRouterList?.let { node ->
-		val length = PlaceholderRouteNode.matchLength(route, startIndex)
-		synchronized(node) { node.binarySearch { it.routeList.size - length } }
 	}
 	
 	operator fun get(route: List<String>, startIndex: Int = 0): Pair<RouteNode<T>?, Int> {
@@ -145,12 +157,12 @@ open class RouteNode<T>(
 		
 		val matchLength = route.size - startIndex
 		val exactRoute = placeholderRouterList?.let { list ->
-			list.binarySearch { matchLength - it.routeList.size }
+			list.binarySearch { matchLength - it.size }
 		}
 		if (exactRoute != null) return exactRoute to matchLength
 		
 		placeholderRouterList?.forEach {
-			val subRoute = it.getRoute(route, startIndex + it.routeList.size)
+			val subRoute = it.getRoute(route, startIndex + it.size)
 			if (subRoute != null) return subRoute to route.size - startIndex
 		}
 		
@@ -171,7 +183,7 @@ open class RouteNode<T>(
 	operator fun get(
 		route: List<String>,
 		startIndex: Int = 0,
-		routeList: ArrayList<RouteNode<T>>
+		routeList: java.util.AbstractList<Pair<String, String>>
 	): Pair<RouteNode<T>?, Int> {
 		val r = route[startIndex]
 		if (r.isEmpty()) {
@@ -179,27 +191,36 @@ open class RouteNode<T>(
 		}
 		
 		val value = subRouterMap[r]
-		if (value != null) {
-			routeList.add(value)
-			return value to 1
-		}
+		if (value != null) return value to 1
+		
 		
 		val matchLength = route.size - startIndex
 		val exactRoute = placeholderRouterList?.let { list ->
-			list.binarySearch { matchLength - it.routeList.size }
+			list.binarySearch { matchLength - it.size }
 		}
 		if (exactRoute != null) {
-			routeList.add(exactRoute)
+			exactRoute.routeList.forEachIndexed { index, s ->
+				if (s.isNotEmpty() && s[0] == ':') routeList.add(s.substring(1) to route[index])
+			}
 			return exactRoute to matchLength
 		}
 		
-		val list = ArrayList<RouteNode<T>>()
+		val list = ArrayList<Pair<String, String>>()
 		placeholderRouterList?.forEach {
 			list.clear()
-			val subRoute = it.getRoute(route, startIndex + it.routeList.size, list)
+			val subRoute = it.getRoute(route, startIndex + it.size, list)
 			if (subRoute != null) {
-				routeList.add(it)
-				list.forEach { routeList.add(it) }
+				subRoute.routeList.forEachIndexed { index, s ->
+					if (s.isNotEmpty() && s[0] == ':') routeList.add(s.substring(1) to route[index])
+				}
+				var listIndex = 0
+				var routeIndex = 0
+				while (listIndex < list.size && routeIndex <= index) {
+					val s = this.routeList[routeIndex++]
+					if (s.isNotEmpty() && s[0] == ':') {
+						routeList.add(s to list[listIndex++].second)
+					}
+				}
 				return subRoute to route.size - startIndex
 			}
 		}
@@ -207,10 +228,15 @@ open class RouteNode<T>(
 		return wildSubRouter to 1
 	}
 	
+	operator fun get(
+		route: List<String>,
+		routeList: java.util.AbstractList<Pair<String, String>>
+	) = getRoute(route, 0, routeList)
+	
 	fun getRoute(
 		route: List<String>,
 		startIndex: Int = 0,
-		routeList: ArrayList<RouteNode<T>>
+		routeList: java.util.AbstractList<Pair<String, String>>
 	): RouteNode<T>? {
 		var index = startIndex
 		var routeNode = this
@@ -222,54 +248,37 @@ open class RouteNode<T>(
 		return routeNode
 	}
 	
-	override fun toString() = "/$route"
+	override fun toString(): String {
+		val stringBuilder = StringBuilder("/")
+		for (i in 0..index) {
+			val s = routeList[i]
+			if (s.isNotEmpty()) stringBuilder.append("$s/")
+		}
+		if (value != null) {
+			stringBuilder.append("    $value")
+		}
+		return stringBuilder.toString()
+	}
 }
 
 class PlaceholderRouteNode<T>(
 	route: List<String>,
 	startIndex: Int = 0,
-	endIndex: Int = run {
-		var index = startIndex
-		while (++index < route.size && (route[index].isEmpty() || route[index][0] == ':'));
-		index
-	},
+	endIndex: Int = startIndex + route.matchLength(startIndex),
 	value: T? = null
-) : RouteNode<T>(route.str(startIndex, endIndex), value) {
+) : RouteNode<T>(route, endIndex - 1, value) {
 	override val placeholderRouterList: ArrayList<PlaceholderRouteNode<T>>?
 		get() = null
-	val routeList: List<String> = run {
-		val list = ArrayList<String>()
-		for (i in startIndex until endIndex) {
-			if (route[i].isNotEmpty()) list.add(route[i])
-		}
-		list
-	}
+	
+	val size: Int = route.matchLength(startIndex, endIndex)
 	
 	override fun match(
 		route: List<String>,
 		startIndex: Int
 	): Pair<Boolean, Int> =
-		(routeList.size == route.matchLength(startIndex)) to routeList.size
-	
-	
-	override fun toString(): String {
-		val stringBuilder = StringBuilder()
-		routeList.forEach {
-			stringBuilder.append("/$it")
-		}
-		return stringBuilder.toString()
-	}
+		(size == route.matchLength(startIndex)) to size
 	
 	companion object {
-		@JvmStatic
-		private fun List<String>.str(startIndex: Int, endIndex: Int): String {
-			val stringBuilder = StringBuilder()
-			for (i in startIndex until endIndex) {
-				if (this[i].isNotEmpty()) stringBuilder.append("/${this[i]}")
-			}
-			return stringBuilder.toString()
-		}
-		
 		@JvmStatic
 		private fun List<String>.matchLength(startIndex: Int, endIndex: Int = size): Int {
 			var length = 0
@@ -295,7 +304,27 @@ class PlaceholderRouteNode<T>(
 }
 
 class AnyRouteNode<T>(
+	route: List<String>,
+	index: Int,
 	value: T? = null
-) : RouteNode<T>("*", value) {
+) : RouteNode<T>(route, index, value) {
 	override fun match(route: List<String>, startIndex: Int) = true to 1
+}
+
+fun main() {
+	val router = Router<Int>()
+	router["/123"] = 1
+	router["/456"] = 2
+	router["/456"] = 3
+	router["/:abc/:def"] = 4
+	router["/:abc/:deff"] = 5
+	router["/:abcd/abc"] = 6
+	router["/:abcd/abc/:ddd"] = 7
+	router["/:abcd/abc/:ddd", {
+		println("$it on destroy")
+	}] = 8
+	println(router)
+	println(router["/aaa/bbb"])
+	println(router["/aaa/abc"])
+	println(router["/aaa/abc/aa"])
 }

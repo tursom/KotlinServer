@@ -1,6 +1,5 @@
 package cn.tursom.web.netty
 
-import cn.tursom.web.HttpContent
 import cn.tursom.web.HttpHandler
 import cn.tursom.web.HttpServer
 import io.netty.bootstrap.ServerBootstrap
@@ -20,7 +19,6 @@ class NettyHttpHandler(
     override fun channelRead0(ctx: ChannelHandlerContext, msg: FullHttpRequest) {
         val handlerContext = NettyHttpContent(ctx, msg, msg.uri())
         handler.handle(handlerContext)
-        handlerContext.finish()
     }
 
     override fun channelReadComplete(ctx: ChannelHandlerContext) {
