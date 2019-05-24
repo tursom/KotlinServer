@@ -1,7 +1,7 @@
 package cn.tursom.database
 
-import cn.tursom.database.annotation.Getter
 import cn.tursom.database.annotation.NotNull
+import cn.tursom.database.annotation.Setter
 import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
@@ -28,9 +28,9 @@ open class SQLAdapter<T : Any>(
 						val fieldName = it.fieldName
 						resultSet.getObject(fieldName)
 						it.isAccessible = true
-						val getterAnnotation = it.getAnnotation(Getter::class.java)
-						val adapter = clazz.getDeclaredMethod(getterAnnotation.getter, Any::class.java)
-						val superAdapter = clazz.getDeclaredMethod(getterAnnotation.getter, ResultSet::class.java)
+						val getterAnnotation = it.getAnnotation(Setter::class.java)
+						val adapter = clazz.getDeclaredMethod(getterAnnotation.setter, Any::class.java)
+						val superAdapter = clazz.getDeclaredMethod(getterAnnotation.setter, ResultSet::class.java)
 						adapter?.isAccessible = true
 						superAdapter?.isAccessible=true
 						fieldList.add(

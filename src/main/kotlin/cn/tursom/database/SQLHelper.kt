@@ -5,6 +5,7 @@ import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
 import java.io.Closeable
 import java.lang.reflect.Field
+import java.lang.reflect.InvocationTargetException
 import java.util.AbstractCollection
 import kotlin.collections.forEach
 import kotlin.reflect.KClass
@@ -227,11 +228,24 @@ fun Class<*>.valueStr(value: Any): String? {
 }
 
 fun Array<out Field>.valueStr(value: Any): String? {
+	val clazz = value.javaClass
 	val values = StringBuilder()
 	forEach field@{ field ->
 		field.isAccessible = true
-		values.append(field.get(value)?.fieldValue)
-		values.append(',')
+		val getter = field.getAnnotation(Getter::class.java)
+		if (getter != null) {
+			val method = clazz.getDeclaredMethod(getter.getter)
+			method.isAccessible = true
+			try {
+				values.append(method.invoke(value))
+			} catch (e: InvocationTargetException) {
+				throw e.targetException
+			}
+			values.append(',')
+		} else {
+			values.append(field.get(value)?.fieldValue)
+			values.append(',')
+		}
 	}
 	if (values.isNotEmpty()) {
 		values.deleteCharAt(values.length - 1)

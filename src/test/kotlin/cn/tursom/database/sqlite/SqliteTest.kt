@@ -6,17 +6,6 @@ import cn.tursom.database.clauses.clause
 import org.junit.Test
 import java.sql.ResultSet
 
-@FieldType("DATE")
-data class TTime(private var obj: Long = System.currentTimeMillis()) : SqlField<Long>, SQLAdapter.ResultSetReadable {
-	override val sqlValue: String
-		get() = obj.toString()
-	
-	override fun adapt(fieldName: String, resultSet: ResultSet) {
-		obj = resultSet.getLong(fieldName)
-	}
-	
-	override fun get() = obj
-}
 
 @TableName("Test")
 data class TestClass(
