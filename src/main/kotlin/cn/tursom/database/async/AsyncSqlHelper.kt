@@ -1,10 +1,9 @@
 package cn.tursom.database.async
 
-import cn.tursom.database.*
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
+import cn.tursom.database.tableName
 import io.vertx.ext.sql.SQLConnection
-import kotlinx.coroutines.selects.select
 import java.lang.reflect.Field
 
 interface AsyncSqlHelper {
