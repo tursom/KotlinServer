@@ -1,8 +1,11 @@
 package cn.tursom.database
 
+import cn.tursom.database.annotation.Getter
 import cn.tursom.database.annotation.NotNull
 import sun.misc.Unsafe
 import java.lang.reflect.Field
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Method
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.*
@@ -25,13 +28,20 @@ open class SQLAdapter<T : Any>(
 						val fieldName = it.fieldName
 						resultSet.getObject(fieldName)
 						it.isAccessible = true
-						fieldList.add(FieldData(
-							it,
-							fieldName,
-							it.type,
-							it.type.interfaces.contains(ResultSetReadable::class.java),
-							it.type.interfaces.contains(Adaptable::class.java)
-						))
+						val getterAnnotation = it.getAnnotation(Getter::class.java)
+						val adapter = clazz.getDeclaredMethod(getterAnnotation.getter, Any::class.java)
+						val superAdapter = clazz.getDeclaredMethod(getterAnnotation.getter, ResultSet::class.java)
+						adapter?.isAccessible = true
+						superAdapter?.isAccessible=true
+						fieldList.add(
+							FieldData(
+								it,
+								fieldName,
+								it.type,
+								superAdapter,
+								adapter
+							)
+						)
 					} catch (e: SQLException) {
 					}
 				}
@@ -54,19 +64,22 @@ open class SQLAdapter<T : Any>(
 			                    field,
 			                    fieldName,
 			                    beanType,
-			                    resultSetReadable,
-			                    adaptable
+			                    superAdapter,
+			                    adapter
 		                    ) ->
 			try {
-				if (resultSetReadable) {
+				if (superAdapter != null) {
 					//如果你有能力直接从ResultSet里面取出数据,那就随君便
-					val value = (unsafe.allocateInstance(beanType) as ResultSetReadable)
-					value.adapt(fieldName, resultSet)
+					val value = try {
+						superAdapter.invoke(bean, resultSet)
+					} catch (e: InvocationTargetException) {
+						throw e.targetException
+					}
 					field.set(bean, value)
 				} else {
 					resultSet.getObject(fieldName)?.let { value ->
 						//让我们把数据喂进去
-						field.set(bean, handleCast(field, beanType, value, adaptable))
+						field.set(bean, handleCast(bean, field, beanType, value, adapter))
 					}
 				}
 			} catch (e: SQLException) {
@@ -78,16 +91,19 @@ open class SQLAdapter<T : Any>(
 	}
 	
 	private fun handleCast(
+		bean: T,
 		field: Field,
 		beanType: Class<*>,
 		value: Any,
-		adaptable: Boolean
+		adapter: Method?
 	): Any? {
 		val dbType = value.javaClass // 这里是获取数据库字段的类型
-		return if (adaptable) {
-			val sqlField = unsafe.allocateInstance(beanType) as Adaptable
-			sqlField.adapt(value)
-			sqlField
+		return if (adapter != null) {
+			try {
+				adapter.invoke(bean, value)
+			} catch (e: InvocationTargetException) {
+				throw e.targetException
+			}
 		} else if (beanType == java.lang.Float::class.java) {
 			if (dbType == java.lang.Double::class.java) {
 				(value as Double).toFloat()
@@ -120,17 +136,9 @@ open class SQLAdapter<T : Any>(
 		val field: Field,
 		val fieldName: String,
 		val beanType: Class<*>,
-		val resultSetReadable: Boolean,
-		val adaptable: Boolean
+		val superAdapter: Method?,
+		val adapter: Method?
 	)
-	
-	interface Adaptable {
-		fun adapt(obj: Any)
-	}
-	
-	interface ResultSetReadable {
-		fun adapt(fieldName: String, resultSet: ResultSet)
-	}
 	
 	companion object {
 		//利用Unsafe绕过构造函数获取变量

@@ -21,7 +21,7 @@ data class TTime(private var obj: Long = System.currentTimeMillis()) : SqlField<
 @TableName("Test")
 data class TestClass(
 	@Default("1") @NotNull @Check(">0") @FieldName("id") val _id: Int?,
-	@NotNull @FieldType("DATE") @Getter val ele2: Long = 0,
+	@NotNull @FieldType("DATE") @Getter("ele2") val ele2: Long = 0,
 	@TextLength(50) val text: String? = ""
 ) {
 	fun ele2() = System.currentTimeMillis()

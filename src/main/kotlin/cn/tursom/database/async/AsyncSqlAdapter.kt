@@ -2,11 +2,14 @@ package cn.tursom.database.async
 
 import cn.tursom.database.SQLAdapter
 import cn.tursom.database.annotation.NotNull
+import cn.tursom.database.annotation.Setter
 import cn.tursom.database.fieldName
 import io.vertx.core.json.JsonArray
 import io.vertx.ext.sql.ResultSet
 import sun.misc.Unsafe
 import java.lang.reflect.Field
+import java.lang.reflect.InvocationTargetException
+import java.lang.reflect.Method
 import java.sql.SQLException
 import java.util.*
 import kotlin.collections.HashMap
@@ -33,14 +36,26 @@ class AsyncSqlAdapter<T>(
 			try {
 				val field = fieldNameMap[fieldName] ?: error("")
 				field.isAccessible = true
-				fieldList.add(FieldData(
-					index,
-					field,
-					fieldName,
-					field.type,
-					field.type.interfaces.contains(ResultSetReadable::class.java),
-					field.type.interfaces.contains(Adaptable::class.java)
-				))
+				val setterAnnotation = field.getAnnotation(Setter::class.java)
+				val setter = try {
+					clazz.getDeclaredMethod(setterAnnotation.setter, String::class.java)
+				} catch (e: Exception) {
+					null
+				}
+				val advanceSetter = try {
+					clazz.getDeclaredMethod(setterAnnotation.setter, JsonArray::class.java, Int::class.java)
+				} catch (e: Exception) {
+					null
+				}
+				fieldList.add(
+					FieldData(
+						index,
+						field,
+						field.type,
+						advanceSetter,
+						setter
+					)
+				)
 			} catch (e: SQLException) {
 				// ignored
 			} catch (e: IllegalStateException) {
@@ -59,21 +74,23 @@ class AsyncSqlAdapter<T>(
 		fieldList.forEach { (
 			                    index,
 			                    field,
-			                    fieldName,
 			                    beanType,
-			                    resultSetReadable,
-			                    adaptable
+			                    advanceSetter,
+			                    setter
 		                    ) ->
 			try {
-				if (resultSetReadable) {
+				if (advanceSetter != null) {
 					//如果你有能力直接从ResultSet里面取出数据,那就随君便
-					val value = (unsafe.allocateInstance(beanType) as ResultSetReadable)
-					value.adapt(fieldName, result, index)
+					val value = try {
+						advanceSetter.invoke(bean, result, index)!!
+					} catch (e: InvocationTargetException) {
+						throw e.targetException
+					}
 					field.set(bean, value)
 				} else {
 					result.getValue(index)?.let { value ->
 						//让我们把数据喂进去
-						field.set(bean, handleCast(field, beanType, value, adaptable))
+						field.set(bean, handleCast(bean, field, beanType, value, setter))
 					}
 				}
 			} catch (e: SQLException) {
@@ -85,16 +102,19 @@ class AsyncSqlAdapter<T>(
 	}
 	
 	private fun handleCast(
+		bean: T,
 		field: Field,
 		beanType: Class<*>,
 		value: Any,
-		adaptable: Boolean
+		setter: Method?
 	): Any? {
 		val dbType = value.javaClass // 这里是获取数据库字段的类型
-		return if (adaptable) {
-			val sqlField = unsafe.allocateInstance(beanType) as SQLAdapter.Adaptable
-			sqlField.adapt(value)
-			sqlField
+		return if (setter != null) {
+			try {
+				setter.invoke(bean, value.toString())
+			} catch (e: InvocationTargetException) {
+				throw e.targetException
+			}
 		} else if (beanType == java.lang.Float::class.java) {
 			if (dbType == java.lang.Double::class.java) {
 				(value as Double).toFloat()
@@ -126,19 +146,10 @@ class AsyncSqlAdapter<T>(
 	data class FieldData(
 		val index: Int,
 		val field: Field,
-		val fieldName: String,
 		val beanType: Class<*>,
-		val resultSetReadable: Boolean,
-		val adaptable: Boolean
+		val advanceSetter: Method?,
+		val setter: Method?
 	)
-	
-	interface Adaptable {
-		fun adapt(obj: Any)
-	}
-	
-	interface ResultSetReadable {
-		fun adapt(fieldName: String, resultSet: JsonArray, index: Int)
-	}
 	
 	companion object {
 		//利用Unsafe绕过构造函数获取变量

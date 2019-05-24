@@ -140,7 +140,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		val clazz = first.javaClass
 		val fields = ArrayList<SqlFieldData>()
 		clazz.declaredFields.forEach { field ->
-			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(field.name) }
+			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(it.getter) }
 			fields.add(SqlFieldData(field, getter))
 		}
 		val values = fields.valueStr(valueList) ?: return 0

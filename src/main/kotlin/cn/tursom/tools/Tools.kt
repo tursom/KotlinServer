@@ -30,6 +30,12 @@ import java.util.*
  *  给定Spinner设置Adapter
  */
 
+fun <T> List<T>.binarySearch(comparison: (T) -> Int): T? {
+	val index = binarySearch(0, size, comparison)
+	return if (index < 0) null
+	else get(index)
+}
+
 val cpuNumber = Runtime.getRuntime().availableProcessors()
 
 fun String.simplifyPath(): String {

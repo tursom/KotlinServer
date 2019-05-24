@@ -201,7 +201,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		val clazz = first.javaClass
 		val fields = ArrayList<SqlFieldData>()
 		clazz.declaredFields.forEach { field ->
-			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(field.name) }
+			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(it.getter) }
 			fields.add(SqlFieldData(field, getter))
 		}
 		val values = fields.valueStr(valueList) ?: return 0
