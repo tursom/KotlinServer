@@ -4,6 +4,7 @@ import cn.tursom.database.annotation.FieldName
 import cn.tursom.database.annotation.Setter
 import cn.tursom.database.clauses.EqualClause
 import org.junit.Test
+import java.sql.ResultSet
 
 
 data class TestClass(
@@ -11,8 +12,8 @@ data class TestClass(
 	val field2: Float,
 	@Setter("setTime") val time: Long
 ) {
-	fun setTime(obj: Any): Long {
-		return obj.toString().toLong()
+	fun setTime(obj: ResultSet): Long {
+		return obj.getLong("time")
 	}
 }
 
@@ -23,7 +24,6 @@ class SqlHelperTest {
 		println(a.name)
 		println(EqualClause(TestClass::ele1, "1").sqlStr)
 	}
-	
 	
 	@Test
 	fun fieldValueTest() {

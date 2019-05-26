@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
+import java.util.jar.JarFile
 
 /**
  * Created by Tursom Ulefits on 2017/8/8.
@@ -29,6 +30,17 @@ import java.util.*
  * setSpinnerAdapter(spinner: Spinner?, collegeItems: Array<String>?, context: Context)
  *  给定Spinner设置Adapter
  */
+
+fun getClassName(jarPath: String): List<String> {
+	val myClassName = ArrayList<String>()
+	for (entry in JarFile(jarPath).entries()) {
+		val entryName = entry.name
+		if (entryName.endsWith(".class")) {
+			myClassName.add(entryName.replace("/", ".").substring(0, entryName.lastIndexOf(".")))
+		}
+	}
+	return myClassName
+}
 
 fun <T> List<T>.binarySearch(comparison: (T) -> Int): T? {
 	val index = binarySearch(0, size, comparison)
