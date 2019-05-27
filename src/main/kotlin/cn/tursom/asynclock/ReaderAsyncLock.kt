@@ -1,28 +1,29 @@
 package cn.tursom.asynclock
 
 import kotlinx.coroutines.delay
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * 读优化锁
  */
 @Suppress("MemberVisibilityCanBePrivate")
 class ReaderAsyncLock(val maxOperatorTime: Long, val delayTime: Long = (maxOperatorTime shr 2) or 1) : AsyncLock {
-	private val lock = AtomicReference<LockState>(LockState.FREE)
+	
+	private val lock = AtomicBoolean(false)
 	
 	private suspend fun getWriteLock() {
-		while (lock.compareAndSet(LockState.FREE, LockState.LOCK)) {
+		while (lock.compareAndSet(false, true)) {
 			delay(delayTime)
 		}
 		delay(maxOperatorTime)
 	}
 	
 	private fun releaseLock() {
-		lock.set(LockState.FREE)
+		lock.set(false)
 	}
 	
 	suspend fun getReadLock() {
-		while (lock.get() != LockState.FREE) {
+		while (lock.get()) {
 			delay(delayTime)
 		}
 	}
