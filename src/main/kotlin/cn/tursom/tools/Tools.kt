@@ -1,35 +1,24 @@
 package cn.tursom.tools
 
 import com.google.gson.Gson
+import kotlinx.coroutines.*
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
 
-/**
- * Created by Tursom Ulefits on 2017/8/8.
- * Author: Tursom K. Ulefits
- * email: tursom@foxmail.com
- *
- * 功能介绍：
- * hideTitle(activity)
- *  隐藏默认的标题栏
- * startActivity(context, cls)
- *  创建新的activity
- *  例： Tools.startActivity(activity, LoginActivity::class.java)
- * setImageBitmap(imageView,bitmap,radiust,scaleRatio,context)
- *  将高斯模糊后的图片设置给imageView
- * blurBitmap(bitmap,radius, context): Bitmap
- *  将图片高斯模糊
- * cn.tursom.tools.md5(content: String)： String
- *  md5加密
- * cn.tursom.tools.randomInt(min, max): Int
- *  获取从min到max之间的随机整数
- * makeToast(activity, message: String)
- *  创建Toast信息
- * setSpinnerAdapter(spinner: Spinner?, collegeItems: Array<String>?, context: Context)
- *  给定Spinner设置Adapter
- */
+
+suspend fun <T> io(block: suspend CoroutineScope.() -> T): T {
+	return withContext(Dispatchers.IO, block)
+}
+
+fun background(block: suspend CoroutineScope.() -> Unit) {
+	GlobalScope.launch(block = block)
+}
+
+suspend fun <T> ui(block: suspend CoroutineScope.() -> T): T {
+	return withContext(Dispatchers.Main, block)
+}
 
 fun getClassName(jarPath: String): List<String> {
 	val myClassName = ArrayList<String>()
@@ -104,6 +93,62 @@ fun ByteArray.sha256(): ByteArray? {
 fun String.sha256(): String? {
 	return toByteArray().sha256()?.toHexString()
 }
+
+fun ByteArray.sha(): ByteArray? {
+	return try {
+		//获取md5加密对象
+		val instance = MessageDigest.getInstance("SHA")
+		//对字符串加密，返回字节数组
+		instance.digest(this)
+	} catch (e: NoSuchAlgorithmException) {
+		e.printStackTrace()
+		null
+	}
+}
+
+fun String.sha(): String? = toByteArray().sha()?.toHexString()
+
+fun ByteArray.sha1(): ByteArray? {
+	return try {
+		//获取md5加密对象
+		val instance = MessageDigest.getInstance("SHA-1")
+		//对字符串加密，返回字节数组
+		instance.digest(this)
+	} catch (e: NoSuchAlgorithmException) {
+		e.printStackTrace()
+		null
+	}
+}
+
+fun String.sha1(): String? = toByteArray().sha1()?.toHexString()
+
+fun ByteArray.sha384(): ByteArray? {
+	return try {
+		//获取md5加密对象
+		val instance = MessageDigest.getInstance("SHA-384")
+		//对字符串加密，返回字节数组
+		instance.digest(this)
+	} catch (e: NoSuchAlgorithmException) {
+		e.printStackTrace()
+		null
+	}
+}
+
+fun String.sha384(): String? = toByteArray().sha384()?.toHexString()
+
+fun ByteArray.sha512(): ByteArray? {
+	return try {
+		//获取md5加密对象
+		val instance = MessageDigest.getInstance("SHA-512")
+		//对字符串加密，返回字节数组
+		instance.digest(this)
+	} catch (e: NoSuchAlgorithmException) {
+		e.printStackTrace()
+		null
+	}
+}
+
+fun String.sha512(): String? = toByteArray().sha512()?.toHexString()
 
 fun ByteArray.toHexString(): String? {
 	val sb = StringBuilder()
