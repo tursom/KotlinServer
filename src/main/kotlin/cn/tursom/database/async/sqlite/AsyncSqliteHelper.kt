@@ -95,7 +95,6 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		}${if (order != null) " ORDER BY $order ${if (reverse) "DESC" else "ASC"}" else ""
 		}${if (maxCount != null) " limit $maxCount" else ""
 		};"
-		println(sql)
 		return try {
 			suspendCoroutine { cont ->
 				connection.query(sql) {

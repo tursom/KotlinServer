@@ -160,7 +160,7 @@ object Xml {
 				}
 				if (advanceSetMethod != null) {
 					advanceSetMethod.isAccessible = true
-					advanceSetMethod(instance, root.element(fieldName) ?: return@forEach)
+					advanceSetMethod(instance, root)
 				} else {
 					val setMethod = clazz.getDeclaredMethod(constructor.constructor, String::class.java)
 					setMethod.isAccessible = true

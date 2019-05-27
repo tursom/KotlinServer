@@ -134,36 +134,37 @@ object RequestParser {
 	fun parse(fullReq: FullHttpRequest): HashMap<String, List<String>> {
 		val method = fullReq.method()
 		
-		val parmMap = HashMap<String, List<String>>()
+		val paramMap = HashMap<String, List<String>>()
 		
 		when {
-			HttpMethod.GET === method -> {
+			HttpMethod.GET === method -> try {
 				// 是GET请求
 				val decoder = QueryStringDecoder(fullReq.uri())
 				decoder.parameters().entries.forEach { entry ->
-					parmMap[entry.key] = entry.value
+					paramMap[entry.key] = entry.value
 				}
+			} catch (e: Exception) {
 			}
-			HttpMethod.POST === method -> {
+			HttpMethod.POST === method -> try {
 				// 是POST请求
 				val decoder = HttpPostRequestDecoder(fullReq)
 				decoder.offer(fullReq)
 				
 				val paramList = decoder.bodyHttpDatas
 				
-				for (param in paramList) try {
+				for (param in paramList) {
 					val data = param as Attribute
-					if (!parmMap.containsKey(data.name)) {
-						parmMap[data.name] = ArrayList()
+					if (!paramMap.containsKey(data.name)) {
+						paramMap[data.name] = ArrayList()
 					}
-					(parmMap[data.name] as ArrayList).add(data.value)
-				} catch (e: Exception) {
+					(paramMap[data.name] as ArrayList).add(data.value)
 				}
+			} catch (e: Exception) {
 			}
 			else -> // 不支持其它方法
 				throw Exception("") // 这是个自定义的异常, 可删掉这一行
 		}
 		
-		return parmMap
+		return paramMap
 	}
 }
