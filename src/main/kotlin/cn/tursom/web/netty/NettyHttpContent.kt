@@ -6,6 +6,7 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
 import io.netty.handler.codec.http.multipart.Attribute
 import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder
+import sun.java2d.cmm.ColorTransform.In
 import java.io.ByteArrayOutputStream
 import java.util.HashMap
 import kotlin.collections.ArrayList
@@ -25,8 +26,11 @@ open class NettyHttpContent(
 	
 	override var responseCode: Int = 200
 	override var responseMessage: String? = null
+	override val clientIp = ctx.channel().remoteAddress()!!
+	override val method: String = msg.method().name()
+	
 	private val responseBody = ByteArrayOutputStream()
-	val method = msg.method()
+	val httpMethod = msg.method()
 	val protocolVersion = msg.protocolVersion()
 	
 	val buf = msg.content()

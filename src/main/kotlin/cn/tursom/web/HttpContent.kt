@@ -1,5 +1,7 @@
 package cn.tursom.web
 
+import java.net.SocketAddress
+
 interface HttpContent {
 	val uri: String
 	var responseCode: Int
@@ -7,6 +9,8 @@ interface HttpContent {
 	val body: ByteArray?
 	val bodyOffSet: Int
 	val readableBytes: Int
+	val clientIp: SocketAddress
+	val method: String
 	
 	fun getHeader(header: String): String?
 	fun getHeaders(): List<Map.Entry<String, String>>
