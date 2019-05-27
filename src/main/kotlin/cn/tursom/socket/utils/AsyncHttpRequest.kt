@@ -131,6 +131,18 @@ object AsyncHttpRequest {
 		client
 	)
 	
+	suspend fun post(
+		url: String,
+		body: ByteArray,
+		headers: Map<String, String>? = null,
+		client: OkHttpClient = defaultClient
+	) = post(
+		url,
+		RequestBody.create(MediaType.parse("application/octet-stream"), body),
+		headers,
+		client
+	)
+	
 	suspend fun getStr(
 		url: String,
 		param: Map<String, String>? = null,

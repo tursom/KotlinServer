@@ -19,7 +19,11 @@ class NettyHttpHandler(
 	
 	override fun channelRead0(ctx: ChannelHandlerContext, msg: FullHttpRequest) {
 		val handlerContext = NettyHttpContent(ctx, msg, msg.uri())
-		handler.handle(handlerContext)
+		try {
+			handler.handle(handlerContext)
+		} catch (e: Throwable) {
+			handlerContext.write("${e.javaClass}: ${e.message}")
+		}
 	}
 	
 	override fun channelReadComplete(ctx: ChannelHandlerContext) {
@@ -36,21 +40,28 @@ class NettyHttpHandler(
 class NettyHttpServer(
 	override val port: Int,
 	handler: HttpHandler<NettyHttpContent>,
+	timeout: Int = 0,
 	bodySize: Int = 512 * 1024
 ) : HttpServer {
 	constructor(
 		port: Int,
+		timeout: Int = 0,
 		bodySize: Int = 512 * 1024,
 		handler: (content: NettyHttpContent) -> Unit
-	) : this(port, object : HttpHandler<NettyHttpContent> {
-		override fun handle(content: NettyHttpContent) {
-			handler(content)
-		}
-		
-		override fun exception(e: ExceptionContent) {
-			e.cause.printStackTrace()
-		}
-	}, bodySize)
+	) : this(
+		port,
+		object : HttpHandler<NettyHttpContent> {
+			override fun handle(content: NettyHttpContent) {
+				handler(content)
+			}
+			
+			override fun exception(e: ExceptionContent) {
+				e.cause.printStackTrace()
+			}
+		},
+		timeout,
+		bodySize
+	)
 	
 	private val pipeHandler = NettyHttpHandler(handler)
 	private val group = NioEventLoopGroup()
@@ -68,15 +79,21 @@ class NettyHttpServer(
 		})
 		.option(ChannelOption.SO_BACKLOG, 1024) // determining the number of connections queued
 		.option(ChannelOption.SO_REUSEADDR, true)
+		.option(ChannelOption.SO_TIMEOUT, timeout)
 		.childOption(ChannelOption.SO_KEEPALIVE, java.lang.Boolean.TRUE)
 	private lateinit var future: ChannelFuture
 	
 	override fun run() {
+		try {
+			close()
+		} catch (e: Exception) {
+		}
 		future = b.bind(port)
 		future.sync()
 	}
 	
 	override fun close() {
 		future.cancel(false)
+		future.channel().close()
 	}
 }
