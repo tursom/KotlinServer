@@ -107,7 +107,7 @@ object Xml {
 			isEnum -> {
 				val valueOf = getDeclaredMethod("valueOf", String::class.java)
 				try {
-					valueOf.invoke(null, value ?: return null)
+					valueOf(null, value ?: return null)
 				} catch (e: Exception) {
 					null
 				}
@@ -151,20 +151,20 @@ object Xml {
 			val target = field.target ?: defaultTarget
 			val fieldName = field.getAnnotation(FieldName::class.java)?.name ?: field.name
 			
-			val setter = field.getAnnotation(Setter::class.java)
-			val value = if (setter != null) {
+			val constructor = field.getAnnotation(Constructor::class.java)
+			val value = if (constructor != null) {
 				val advanceSetMethod = try {
-					clazz.getDeclaredMethod(setter.callback, Element::class.java)
+					clazz.getDeclaredMethod(constructor.constructor, Element::class.java)
 				} catch (e: NoSuchMethodException) {
 					null
 				}
 				if (advanceSetMethod != null) {
 					advanceSetMethod.isAccessible = true
-					advanceSetMethod.invoke(instance, root.element(fieldName) ?: return@forEach)
+					advanceSetMethod(instance, root.element(fieldName) ?: return@forEach)
 				} else {
-					val setMethod = clazz.getDeclaredMethod(setter.callback, String::class.java)
+					val setMethod = clazz.getDeclaredMethod(constructor.constructor, String::class.java)
 					setMethod.isAccessible = true
-					setMethod.invoke(instance, getData(root, fieldName, target) ?: return@forEach)
+					setMethod(instance, getData(root, fieldName, target) ?: return@forEach)
 				}
 			} else {
 				field.parse(target, root, fieldName)
@@ -211,7 +211,7 @@ object Xml {
 				method.isAccessible = true
 				builder.append("\n")
 				builder.append(indentation)
-				builder.append(method.invoke(obj, value, elementName, indentation, advanceIndentation) ?: return false)
+				builder.append(method(obj, value, elementName, indentation, advanceIndentation) ?: return false)
 				return true
 			}
 			val method2 = try {
@@ -230,7 +230,7 @@ object Xml {
 				method2.isAccessible = true
 				builder.append("\n")
 				builder.append(indentation)
-				method2.invoke(obj, value, elementName, builder, indentation, advanceIndentation)
+				method2(obj, value, elementName, builder, indentation, advanceIndentation)
 				return true
 			}
 			val method3 = try {
@@ -246,7 +246,7 @@ object Xml {
 				method3.isAccessible = true
 				builder.append("\n")
 				builder.append(indentation)
-				builder.append(method3.invoke(obj, value, elementName) ?: return false)
+				builder.append(method3(obj, value, elementName) ?: return false)
 			}
 			val method4 = try {
 				clazz.getDeclaredMethod(
@@ -262,7 +262,7 @@ object Xml {
 				method4.isAccessible = true
 				builder.append("\n")
 				builder.append(indentation)
-				method4.invoke(obj, value, elementName, builder)
+				method4(obj, value, elementName, builder)
 			}
 			return true
 		}
@@ -639,7 +639,7 @@ object Xml {
 				}
 				if (method3 != null) {
 					method3.isAccessible = true
-					builder.append(method3.invoke(obj, value, eleName) ?: return@let)
+					builder.append(method3(obj, value, eleName) ?: return@let)
 					return@forEach
 				}
 				
@@ -654,7 +654,7 @@ object Xml {
 					return@let
 				}
 				method.isAccessible = true
-				method.invoke(obj, value, eleName, builder)
+				method(obj, value, eleName, builder)
 				return@forEach
 			}
 			

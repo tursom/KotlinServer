@@ -19,7 +19,7 @@ val KProperty<*>.fieldName: String
 
 val Any.fieldValue: String
 	get() = when (this) {
-		is SqlField<*> -> this.javaClass.getAnnotation(StringField::class.java)?.let {
+		is SqlField<*> -> javaClass.getAnnotation(StringField::class.java)?.let {
 			sqlValue.sqlStr
 		} ?: sqlValue
 		is String -> sqlStr

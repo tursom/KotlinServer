@@ -1,7 +1,7 @@
 package cn.tursom.database
 
 import cn.tursom.database.annotation.NotNull
-import cn.tursom.database.annotation.Setter
+import cn.tursom.database.annotation.Constructor
 import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
@@ -28,20 +28,20 @@ open class SQLAdapter<T : Any>(
 						val fieldName = it.fieldName
 						resultSet.getObject(fieldName)
 						it.isAccessible = true
-						val getterAnnotation = it.getAnnotation(Setter::class.java)
-						val adapter = clazz.getDeclaredMethod(getterAnnotation.setter, Any::class.java)
-						val superAdapter = clazz.getDeclaredMethod(getterAnnotation.setter, ResultSet::class.java)
-						adapter?.isAccessible = true
-						superAdapter?.isAccessible=true
-						fieldList.add(
-							FieldData(
-								it,
-								fieldName,
-								it.type,
-								superAdapter,
-								adapter
-							)
-						)
+						val constructorAnnotation = it.getAnnotation(Constructor::class.java)
+						val constructor = try {
+							clazz.getDeclaredMethod(constructorAnnotation.constructor, Any::class.java)
+						} catch (e: Exception) {
+							null
+						}
+						val superConstructor = try {
+							clazz.getDeclaredMethod(constructorAnnotation.constructor, ResultSet::class.java)
+						} catch (e: Exception) {
+							null
+						}
+						constructor?.isAccessible = true
+						superConstructor?.isAccessible = true
+						fieldList.add(FieldData(it, fieldName, it.type, superConstructor, constructor))
 					} catch (e: SQLException) {
 					}
 				}
@@ -51,8 +51,10 @@ open class SQLAdapter<T : Any>(
 			while (resultSet.next()) {
 				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldList)
 			}
-		} catch (e: Exception) {
-			e.printStackTrace()
+		} catch (e: SQLException) {
+			// ignored
+		} catch (e: IllegalStateException) {
+			// ignored
 		}
 	}
 	

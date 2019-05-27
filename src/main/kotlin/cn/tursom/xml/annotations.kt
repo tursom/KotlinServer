@@ -30,12 +30,13 @@ annotation class SubElement
 
 /**
  * 指定转换函数的名称
- * fun callback(text: String): FieldType
- * or ( advance callback )
- * fun callback(element: Element): FieldType
+ * fun constructor(text: String): FieldValue
+ * or
+ * fun constructor(element: Element): FieldValue
+ * element 为根节点
  */
 @Target(AnnotationTarget.FIELD)
-annotation class Setter(val callback: String)
+annotation class Constructor(val constructor: String)
 
 @Target(AnnotationTarget.FIELD)
 annotation class FieldName(val name: String)

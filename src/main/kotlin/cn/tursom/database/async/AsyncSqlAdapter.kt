@@ -2,7 +2,7 @@ package cn.tursom.database.async
 
 import cn.tursom.database.SQLAdapter
 import cn.tursom.database.annotation.NotNull
-import cn.tursom.database.annotation.Setter
+import cn.tursom.database.annotation.Constructor
 import cn.tursom.database.fieldName
 import io.vertx.core.json.JsonArray
 import io.vertx.ext.sql.ResultSet
@@ -36,26 +36,18 @@ class AsyncSqlAdapter<T>(
 			try {
 				val field = fieldNameMap[fieldName] ?: error("")
 				field.isAccessible = true
-				val setterAnnotation = field.getAnnotation(Setter::class.java)
-				val setter = try {
-					clazz.getDeclaredMethod(setterAnnotation.setter, String::class.java)
+				val constructorAnnotation = field.getAnnotation(Constructor::class.java)
+				val constructor = try {
+					clazz.getDeclaredMethod(constructorAnnotation.constructor, String::class.java)
 				} catch (e: Exception) {
 					null
 				}
-				val advanceSetter = try {
-					clazz.getDeclaredMethod(setterAnnotation.setter, JsonArray::class.java, Int::class.java)
+				val advanceConstructor = try {
+					clazz.getDeclaredMethod(constructorAnnotation.constructor, JsonArray::class.java, Int::class.java)
 				} catch (e: Exception) {
 					null
 				}
-				fieldList.add(
-					FieldData(
-						index,
-						field,
-						field.type,
-						advanceSetter,
-						setter
-					)
-				)
+				fieldList.add(FieldData(index, field, field.type, advanceConstructor, constructor))
 			} catch (e: SQLException) {
 				// ignored
 			} catch (e: IllegalStateException) {
