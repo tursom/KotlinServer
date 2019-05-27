@@ -2,68 +2,39 @@ package cn.tursom.asynclock
 
 import kotlinx.coroutines.delay
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
-@Suppress("MemberVisibilityCanBePrivate")
-class NormalAsyncLock(val delayTime: Long = 10) : AsyncLock {
+class NormalAsyncLock(val delayTime: Long) : AsyncLock {
 	private val lock = AtomicBoolean(false)
-	private val readNumber = AtomicInteger(0)
 	
-	private suspend fun getWriteLock() {
-		while (readNumber.get() > 0 || lock.compareAndSet(false, true)) {
-			delay(delayTime)
-		}
-	}
-	
-	private fun releaseLock() {
-		lock.set(false)
-	}
-	
-	private suspend fun getReadLock() {
-		while (lock.get()) {
-			delay(delayTime)
-		}
-	}
-	
-	private suspend fun addReadTime() {
-		var readTimes = readNumber.get()
+	private suspend fun AtomicBoolean.lock() {
+		// 如果得不到锁，先自旋20次
 		var maxLoopTime = 20
 		while (maxLoopTime-- > 0) {
-			if (readNumber.compareAndSet(readTimes, readTimes + 1)) return
-			readTimes = readNumber.get()
+			if (compareAndSet(false, true)) return
 		}
-		while (readNumber.compareAndSet(readTimes, readTimes + 1)) {
-			if (readNumber.compareAndSet(readTimes, readTimes + 1)) return
+		while (!compareAndSet(false, true)) {
 			delay(delayTime)
-			readTimes = readNumber.get()
 		}
 	}
 	
-	private suspend fun reduceReadTime() {
-		var readTimes = readNumber.get()
-		var maxLoopTime = 20
-		while (maxLoopTime-- > 0) {
-			if (readNumber.compareAndSet(readTimes, readTimes - 1)) return
-			readTimes = readNumber.get()
-		}
-		while (readNumber.compareAndSet(readTimes, readTimes - 1)) {
-			if (readNumber.compareAndSet(readTimes, readTimes - 1)) return
-			delay(delayTime)
-			readTimes = readNumber.get()
-		}
-	}
-	
-	override suspend fun doWrite(block: suspend () -> Unit) {
-		getWriteLock()
-		block()
-		releaseLock()
+	private fun AtomicBoolean.release() {
+		set(false)
 	}
 	
 	override suspend fun <T> doRead(block: suspend () -> T): T {
-		addReadTime()
-		getReadLock()
+		lock.lock()
 		val ret = block()
-		reduceReadTime()
+		lock.release()
 		return ret
+	}
+	
+	override suspend fun doWrite(block: suspend () -> Unit) {
+		lock.lock()
+		block()
+		lock.release()
+	}
+	
+	suspend operator fun <T> invoke(block: suspend () -> T): T {
+		return doRead(block)
 	}
 }

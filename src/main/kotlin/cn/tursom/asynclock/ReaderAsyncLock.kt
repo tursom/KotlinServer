@@ -12,7 +12,7 @@ class ReaderAsyncLock(val maxOperatorTime: Long, val delayTime: Long = (maxOpera
 	private val lock = AtomicBoolean(false)
 	
 	private suspend fun getWriteLock() {
-		while (lock.compareAndSet(false, true)) {
+		while (!lock.compareAndSet(false, true)) {
 			delay(delayTime)
 		}
 		delay(maxOperatorTime)
