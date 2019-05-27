@@ -40,12 +40,10 @@ class NettyHttpHandler(
 class NettyHttpServer(
 	override val port: Int,
 	handler: HttpHandler<NettyHttpContent>,
-	timeout: Int = 0,
 	bodySize: Int = 512 * 1024
 ) : HttpServer {
 	constructor(
 		port: Int,
-		timeout: Int = 0,
 		bodySize: Int = 512 * 1024,
 		handler: (content: NettyHttpContent) -> Unit
 	) : this(
@@ -59,7 +57,6 @@ class NettyHttpServer(
 				e.cause.printStackTrace()
 			}
 		},
-		timeout,
 		bodySize
 	)
 	
@@ -78,7 +75,6 @@ class NettyHttpServer(
 		})
 		.option(ChannelOption.SO_BACKLOG, 1024) // determining the number of connections queued
 		.option(ChannelOption.SO_REUSEADDR, true)
-		.option(ChannelOption.SO_TIMEOUT, timeout)
 		.childOption(ChannelOption.SO_KEEPALIVE, java.lang.Boolean.TRUE)
 	private lateinit var future: ChannelFuture
 	
