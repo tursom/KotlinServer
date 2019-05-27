@@ -28,7 +28,7 @@ open class NettyHttpContent(
 	override val clientIp = ctx.channel().remoteAddress()!!
 	override val method: String = msg.method().name()
 	
-	private val responseBody = ByteArrayOutputStream()
+	override val responseBody = ByteArrayOutputStream()
 	val httpMethod = msg.method()
 	val protocolVersion = msg.protocolVersion()
 	
@@ -79,7 +79,7 @@ open class NettyHttpContent(
 		(paramMap[key] as ArrayList).add(value)
 	}
 	
-	override fun addResponseHeader(name: String, value: Any) {
+	override fun setResponseHeader(name: String, value: Any) {
 		responseMap[name] = value
 	}
 	
@@ -93,6 +93,10 @@ open class NettyHttpContent(
 	
 	override fun write(bytes: ByteArray) {
 		responseBody.write(bytes)
+	}
+	
+	override fun reset() {
+		responseBody.reset()
 	}
 	
 	override fun finish() {

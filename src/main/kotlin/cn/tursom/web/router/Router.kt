@@ -7,7 +7,7 @@ class Router<T> {
 	val rootNode = RouteNode<T>(listOf(""), 0)
 	
 	fun addSubRoute(route: String, value: T?, onDestroy: ((oldValue: T) -> Unit)? = null) {
-		val routeList = route.split('?')[0].split('/').drop(0)
+		val routeList = route.split('?')[0].split('/').filter { it.isNotEmpty() }
 		var routeNode = rootNode
 		var r: String
 		var index = 0
@@ -64,7 +64,7 @@ class Router<T> {
 	
 	operator fun get(route: String): Pair<T?, List<Pair<String, String>>> {
 		val list = ArrayList<Pair<String, String>>()
-		return rootNode[route.split('?')[0].split('/'), list]?.value to list
+		return rootNode[route.split('?')[0].split('/').filter { it.isNotEmpty() }, list]?.value to list
 	}
 	
 	private fun toString(node: RouteNode<T>, stringBuilder: StringBuilder, indentation: String) {
@@ -241,7 +241,8 @@ open class RouteNode<T>(
 			}
 		}
 		
-		routeList.add("*" to route[startIndex])
+		for (i in startIndex until route.size)
+			routeList.add("*" to route[i])
 		return wildSubRouter to 1
 	}
 	

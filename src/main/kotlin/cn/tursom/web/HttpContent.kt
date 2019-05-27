@@ -1,5 +1,6 @@
 package cn.tursom.web
 
+import java.io.OutputStream
 import java.net.SocketAddress
 
 interface HttpContent {
@@ -11,6 +12,7 @@ interface HttpContent {
 	val readableBytes: Int
 	val clientIp: SocketAddress
 	val method: String
+	val responseBody: OutputStream
 	
 	fun getHeader(header: String): String?
 	fun getHeaders(): List<Map.Entry<String, String>>
@@ -19,11 +21,12 @@ interface HttpContent {
 	fun getParams(): Map<String, List<String>>
 	fun getParams(param: String): List<String>?
 	
-	fun addResponseHeader(name: String, value: Any)
+	fun setResponseHeader(name: String, value: Any)
 	
 	fun write(message: String)
 	fun write(byte: Int)
 	fun write(bytes: ByteArray)
+	fun reset()
 	
 	fun finish()
 }
