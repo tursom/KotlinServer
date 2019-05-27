@@ -63,7 +63,6 @@ class NettyHttpServer(
 		bodySize
 	)
 	
-	private val pipeHandler = NettyHttpHandler(handler)
 	private val group = NioEventLoopGroup()
 	private val b = ServerBootstrap().group(group)
 		.channel(NioServerSocketChannel::class.java)
@@ -74,7 +73,7 @@ class NettyHttpServer(
 					.addLast("decoder", HttpRequestDecoder())
 					.addLast("encoder", HttpResponseEncoder())
 					.addLast("aggregator", HttpObjectAggregator(bodySize))
-					.addLast("handle", pipeHandler)
+					.addLast("handle", NettyHttpHandler(handler))
 			}
 		})
 		.option(ChannelOption.SO_BACKLOG, 1024) // determining the number of connections queued
