@@ -4,31 +4,31 @@ open class AsyncLockMap<K, V>(
 	private val lock: AsyncLock,
 	private val map: Map<K, V>
 ) {
-	val size: Int
+	open val size: Int
 		get() = map.size
 	
-	suspend fun size(): Int {
-		return lock.doRead { map.size }
+	open suspend fun size(): Int {
+		return lock { map.size }
 	}
 	
-	suspend fun isEmpty(): Boolean {
-		return lock.doRead { map.isEmpty() }
+	open suspend fun isEmpty(): Boolean {
+		return lock { map.isEmpty() }
 	}
 	
-	suspend fun isNotEmpty(): Boolean {
-		return lock.doRead { map.isNotEmpty() }
+	open suspend fun isNotEmpty(): Boolean {
+		return lock { map.isNotEmpty() }
 	}
 	
-	suspend fun get(key: K): V? {
-		return lock.doRead { map[key] }
+	open suspend fun get(key: K): V? {
+		return lock { map[key] }
 	}
 	
-	suspend fun contains(key: K): Boolean {
-		return lock.doRead { map.contains(key) }
+	open suspend fun contains(key: K): Boolean {
+		return lock { map.contains(key) }
 	}
 	
-	suspend fun forEach(action: suspend (K, V) -> Unit) {
-		lock.doRead {
+	open suspend fun forEach(action: suspend (K, V) -> Unit) {
+		lock {
 			map.forEach { (k, v) ->
 				action(k, v)
 			}
