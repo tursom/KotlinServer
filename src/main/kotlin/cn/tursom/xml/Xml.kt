@@ -52,17 +52,20 @@ object Xml {
 	
 	private val Class<*>.textField
 		get() = declaredFields.find {
-			it.target ?: defaultTarget == ElementTarget.ElementText
+			it.getAnnotation(Ignore::class.java) != null &&
+				it.target ?: defaultTarget == ElementTarget.ElementText
 		}
 	
 	private val Class<*>.attributeField
 		get() = declaredFields.filter {
-			it.target ?: defaultTarget == ElementTarget.Attribute
+			it.getAnnotation(Ignore::class.java) != null &&
+				it.target ?: defaultTarget == ElementTarget.Attribute
 		}
 	
 	private val Class<*>.subElementField
 		get() = declaredFields.filter {
-			it.target ?: defaultTarget == ElementTarget.SubElement
+			it.getAnnotation(Ignore::class.java) != null &&
+				it.target ?: defaultTarget == ElementTarget.SubElement
 		}
 	
 	private val Class<*>.isJustValue
@@ -146,6 +149,8 @@ object Xml {
 		val instance = unsafe.allocateInstance(clazz) as T
 		
 		clazz.declaredFields.forEach { field ->
+			if (field.getAnnotation(Ignore::class.java) != null) return@forEach
+			
 			field.isAccessible = true
 			
 			val target = field.target ?: defaultTarget
@@ -164,7 +169,7 @@ object Xml {
 				} else {
 					val setMethod = clazz.getDeclaredMethod(constructor.constructor, String::class.java)
 					setMethod.isAccessible = true
-					setMethod(instance, getData(root, fieldName, target) ?: return@forEach)
+					setMethod(instance, getData(root, fieldName, target))
 				}
 			} else {
 				field.parse(target, root, fieldName)

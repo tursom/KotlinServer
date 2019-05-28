@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * 读优化锁
  */
 @Suppress("MemberVisibilityCanBePrivate")
-class ReaderAsyncLock(val maxOperatorTime: Long, val delayTime: Long = (maxOperatorTime shr 2) or 1) : AsyncLock {
+class WriteAsyncLock(val maxReadOperatorTime: Long, val delayTime: Long = (maxReadOperatorTime shr 2) or 1) : AsyncLock {
 	
 	private val lock = AtomicBoolean(false)
 	
@@ -15,7 +15,7 @@ class ReaderAsyncLock(val maxOperatorTime: Long, val delayTime: Long = (maxOpera
 		while (!lock.compareAndSet(false, true)) {
 			delay(delayTime)
 		}
-		delay(maxOperatorTime)
+		delay(maxReadOperatorTime)
 	}
 	
 	private fun releaseLock() {
@@ -40,6 +40,6 @@ class ReaderAsyncLock(val maxOperatorTime: Long, val delayTime: Long = (maxOpera
 	}
 	
 	override fun toString(): String {
-		return "ReaderAsyncLock(maxOperatorTime=$maxOperatorTime, delayTime=$delayTime, lock=${lock.get()})"
+		return "WriteAsyncLock(maxReadOperatorTime=$maxReadOperatorTime, delayTime=$delayTime, lock=${lock.get()})"
 	}
 }

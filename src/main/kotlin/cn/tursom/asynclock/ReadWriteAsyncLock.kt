@@ -1,13 +1,13 @@
 package cn.tursom.asynclock
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.delay
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 @Suppress("MemberVisibilityCanBePrivate")
 class ReadWriteAsyncLock(val delayTime: Long = 10) : AsyncLock {
-	private val writeLock = AtomicBoolean(false)
 	private val lock = AtomicBoolean(false)
+	private val writeLock = AtomicBoolean(false)
 	private val readNumber = AtomicInteger(0)
 	
 	suspend fun AtomicBoolean.lock() {
@@ -63,14 +63,14 @@ class ReadWriteAsyncLock(val delayTime: Long = 10) : AsyncLock {
 	}
 	
 	override suspend fun doWrite(block: suspend () -> Unit) {
+		// 然后等待现有的读操作全部退出完成
+		readNumber.wait()
+		
 		// 先通知所有人，我要进行写操作了，不要再有新的读操作了
 		lock.lock()
 		
 		// 然后等待现有的读操作全部退出完成
 		readNumber.wait()
-		
-		// 最后挂起强制锁
-		writeLock.lock()
 		
 		block()
 		
@@ -81,10 +81,9 @@ class ReadWriteAsyncLock(val delayTime: Long = 10) : AsyncLock {
 	override suspend fun <T> doRead(block: suspend () -> T): T {
 		// 先等待通知锁关闭
 		lock.wait()
+		
 		// 添加读计数
 		addReadTime()
-		// 等待强制锁关闭
-		writeLock.wait()
 		
 		val ret = block()
 		

@@ -88,3 +88,6 @@ annotation class ToXml(val callback: String)
  */
 @Target(AnnotationTarget.FIELD)
 annotation class Vararg
+
+@Target(AnnotationTarget.FIELD)
+annotation class Ignore

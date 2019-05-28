@@ -13,6 +13,7 @@ import io.netty.handler.codec.http.HttpObjectAggregator
 import io.netty.handler.codec.http.HttpRequestDecoder
 import io.netty.handler.codec.http.HttpResponseEncoder
 
+@ChannelHandler.Sharable
 class NettyHttpHandler(
 	private val handler: HttpHandler<NettyHttpContent>
 ) : SimpleChannelInboundHandler<FullHttpRequest>() {
@@ -60,6 +61,7 @@ class NettyHttpServer(
 		bodySize
 	)
 	
+	val httpHandler = NettyHttpHandler(handler)
 	private val group = NioEventLoopGroup()
 	private val b = ServerBootstrap().group(group)
 		.channel(NioServerSocketChannel::class.java)
@@ -70,7 +72,7 @@ class NettyHttpServer(
 					.addLast("decoder", HttpRequestDecoder())
 					.addLast("encoder", HttpResponseEncoder())
 					.addLast("aggregator", HttpObjectAggregator(bodySize))
-					.addLast("handle", NettyHttpHandler(handler))
+					.addLast("handle", httpHandler)
 			}
 		})
 		.option(ChannelOption.SO_BACKLOG, 1024) // determining the number of connections queued

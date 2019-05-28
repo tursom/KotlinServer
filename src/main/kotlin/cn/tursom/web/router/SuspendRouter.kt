@@ -1,6 +1,6 @@
 package cn.tursom.web.router
 
-import cn.tursom.asynclock.ReaderAsyncLock
+import cn.tursom.asynclock.WriteAsyncLock
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 import cn.tursom.tools.binarySearch
@@ -148,10 +148,10 @@ private open class SuspendRouteNode<T>(
 	val route: String = routeList[index]
 	var wildSubRouter: SuspendAnyRouteNode<T>? = null
 	
-	private val placeholderRouterListLock = ReaderAsyncLock(maxReadTime)
+	private val placeholderRouterListLock = WriteAsyncLock(maxReadTime)
 	protected open val placeholderRouterList: ArrayList<SuspendPlaceholderRouteNode<T>>? = ArrayList(0)
 	
-	private val subRouterMapLock = ReaderAsyncLock(maxReadTime)
+	private val subRouterMapLock = WriteAsyncLock(maxReadTime)
 	val subRouterMap = HashMap<String, SuspendRouteNode<T>>(0)
 	
 	open val singleRoute
