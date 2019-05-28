@@ -2,7 +2,7 @@ package cn.tursom.tools
 
 import cn.tursom.asynclock.ReadWriteLockHashMap
 
-class CacheMap<K, V>(val timeout: Long) {
+class AsyncCacheMap<K, V>(val timeout: Long) {
 	private val valueMap = ReadWriteLockHashMap<K, Pair<Long, V>>()
 	
 	suspend fun get(key: K): V? {
@@ -14,16 +14,16 @@ class CacheMap<K, V>(val timeout: Long) {
 		return value
 	}
 	
-	suspend fun get(key: K, constroutor: suspend () -> V): V {
+	suspend fun get(key: K, constructor: suspend () -> V): V {
 		val (time, value) = getCache(key) ?: run {
-			val newValue = System.currentTimeMillis() to constroutor()
+			val newValue = System.currentTimeMillis() to constructor()
 			addCache(key, newValue)
 			newValue
 		}
 		if (time.isTimeOut()) {
 			delCache(key)
 			return run {
-				val newValue = constroutor()
+				val newValue = constructor()
 				addCache(key, System.currentTimeMillis() to newValue)
 				newValue
 			}
