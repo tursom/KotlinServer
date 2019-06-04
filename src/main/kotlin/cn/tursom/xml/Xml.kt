@@ -52,19 +52,19 @@ object Xml {
 	
 	private val Class<*>.textField
 		get() = declaredFields.find {
-			it.getAnnotation(Ignore::class.java) != null &&
+			it.getAnnotation(Ignore::class.java) == null &&
 				it.target ?: defaultTarget == ElementTarget.ElementText
 		}
 	
 	private val Class<*>.attributeField
 		get() = declaredFields.filter {
-			it.getAnnotation(Ignore::class.java) != null &&
+			it.getAnnotation(Ignore::class.java) == null &&
 				it.target ?: defaultTarget == ElementTarget.Attribute
 		}
 	
 	private val Class<*>.subElementField
 		get() = declaredFields.filter {
-			it.getAnnotation(Ignore::class.java) != null &&
+			it.getAnnotation(Ignore::class.java) == null &&
 				it.target ?: defaultTarget == ElementTarget.SubElement
 		}
 	
