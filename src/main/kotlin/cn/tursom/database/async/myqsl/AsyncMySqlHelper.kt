@@ -282,11 +282,8 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 				
 				java.lang.String::class.java -> getAnnotation(TextLength::class.java)?.let { "CHAR(${it.length})" }
 					?: "TEXT"
-				else -> if (type.isSqlField) {
-					type.getAnnotation(FieldType::class.java)?.name ?: type.name.split('.').last()
-				} else {
-					null
-				}
+				else ->
+					getAnnotation<FieldType>()?.name ?: type.getAnnotation<FieldType>()?.name ?: type.name.split('.').last()
 			}
 	}
 }

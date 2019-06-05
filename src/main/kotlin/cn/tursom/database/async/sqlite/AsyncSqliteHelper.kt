@@ -208,11 +208,9 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 				java.lang.String::class.java -> getAnnotation<TextLength>()?.let { "CHAR(${it.length})" } ?: "TEXT"
 				
 				else -> {
-					if (type.isSqlField) {
-						type.getAnnotation<FieldType>()?.name ?: type.name.split('.').last()
-					} else {
-						null
-					}
+					getAnnotation<FieldType>()?.name ?:
+					type.getAnnotation<FieldType>()?.name ?:
+					type.name.split('.').last()
 				}
 			}
 		
