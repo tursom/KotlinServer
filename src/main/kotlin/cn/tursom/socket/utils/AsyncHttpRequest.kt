@@ -5,6 +5,7 @@ import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Proxy
+import java.net.SocketAddress
 import java.net.URLEncoder
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -17,8 +18,8 @@ object AsyncHttpRequest {
 	val defaultClient: OkHttpClient = OkHttpClient().newBuilder()
 		.retryOnConnectionFailure(true)
 		.build()
-	val socketClient = proxyClient()
-	val httpProxyClient = proxyClient(port = 8080, type = Proxy.Type.HTTP)
+	val socketClient: OkHttpClient = proxyClient()
+	val httpProxyClient: OkHttpClient = proxyClient(port = 8080, type = Proxy.Type.HTTP)
 	
 	
 	fun proxyClient(
@@ -26,7 +27,7 @@ object AsyncHttpRequest {
 		port: Int = 1080,
 		type: Proxy.Type = Proxy.Type.SOCKS
 	): OkHttpClient = OkHttpClient().newBuilder()
-		.proxy(Proxy(type, InetSocketAddress(host, port)))
+		.proxy(Proxy(type, InetSocketAddress(host, port) as SocketAddress))
 		.retryOnConnectionFailure(true)
 		.build()
 	
@@ -62,7 +63,11 @@ object AsyncHttpRequest {
 			requestBuilder.addHeader(t, u)
 		}
 		
-		return sendRequest(client.newCall(requestBuilder.build()))
+		return sendRequest(
+			client.newCall(
+				requestBuilder.build()
+			)
+		)
 	}
 	
 	private suspend fun post(

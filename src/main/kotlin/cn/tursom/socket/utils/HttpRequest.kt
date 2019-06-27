@@ -4,6 +4,7 @@ import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.nio.charset.Charset
 
 /**
  * 向指定URL发送GET方法的请求
@@ -43,7 +44,7 @@ fun sendGet(
 //				println(key + "--->" + map[key])
 //			}
 	// 定义 BufferedReader输入流来读取URL的响应
-	return InputStreamReader(connection.getInputStream()).readText()
+	return InputStreamReader(connection.getInputStream(), Charset.defaultCharset()).readText()
 }
 
 fun sendGet(
@@ -195,7 +196,7 @@ fun sendPost(
 	}
 	
 	// 定义BufferedReader输入流来读取URL的响应
-	return InputStreamReader(conn.getInputStream()).readText()
+	return InputStreamReader(conn.getInputStream(), Charset.defaultCharset()).readText()
 }
 
 @Throws(Exception::class)
@@ -229,7 +230,7 @@ fun sendPost(
 	// 打开和URL之间的连接
 	val conn = realUrl.openConnection()
 	// 设置通用的请求属性
-	headers.forEach { key, value ->
+	headers.forEach { (key, value) ->
 		conn.setRequestProperty(key, value)
 	}
 	// 发送POST请求必须设置如下两行，HttpUrlConnection会将请求方法自动设置为POST
@@ -259,7 +260,7 @@ fun sendPost(
 		Pair("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)"))
 ) {
 	val sb = StringBuilder()
-	param.forEach { key, value ->
+	param.forEach { (key, value) ->
 		sb.append("${URLEncoder.encode(key, "utf-8")}=${URLEncoder.encode(value, "utf-8")}&")
 	}
 	sb.deleteCharAt(sb.length - 1)
@@ -287,7 +288,7 @@ class HttpRequest(
 		url,
 		param?.run {
 			val sb = StringBuilder()
-			param.forEach { key, value ->
+			param.forEach { (key, value) ->
 				sb.append("${URLEncoder.encode(key, "utf-8")}=${URLEncoder.encode(value, "utf-8")}&")
 			}
 			sb.deleteCharAt(sb.length - 1)
@@ -342,7 +343,7 @@ class HttpRequest(
 		connection.connect()
 		
 		// 获取URLConnection对象对应的输出流
-		connection.outputStream.use { out ->
+		if (param != null) connection.outputStream.use { out ->
 			// 发送请求参数
 			out.write(param)
 			// flush输出流的缓冲

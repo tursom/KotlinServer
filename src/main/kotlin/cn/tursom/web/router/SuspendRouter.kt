@@ -5,6 +5,13 @@ import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 import cn.tursom.tools.binarySearch
 
+interface SuspendRouterNode<T> {
+	val value: T?
+	val completeRoute: String
+	
+	suspend fun forEach(action: (node: SuspendRouterNode<T>) -> Unit)
+}
+
 @Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
 class SuspendRouter<T>(val maxReadTime: Long = 5) {
 	private val rootNode = SuspendRouteNode<T>(listOf(""), 0, null, maxReadTime)
@@ -16,6 +23,8 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 	private var strBuf: String = ""
 	@Volatile
 	private var strBufTime: Long = 0
+	
+	val root: SuspendRouterNode<T> = rootNode
 	
 	private suspend fun setSubRoute(
 		route: String,
@@ -99,7 +108,7 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 			stringBuilder.append(indentation)
 			stringBuilder.append("- ")
 		}
-		stringBuilder.append("${node.singleRoute}${if (node.value != null) "    ${node.value}" else ""}\n")
+		stringBuilder.append("${node.completeRoute}${if (node.value != null) "    ${node.value}" else ""}\n")
 		
 		if (node is SuspendAnyRouteNode) return
 		
@@ -142,9 +151,9 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 private open class SuspendRouteNode<T>(
 	var routeList: List<String>,
 	var index: Int,
-	var value: T? = null,
+	override var value: T? = null,
 	val maxReadTime: Long
-) {
+) : SuspendRouterNode<T> {
 	val route: String = routeList[index]
 	var wildSubRouter: SuspendAnyRouteNode<T>? = null
 	
@@ -154,11 +163,24 @@ private open class SuspendRouteNode<T>(
 	private val subRouterMapLock = WriteAsyncRWLock(maxReadTime)
 	val subRouterMap = HashMap<String, SuspendRouteNode<T>>(0)
 	
-	open val singleRoute
+	override val completeRoute
 		get() = "/$route"
 	
 	val placeholderRouterListEmpty
 		get() = placeholderRouterList?.isEmpty() ?: true
+	
+	
+	override suspend fun forEach(action: (node: SuspendRouterNode<T>) -> Unit) {
+		placeholderRouterListLock.doRead {
+			placeholderRouterList?.forEach(action)
+		}
+		subRouterMapLock.doRead {
+			subRouterMap.forEach { (_, u) ->
+				action(u)
+			}
+		}
+		wildSubRouter?.let(action)
+	}
 	
 	suspend fun forEachPlaceholderRouter(block: suspend (SuspendPlaceholderRouteNode<T>) -> Unit) {
 		placeholderRouterListLock.doRead { placeholderRouterList?.forEach { block(it) } }
@@ -182,7 +204,7 @@ private open class SuspendRouteNode<T>(
 				1
 			}
 			r[0] == ':' -> {
-				val node = SuspendPlaceholderRouteNode(
+				val node: SuspendPlaceholderRouteNode<T> = SuspendPlaceholderRouteNode(
 					route,
 					startIndex,
 					value = value,
@@ -350,7 +372,7 @@ private class SuspendPlaceholderRouteNode<T>(
 	): Pair<Boolean, Int> =
 		(size == route.matchLength(startIndex)) to size
 	
-	override val singleRoute: String
+	override val completeRoute: String
 		get() {
 			val sb = StringBuilder()
 			for (i in startIndex..index) {

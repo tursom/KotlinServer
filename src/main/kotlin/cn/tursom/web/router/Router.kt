@@ -2,9 +2,17 @@ package cn.tursom.web.router
 
 import cn.tursom.tools.binarySearch
 
+
+interface RouterNode<T> {
+	val value: T?
+	
+	fun forEach(action: (node: RouterNode<T>) -> Unit)
+}
+
 @Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
 class Router<T> {
-	val rootNode = RouteNode<T>(listOf(""), 0)
+	private val rootNode = RouteNode<T>(listOf(""), 0)
+	val root: RouterNode<T> = rootNode
 	
 	fun addSubRoute(route: String, value: T?, onDestroy: ((oldValue: T) -> Unit)? = null) {
 		val routeList = route.split('?')[0].split('/').filter { it.isNotEmpty() }
@@ -108,8 +116,8 @@ class Router<T> {
 open class RouteNode<T>(
 	var routeList: List<String>,
 	var index: Int,
-	var value: T? = null
-) {
+	override var value: T? = null
+) : RouterNode<T> {
 	val route: String = routeList[index]
 	var wildSubRouter: AnyRouteNode<T>? = null
 	open val placeholderRouterList: ArrayList<PlaceholderRouteNode<T>>? = ArrayList(0)
@@ -117,6 +125,12 @@ open class RouteNode<T>(
 	
 	open val singleRoute
 		get() = "/$route"
+	
+	override fun forEach(action: (node: RouterNode<T>) -> Unit) {
+		placeholderRouterList?.forEach(action)
+		subRouterMap.forEach { (_, u) -> action(u) }
+		wildSubRouter?.let(action)
+	}
 	
 	open fun match(
 		route: List<String>,
@@ -132,7 +146,7 @@ open class RouteNode<T>(
 				1
 			}
 			r[0] == ':' -> {
-				val node = PlaceholderRouteNode(route, startIndex, value = value)
+				val node: PlaceholderRouteNode<T> = PlaceholderRouteNode(route, startIndex, value = value)
 				// 必须保证 placeholderRouterList 存在，而且还不能有这个长度的节点
 				if (synchronized(placeholderRouterList!!) {
 						placeholderRouterList!!.binarySearch { it.size - node.size }
