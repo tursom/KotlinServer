@@ -18,7 +18,9 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 	private val threadPool = Executors.newSingleThreadExecutor()
 	
 	@Volatile
-	private var lastChangeTime: Long = System.currentTimeMillis()
+	private var _lastChangeTime: Long = System.currentTimeMillis()
+	val lashChangeTime
+		get() = _lastChangeTime
 	@Volatile
 	private var strBuf: String = ""
 	@Volatile
@@ -70,7 +72,7 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 		routeNode.value = value
 		routeNode.routeList = routeList
 		routeNode.index = index - 1
-		lastChangeTime = System.currentTimeMillis()
+		_lastChangeTime = System.currentTimeMillis()
 	}
 	
 	suspend fun delRoute(route: String, onDestroy: ((oldValue: T) -> Unit)? = null) {
@@ -125,7 +127,7 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 	}
 	
 	suspend fun suspendToString(): String {
-		if (strBufTime < lastChangeTime) {
+		if (strBufTime < _lastChangeTime) {
 			val stringBuilder = StringBuilder()
 			toString(rootNode, stringBuilder, "")
 			strBuf = stringBuilder.toString()
@@ -135,7 +137,7 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 	}
 	
 	override fun toString(): String {
-		if (strBufTime < lastChangeTime) {
+		if (strBufTime < _lastChangeTime) {
 			val stringBuilder = StringBuilder()
 			runBlocking {
 				toString(rootNode, stringBuilder, "")
