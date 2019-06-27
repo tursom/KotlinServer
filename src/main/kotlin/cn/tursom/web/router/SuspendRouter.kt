@@ -7,9 +7,11 @@ import cn.tursom.tools.binarySearch
 
 interface SuspendRouterNode<T> {
 	val value: T?
-	val completeRoute: String
+	val lastRoute: String
+	val fullRoute: String
+	val empty: Boolean
 	
-	suspend fun forEach(action: (node: SuspendRouterNode<T>) -> Unit)
+	suspend fun forEach(action: suspend (node: SuspendRouterNode<T>) -> Unit)
 }
 
 @Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
@@ -110,7 +112,7 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 			stringBuilder.append(indentation)
 			stringBuilder.append("- ")
 		}
-		stringBuilder.append("${node.completeRoute}${if (node.value != null) "    ${node.value}" else ""}\n")
+		stringBuilder.append("${node.lastRoute}${if (node.value != null) "    ${node.value}" else ""}\n")
 		
 		if (node is SuspendAnyRouteNode) return
 		
@@ -165,23 +167,35 @@ private open class SuspendRouteNode<T>(
 	private val subRouterMapLock = WriteAsyncRWLock(maxReadTime)
 	val subRouterMap = HashMap<String, SuspendRouteNode<T>>(0)
 	
-	override val completeRoute
+	override val lastRoute
 		get() = "/$route"
+	
+	override val fullRoute: String by lazy {
+		val stringBuilder = StringBuilder("")
+		for (i in 0..index) {
+			val s = routeList[i]
+			if (s.isNotEmpty()) stringBuilder.append("/$s")
+		}
+		stringBuilder.toString()
+	}
 	
 	val placeholderRouterListEmpty
 		get() = placeholderRouterList?.isEmpty() ?: true
 	
+	override val empty: Boolean
+		get() = value == null &&
+			subRouterMap.isEmpty() &&
+			placeholderRouterListEmpty &&
+			wildSubRouter == null
 	
-	override suspend fun forEach(action: (node: SuspendRouterNode<T>) -> Unit) {
+	override suspend fun forEach(action: suspend (node: SuspendRouterNode<T>) -> Unit) {
 		placeholderRouterListLock.doRead {
-			placeholderRouterList?.forEach(action)
+			placeholderRouterList?.forEach { action(it) }
 		}
 		subRouterMapLock.doRead {
-			subRouterMap.forEach { (_, u) ->
-				action(u)
-			}
+			subRouterMap.forEach { (_, u) -> action(u) }
 		}
-		wildSubRouter?.let(action)
+		wildSubRouter?.let { action(it) }
 	}
 	
 	suspend fun forEachPlaceholderRouter(block: suspend (SuspendPlaceholderRouteNode<T>) -> Unit) {
@@ -374,7 +388,7 @@ private class SuspendPlaceholderRouteNode<T>(
 	): Pair<Boolean, Int> =
 		(size == route.matchLength(startIndex)) to size
 	
-	override val completeRoute: String
+	override val lastRoute: String
 		get() {
 			val sb = StringBuilder()
 			for (i in startIndex..index) {
