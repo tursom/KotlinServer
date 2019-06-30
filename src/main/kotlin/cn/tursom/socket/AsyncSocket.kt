@@ -9,6 +9,7 @@ import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.CompletionHandler
+import java.nio.channels.InterruptedByTimeoutException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
@@ -81,6 +82,7 @@ suspend fun AsyncSocket.recv(
 			buffer.clear()
 		}
 	} catch (e: SocketTimeoutException) {
+	} catch (e: InterruptedByTimeoutException) {
 	}
 	
 	return byteStream.toByteArray()

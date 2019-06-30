@@ -2,38 +2,39 @@ package cn.tursom.socket.client
 
 import cn.tursom.socket.AsyncSocket
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.CompletionHandler
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 object AsyncClient {
-	private val handler = object : CompletionHandler<Void, Channel<Throwable?>> {
-		override fun completed(result: Void?, attachment: Channel<Throwable?>?) {
+	private val handler = object : CompletionHandler<Void, Continuation<Void?>> {
+		override fun completed(result: Void?, attachment: Continuation<Void?>) {
 			GlobalScope.launch {
-				attachment?.send(null)
+				attachment.resume(result)
 			}
 		}
 		
-		override fun failed(exc: Throwable?, attachment: Channel<Throwable?>?) {
+		override fun failed(exc: Throwable, attachment: Continuation<Void?>) {
 			GlobalScope.launch {
-				attachment?.send(exc)
+				attachment.resumeWithException(exc)
 			}
 		}
 	}
 	
-	fun connect(host: String, port: Int): AsyncSocket {
-		val socketChannel = AsynchronousSocketChannel.open()!!
-		return runBlocking { return@runBlocking connect(socketChannel, host, port) }
+	suspend fun connect(host: String, port: Int): AsyncSocket {
+		@Suppress("BlockingMethodInNonBlockingContext")
+		return connect(AsynchronousSocketChannel.open()!!, host, port)
 	}
 	
 	suspend fun connect(socketChannel: AsynchronousSocketChannel, host: String, port: Int): AsyncSocket {
-		val channel = Channel<Throwable?>()
-		socketChannel.connect(InetSocketAddress(host, port), channel, handler)
-		channel.receive()?.let { throw it }
-		channel.close()
+		suspendCoroutine<Void?> { cont ->
+			socketChannel.connect(InetSocketAddress(host, port), cont, handler)
+		}
 		return AsyncSocket(socketChannel)
 	}
 }

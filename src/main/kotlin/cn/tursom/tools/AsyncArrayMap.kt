@@ -70,7 +70,7 @@ class AsyncArrayMap<K : Comparable<K>, V> : AsyncPutableMap<K, V> {
 		}
 	}
 	
-	class MapIterator<K : Comparable<K>, V>(private val map: AsyncArrayMap<K, V>) : AsyncIterator<Map.Entry<K, V>> {
+	class MapIterator<K : Comparable<K>, V>(map: AsyncArrayMap<K, V>) : AsyncIterator<Map.Entry<K, V>> {
 		private val iterator = map.map.iterator()
 		private val lock = MutexAsyncRWLock(5)
 		
