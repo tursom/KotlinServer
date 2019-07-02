@@ -1,7 +1,10 @@
 package cn.tursom.datagram.client
 
 import java.io.Closeable
-import java.net.*
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetSocketAddress
+import java.net.SocketAddress
 
 
 class UdpClient(
@@ -11,9 +14,9 @@ class UdpClient(
 ) : Closeable {
 	
 	private val socket = DatagramSocket()
+	val address: SocketAddress = InetSocketAddress(host, port)
 	
-	fun send(data: ByteArray, callback: ((ByteArray, size: Int) -> Unit)? = null) {
-		val address = InetSocketAddress(host, port)
+	fun send(data: ByteArray, callback: ((data: ByteArray, size: Int) -> Unit)? = null): SocketAddress {
 		socket.send(DatagramPacket(data, data.size, address))
 		callback?.let {
 			//定义接受网络数据的字节数组
@@ -21,11 +24,12 @@ class UdpClient(
 			//已指定字节数组创建准备接受数据的DatagramPacket对象
 			val inPacket = DatagramPacket(inBuff, inBuff.size, address)
 			socket.receive(inPacket)
-			it(inPacket.data ?: return, inPacket.length)
+			it(inPacket.data ?: return@let, inPacket.length)
 		}
+		return address
 	}
 	
-	fun recv(address: SocketAddress, buffer: ByteArray, callback: (ByteArray, size: Int) -> Unit) {
+	fun recv(buffer: ByteArray, callback: (ByteArray, size: Int) -> Unit) {
 		val inPacket = DatagramPacket(buffer, buffer.size, address)
 		socket.receive(inPacket)
 		callback(inPacket.data ?: return, inPacket.length)

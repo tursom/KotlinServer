@@ -1,9 +1,9 @@
 package cn.tursom.tools
 
-import cn.tursom.asynclock.WriteAsyncRWLock
+import cn.tursom.asynclock.ReadFirstAsyncRWLock
 
 class AsyncLinkSlot<K, V> {
-	private val lock = WriteAsyncRWLock(3)
+	private val lock = ReadFirstAsyncRWLock(3)
 	@Volatile
 	private var node: Node<K, V>? = null
 	@Volatile

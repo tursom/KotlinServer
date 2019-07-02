@@ -1,10 +1,10 @@
 package cn.tursom.tools
 
 import cn.tursom.asynclock.MutexAsyncRWLock
-import cn.tursom.asynclock.ReadWriteAsyncRWLock
+import cn.tursom.asynclock.WriteFirstAsyncRWLock
 
 class AsyncArrayMap<K : Comparable<K>, V> : AsyncPutableMap<K, V> {
-	private val lock = ReadWriteAsyncRWLock()
+	private val lock = WriteFirstAsyncRWLock()
 	private val map = ArrayMap<K, V>()
 	
 	override val size: Int

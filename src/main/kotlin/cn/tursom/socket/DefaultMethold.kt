@@ -27,7 +27,6 @@ fun ByteArray.toInt(): Int =
 		(this[3].toInt() and 0xFF)
 
 
-
 fun ByteArray.addLong(num: Long, offset: Int = 0) {
 	this[0 + offset] = (num shr (7 * 8)).toByte()
 	this[1 + offset] = (num shr (6 * 8)).toByte()
@@ -53,22 +52,22 @@ fun Long.toByteArray(): ByteArray {
 }
 
 fun ByteArray.toLong(): Long =
-	(this[0].toLong() shl 56 and (0xff shl (8 * 7))) or
-		(this[1].toLong() shl 48 and (0xff shl (8 * 6))) or
-		(this[2].toLong() shl 40 and (0xff shl (8 * 5))) or
-		(this[3].toLong() shl 32 and (0xff shl (8 * 4))) or
-		(this[4].toLong() shl 24 and (0xff shl (8 * 3))) or
+	(this[0].toLong() shl 56 and (0xffL shl (8 * 7))) or
+		(this[1].toLong() shl 48 and (0xffL shl (8 * 6))) or
+		(this[2].toLong() shl 40 and (0xffL shl (8 * 5))) or
+		(this[3].toLong() shl 32 and (0xffL shl (8 * 4))) or
+		(this[4].toLong() shl 24 and (0xffL shl (8 * 3))) or
 		(this[5].toLong() shl 16 and (0xff shl (8 * 2))) or
 		(this[6].toLong() shl 8 and (0xff shl (8 * 1))) or
 		(this[7].toLong() and 0xff)
 
 
 fun ByteArray.toLong(offset: Int = 0): Long =
-	(this[0 + offset].toLong() shl 56 and (0xff shl (8 * 7))) or
-		(this[1 + offset].toLong() shl 48 and (0xff shl (8 * 6))) or
-		(this[2 + offset].toLong() shl 40 and (0xff shl (8 * 5))) or
-		(this[3 + offset].toLong() shl 32 and (0xff shl (8 * 4))) or
-		(this[4 + offset].toLong() shl 24 and (0xff shl (8 * 3))) or
+	(this[0 + offset].toLong() shl 56 and (0xffL shl (8 * 7))) or
+		(this[1 + offset].toLong() shl 48 and (0xffL shl (8 * 6))) or
+		(this[2 + offset].toLong() shl 40 and (0xffL shl (8 * 5))) or
+		(this[3 + offset].toLong() shl 32 and (0xffL shl (8 * 4))) or
+		(this[4 + offset].toLong() shl 24 and (0xffL shl (8 * 3))) or
 		(this[5 + offset].toLong() shl 16 and (0xff shl (8 * 2))) or
 		(this[6 + offset].toLong() shl 8 and (0xff shl (8 * 1))) or
 		(this[7 + offset].toLong() and 0xff)
