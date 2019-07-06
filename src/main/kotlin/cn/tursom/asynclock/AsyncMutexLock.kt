@@ -2,7 +2,7 @@ package cn.tursom.asynclock
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-class MutexAsyncRWLock(val delayTime: Long) : AsyncLock {
+class AsyncMutexLock(val delayTime: Long = 5) : AsyncLock {
 	private val lock = AtomicBoolean(false)
 	
 	override suspend fun sync(block: suspend () -> Unit) {

@@ -18,6 +18,6 @@ class AsyncRWLockAbstractMap<K, V>(
 	}
 }
 
-fun <K, V> ReadWriteLockHashMap() = AsyncRWLockAbstractMap<K, V>(WriteFirstAsyncRWLock())
+fun <K, V> ReadWriteLockHashMap() = AsyncRWLockAbstractMap<K, V>(AsyncWriteFirstRWLock())
 fun <K, V> WriteLockHashMap(maxReadTime: Long = 5) =
-	AsyncRWLockAbstractMap<K, V>(ReadFirstAsyncRWLock(maxReadTime))
+	AsyncRWLockAbstractMap<K, V>(AsyncReadFirstRWLock(maxReadTime))

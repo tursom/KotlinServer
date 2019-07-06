@@ -1,10 +1,10 @@
 package cn.tursom.tools
 
-import cn.tursom.asynclock.MutexAsyncRWLock
-import cn.tursom.asynclock.WriteFirstAsyncRWLock
+import cn.tursom.asynclock.AsyncMutexLock
+import cn.tursom.asynclock.AsyncWriteFirstRWLock
 
 class AsyncArrayMap<K : Comparable<K>, V> : AsyncPutableMap<K, V> {
-	private val lock = WriteFirstAsyncRWLock()
+	private val lock = AsyncWriteFirstRWLock()
 	private val map = ArrayMap<K, V>()
 	
 	override val size: Int
@@ -72,7 +72,7 @@ class AsyncArrayMap<K : Comparable<K>, V> : AsyncPutableMap<K, V> {
 	
 	class MapIterator<K : Comparable<K>, V>(map: AsyncArrayMap<K, V>) : AsyncIterator<Map.Entry<K, V>> {
 		private val iterator = map.map.iterator()
-		private val lock = MutexAsyncRWLock(5)
+		private val lock = AsyncMutexLock(5)
 		
 		override suspend fun hasNext(): Boolean {
 			return lock { iterator.hasNext() }
