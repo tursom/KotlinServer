@@ -1,4 +1,4 @@
-package cn.tursom.tools
+package cn.tursom.tools.datastruct
 
 class AsyncHashMap<K, V>(
 	internal val loadFactor: Float = 0.75f

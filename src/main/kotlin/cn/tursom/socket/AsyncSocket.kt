@@ -3,6 +3,7 @@ package cn.tursom.socket
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.net.SocketTimeoutException
@@ -57,7 +58,7 @@ suspend fun AsyncSocket.write(message: String, timeout: Long = 0L, timeUnit: Tim
 
 @Suppress("unused")
 suspend fun AsyncSocket.recvStr(buffer: ByteBuffer, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): String {
-	buffer.clear()
+	//buffer.clear()
 	read(buffer, timeout, timeUnit)
 	return String(buffer.array(), 0, buffer.position())
 }
@@ -67,7 +68,7 @@ suspend fun AsyncSocket.recv(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = AsyncSocket.defaultTimeout
 ): ByteArray {
-	val buffer = ByteBuffer.allocate(4096)
+	val buffer = ByteBuffer.allocate(1024)
 	val byteStream = ByteArrayOutputStream()
 	
 	try {

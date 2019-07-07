@@ -1,24 +1,13 @@
 package cn.tursom.cache
 
-import cn.tursom.asynclock.AsyncMutexLock
-import cn.tursom.tools.CurrentBitSet
+import cn.tursom.tools.datastruct.ArrayBitSet
 
-interface AsyncListCache<T> {
-	suspend fun put(cache: T): Boolean
-	suspend fun get(): T?
-}
-
-suspend fun <T> AsyncListCache<T>.forceGet(): T {
-	return get() ?: throw NoCacheException()
-}
-
-class AsyncArrayListCache<T> : AsyncListCache<T> {
-	private val bitSet = CurrentBitSet(64)
+class ArrayCachePool<T> : CachePool<T> {
+	private val bitSet = ArrayBitSet(64)
 	private var poll = Array<Any?>(bitSet.size.toInt()) { null }
-	private val lock = AsyncMutexLock()
 	
-	override suspend fun put(cache: T): Boolean {
-		val index = lock {
+	override fun put(cache: T): Boolean {
+		val index = synchronized(bitSet) {
 			val index = getDown()
 			bitSet.up(index)
 			index
@@ -27,10 +16,10 @@ class AsyncArrayListCache<T> : AsyncListCache<T> {
 		return true
 	}
 	
-	override suspend fun get(): T? {
-		return lock {
+	override fun get(): T? {
+		synchronized(bitSet) {
 			val index = bitSet.firstUp()
-			if (index < 0) null
+			return if (index < 0) null
 			else {
 				@Suppress("UNCHECKED_CAST")
 				val ret = poll[index.toInt()] as T

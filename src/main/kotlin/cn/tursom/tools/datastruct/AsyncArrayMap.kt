@@ -1,4 +1,4 @@
-package cn.tursom.tools
+package cn.tursom.tools.datastruct
 
 import cn.tursom.asynclock.AsyncMutexLock
 import cn.tursom.asynclock.AsyncWriteFirstRWLock

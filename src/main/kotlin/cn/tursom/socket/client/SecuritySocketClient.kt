@@ -1,14 +1,14 @@
 package cn.tursom.socket.client
 
 import cn.tursom.socket.BaseSocket
-import cn.tursom.socket.utils.Gzip
-import cn.tursom.socket.utils.RSA
+import cn.tursom.tools.Gzip
+import cn.tursom.tools.RSA
 import java.net.Socket
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import kotlin.random.Random
 
-class SecuritySocketClient(host: String, port: Int, use: (SecuritySocketClient.() -> Unit)? = null) : BaseSocket(Socket(host, port)) {
+class SecuritySocketClient(host: String, port: Int) : BaseSocket(Socket(host, port)) {
 	private val decrypt = Cipher.getInstance("AES")!!
 	private val encrypt = Cipher.getInstance("AES")!!
 	
@@ -26,15 +26,14 @@ class SecuritySocketClient(host: String, port: Int, use: (SecuritySocketClient.(
 		
 		encrypt.init(Cipher.ENCRYPT_MODE, secKey)
 		decrypt.init(Cipher.DECRYPT_MODE, secKey)
-		
-		use?.let {
-			it()
-			close()
-		}
 	}
 	
 	fun sSend(data: ByteArray) = send(encrypt.doFinal(data))
 	fun sRecv() = decrypt.doFinal(recv())!!
 	fun sGzSend(data: ByteArray) = send(encrypt.doFinal(Gzip.compress(data)))
 	fun sGzRecv() = Gzip.uncompress(decrypt.doFinal(recv()))
+	
+	inline operator fun <T> invoke(block: SecuritySocketClient.() -> T): T {
+		return use { block() }
+	}
 }

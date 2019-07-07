@@ -1,4 +1,4 @@
-package cn.tursom.tools
+package cn.tursom.tools.datastruct
 
 class ArrayMap<K : Comparable<K>, V> : Map<K, V> {
 	@Volatile

@@ -1,6 +1,5 @@
 package cn.tursom.tools
 
-import com.google.gson.Gson
 import kotlinx.coroutines.*
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
@@ -194,8 +193,4 @@ fun randomInt(min: Int, max: Int) = Random().nextInt(max) % (max - min + 1) + mi
 
 fun getTAG(cls: Class<*>): String {
 	return cls.name.split(".").last().dropLast(10)
-}
-
-inline fun <reified T : Any> Gson.fromJson(json: String): T {
-	return fromJson(json, T::class.java)
 }

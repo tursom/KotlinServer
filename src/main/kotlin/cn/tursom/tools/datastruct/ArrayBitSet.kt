@@ -1,8 +1,8 @@
-package cn.tursom.tools
+package cn.tursom.tools.datastruct
 
 import java.io.Serializable
 
-class CurrentBitSet(beginSize: Long = 256, val defaultState: Boolean = false) : Serializable {
+class ArrayBitSet(beginSize: Long = 256, val defaultState: Boolean = false) : Serializable {
 	private var bitSet = LongArray(needSize(beginSize))
 	val size
 		get() = bitSet.size.toLong() shl 6

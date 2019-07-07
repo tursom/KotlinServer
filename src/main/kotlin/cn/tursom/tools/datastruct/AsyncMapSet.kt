@@ -1,4 +1,4 @@
-package cn.tursom.tools
+package cn.tursom.tools.datastruct
 
 
 class AsyncMapSet<K>(private val map: AsyncMap<K, *>) : AsyncSet<K> {
