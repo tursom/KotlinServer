@@ -1,5 +1,6 @@
 package cn.tursom.datagram.server
 
+import cn.tursom.datagram.UdpPackageSize
 import io.netty.util.HashedWheelTimer
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -15,7 +16,7 @@ class MultiThreadUDPServer(
 	private val packageSize: Int = UdpPackageSize.defaultLen,
 	private val exception: Exception.() -> Unit = { printStackTrace() },
 	private val handler: MultiThreadUDPServer.(address: SocketAddress, buffer: ByteArray, size: Int) -> Unit
-) : UDPServer {
+) : AbstractUdpServer() {
 	private val excWheelTimer = HashedWheelTimer()
 	private val connectionMap: java.util.AbstractMap<
 		SocketAddress,
@@ -26,7 +27,7 @@ class MultiThreadUDPServer(
 		) -> Unit
 		> = ConcurrentHashMap()
 	
-	private val socket = DatagramSocket(port)
+	override val socket = DatagramSocket(port)
 	
 	override fun run() {
 		val inBuff = ByteArray(packageSize)
@@ -53,14 +54,6 @@ class MultiThreadUDPServer(
 		for (i in 1..thread) {
 			Thread(this, "MTUdpSer$i").start()
 		}
-	}
-	
-	fun send(address: SocketAddress, buffer: ByteArray, size: Int = -1) {
-		socket.send(if (size >= 0) {
-			DatagramPacket(buffer, size, address)
-		} else {
-			DatagramPacket(buffer, buffer.size, address)
-		})
 	}
 	
 	@Suppress("NAME_SHADOWING")

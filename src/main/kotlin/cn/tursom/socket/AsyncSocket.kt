@@ -1,9 +1,9 @@
 package cn.tursom.socket
 
+import cn.tursom.utils.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.yield
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.net.SocketTimeoutException
@@ -34,6 +34,15 @@ open class AsyncSocket(private val socketChannel: AsynchronousSocketChannel) : C
 		socketChannel.close()
 	}
 	
+	suspend inline infix operator fun <T> invoke(@Suppress("REDUNDANT_INLINE_SUSPEND_FUNCTION_TYPE") block: suspend AsyncSocket.() -> T): T {
+		@Suppress("ConvertTryFinallyToUseCall")
+		try {
+			return this.block()
+		} finally {
+			close()
+		}
+	}
+	
 	companion object {
 		const val defaultTimeout = 60_000L
 		
@@ -60,26 +69,27 @@ suspend fun AsyncSocket.write(message: String, timeout: Long = 0L, timeUnit: Tim
 suspend fun AsyncSocket.recvStr(buffer: ByteBuffer, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): String {
 	//buffer.clear()
 	read(buffer, timeout, timeUnit)
-	return String(buffer.array(), 0, buffer.position())
+	return String(buffer.array(), buffer.arrayOffset(), buffer.position())
 }
 
 
 suspend fun AsyncSocket.recv(
 	readTimeout: Long = 100L,
-	firstTimeout: Long = AsyncSocket.defaultTimeout
+	firstTimeout: Long = AsyncSocket.defaultTimeout,
+	buffer: ByteBuffer = ByteBuffer.allocate(1024)
 ): ByteArray {
-	val buffer = ByteBuffer.allocate(1024)
+	buffer.clear()
 	val byteStream = ByteArrayOutputStream()
 	
 	try {
 		read(buffer, firstTimeout)
 		@Suppress("BlockingMethodInNonBlockingContext")
-		byteStream.write(buffer.array(), 0, buffer.position())
+		byteStream.write(buffer.array(), buffer.arrayOffset(), buffer.position())
 		buffer.clear()
 		
 		while (read(buffer, readTimeout) > 0) {
 			@Suppress("BlockingMethodInNonBlockingContext")
-			byteStream.write(buffer.array(), 0, buffer.position())
+			byteStream.write(buffer.array(), buffer.arrayOffset(), buffer.position())
 			buffer.clear()
 		}
 	} catch (e: SocketTimeoutException) {
@@ -96,26 +106,28 @@ suspend fun AsyncSocket.recvStr(
 
 suspend fun AsyncSocket.recvInt(
 	readTimeout: Long = 100L,
-	firstTimeout: Long = AsyncSocket.defaultTimeout
+	firstTimeout: Long = AsyncSocket.defaultTimeout,
+	buffer: ByteBuffer = ByteBuffer.allocate(4)
 ): Int {
-	val buffer = ByteBuffer.allocate(4)
+	buffer.clear().limit(4)
 	var readSize = read(buffer, firstTimeout)
 	while (readSize < 8) {
 		readSize += read(buffer, readTimeout)
 	}
-	return buffer.array().toInt()
+	return buffer.array().toInt(buffer.arrayOffset())
 }
 
 suspend fun AsyncSocket.recvLong(
 	readTimeout: Long = 100L,
-	firstTimeout: Long = AsyncSocket.defaultTimeout
+	firstTimeout: Long = AsyncSocket.defaultTimeout,
+	buffer: ByteBuffer = ByteBuffer.allocate(8)
 ): Long {
-	val buffer = ByteBuffer.allocate(8)
+	buffer.clear().limit(8)
 	var readSize = read(buffer, firstTimeout)
 	while (readSize < 8) {
 		readSize += read(buffer, readTimeout)
 	}
-	return buffer.array().toLong()
+	return buffer.array().toLong(buffer.arrayOffset())
 }
 
 @Suppress("UNCHECKED_CAST")
@@ -135,11 +147,15 @@ suspend fun AsyncSocket.send(message: String?) {
 }
 
 suspend fun AsyncSocket.send(message: Int) {
-	send(message.toByteArray())
+	val buffer = ByteArray(4)
+	buffer.push(message)
+	send(buffer)
 }
 
 suspend fun AsyncSocket.send(message: Long) {
-	send(message.toByteArray())
+	val buffer = ByteArray(8)
+	buffer.push(message)
+	send(buffer)
 }
 
 suspend fun AsyncSocket.sendObject(obj: Any?): Boolean {
@@ -166,7 +182,7 @@ fun <T> AsyncSocket.use(block: suspend AsyncSocket.() -> T): T {
 	}
 }
 
-fun AsyncSocket.useNonBlock(block: suspend AsyncSocket.() -> Unit) =
+inline fun AsyncSocket.useNonBlock(crossinline block: suspend AsyncSocket.() -> Unit) =
 	GlobalScope.launch {
 		try {
 			block()

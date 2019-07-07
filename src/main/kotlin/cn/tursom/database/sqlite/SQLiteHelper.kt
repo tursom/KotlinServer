@@ -3,7 +3,7 @@ package cn.tursom.database.sqlite
 import cn.tursom.database.*
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.Clause
-import cn.tursom.tools.simplifyPath
+import cn.tursom.utils.simplifyPath
 import org.sqlite.SQLiteException
 import java.io.File
 import java.lang.reflect.Field

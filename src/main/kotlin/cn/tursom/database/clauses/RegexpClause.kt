@@ -2,8 +2,8 @@ package cn.tursom.database.clauses
 
 import cn.tursom.database.fieldName
 import cn.tursom.database.sqlStr
-import cn.tursom.regex.RegexMaker
-import cn.tursom.regex.RegexUnit
+import cn.tursom.utils.regex.RegexMaker
+import cn.tursom.utils.regex.RegexUnit
 import java.lang.reflect.Field
 import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaField

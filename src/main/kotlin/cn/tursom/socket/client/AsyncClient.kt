@@ -4,6 +4,7 @@ import cn.tursom.socket.AsyncSocket
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.net.InetSocketAddress
+import java.net.SocketAddress
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.CompletionHandler
 import kotlin.coroutines.Continuation
@@ -33,7 +34,7 @@ object AsyncClient {
 	
 	suspend fun connect(socketChannel: AsynchronousSocketChannel, host: String, port: Int): AsyncSocket {
 		suspendCoroutine<Void?> { cont ->
-			socketChannel.connect(InetSocketAddress(host, port), cont, handler)
+			socketChannel.connect(InetSocketAddress(host, port) as SocketAddress, cont, handler)
 		}
 		return AsyncSocket(socketChannel)
 	}

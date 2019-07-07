@@ -1,6 +1,6 @@
 package cn.tursom.socket
 
-import cn.tursom.tools.toUTF8String
+import cn.tursom.utils.*
 import java.io.*
 import java.net.Socket
 import java.net.SocketTimeoutException
@@ -29,11 +29,15 @@ open class BaseSocket(
 	}
 	
 	fun send(message: Int) {
-		send(message.toByteArray())
+		val buffer = ByteArray(4)
+		buffer.push(message)
+		send(buffer)
 	}
 	
 	fun send(message: Long) {
-		send(message.toByteArray())
+		val buffer = ByteArray(8)
+		buffer.push(message)
+		send(buffer)
 	}
 	
 	fun sendObject(obj: Any?): Boolean {

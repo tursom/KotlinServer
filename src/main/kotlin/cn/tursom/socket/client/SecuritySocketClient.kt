@@ -1,8 +1,8 @@
 package cn.tursom.socket.client
 
 import cn.tursom.socket.BaseSocket
-import cn.tursom.tools.Gzip
-import cn.tursom.tools.RSA
+import cn.tursom.utils.Gzip
+import cn.tursom.utils.RSA
 import java.net.Socket
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator

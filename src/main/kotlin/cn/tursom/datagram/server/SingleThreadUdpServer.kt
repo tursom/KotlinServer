@@ -1,5 +1,6 @@
 package cn.tursom.datagram.server
 
+import cn.tursom.datagram.UdpPackageSize
 import io.netty.util.HashedWheelTimer
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -21,10 +22,10 @@ class SingleThreadUdpServer(
 	private val packageSize: Int = UdpPackageSize.defaultLen,
 	private val exception: Exception.() -> Unit = { printStackTrace() },
 	private val handler: SingleThreadUdpServer.(address: SocketAddress, buffer: ByteArray, size: Int) -> Unit
-) : UDPServer {
+) : AbstractUdpServer() {
 	private val excWheelTimer = HashedWheelTimer()
 	
-	private val socket = DatagramSocket(port)
+	override val socket = DatagramSocket(port)
 	
 	override fun run() {
 		val inBuff = ByteArray(packageSize)
@@ -55,14 +56,6 @@ class SingleThreadUdpServer(
 				e.exception()
 			}
 		}
-	}
-	
-	fun send(address: SocketAddress, buffer: ByteArray, size: Int = -1) {
-		socket.send(if (size >= 0) {
-			DatagramPacket(buffer, size, address)
-		} else {
-			DatagramPacket(buffer, buffer.size, address)
-		})
 	}
 	
 	fun recv(

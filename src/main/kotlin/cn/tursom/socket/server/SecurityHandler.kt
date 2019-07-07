@@ -1,7 +1,7 @@
 package cn.tursom.socket.server
 
 import cn.tursom.socket.BaseSocket
-import cn.tursom.tools.Gzip
+import cn.tursom.utils.Gzip
 import java.net.Socket
 import javax.crypto.Cipher
 
