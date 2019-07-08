@@ -76,13 +76,15 @@ suspend inline fun <T> AsyncCachedSocket.recvObject(
 
 suspend inline fun AsyncCachedSocket.send(message: Int) {
 	writeBuffer.clear()
-	writeBuffer.array().push(message, writeBuffer.arrayOffset())
+	writeBuffer.array().put(message, writeBuffer.arrayOffset())
+	writeBuffer.limit(4)
 	write()
 }
 
 suspend inline fun AsyncCachedSocket.send(message: Long) {
 	writeBuffer.clear()
-	writeBuffer.array().push(message, writeBuffer.arrayOffset())
+	writeBuffer.array().put(message, writeBuffer.arrayOffset())
+	writeBuffer.limit(8)
 	write()
 }
 

@@ -30,13 +30,13 @@ open class BaseSocket(
 	
 	fun send(message: Int) {
 		val buffer = ByteArray(4)
-		buffer.push(message)
+		buffer.put(message)
 		send(buffer)
 	}
 	
 	fun send(message: Long) {
 		val buffer = ByteArray(8)
-		buffer.push(message)
+		buffer.put(message)
 		send(buffer)
 	}
 	

@@ -2,7 +2,6 @@
 
 package cn.tursom.utils
 
-import sun.security.provider.SHA
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
@@ -14,44 +13,44 @@ class WrongPushTypeException : Exception()
 
 fun Char.toByteArray(): ByteArray {
 	val array = ByteArray(2)
-	array.push(this)
+	array.put(this)
 	return array
 }
 
 fun Short.toByteArray(): ByteArray {
 	val array = ByteArray(2)
-	array.push(this)
+	array.put(this)
 	return array
 }
 
 fun Int.toByteArray(): ByteArray {
 	val array = ByteArray(4)
-	array.push(this)
+	array.put(this)
 	return array
 }
 
 fun Long.toByteArray(): ByteArray {
 	val array = ByteArray(8)
-	array.push(this)
+	array.put(this)
 	return array
 }
 
 fun Float.toByteArray(): ByteArray {
 	val array = ByteArray(4)
-	array.push(this)
+	array.put(this)
 	return array
 }
 
 fun Double.toByteArray(): ByteArray {
 	val array = ByteArray(8)
-	array.push(this)
+	array.put(this)
 	return array
 }
 
 fun CharArray.toByteArray(): ByteArray {
 	val newArray = ByteArray(size * 2)
 	repeat(size) {
-		newArray.push(this[it], it * 2)
+		newArray.put(this[it], it * 2)
 	}
 	return newArray
 }
@@ -59,7 +58,7 @@ fun CharArray.toByteArray(): ByteArray {
 fun ShortArray.toByteArray(): ByteArray {
 	val newArray = ByteArray(size * 2)
 	repeat(size) {
-		newArray.push(this[it], it * 2)
+		newArray.put(this[it], it * 2)
 	}
 	return newArray
 }
@@ -67,7 +66,7 @@ fun ShortArray.toByteArray(): ByteArray {
 fun IntArray.toByteArray(): ByteArray {
 	val newArray = ByteArray(size * 4)
 	repeat(size) {
-		newArray.push(this[it], it * 4)
+		newArray.put(this[it], it * 4)
 	}
 	return newArray
 }
@@ -75,7 +74,7 @@ fun IntArray.toByteArray(): ByteArray {
 fun LongArray.toByteArray(): ByteArray {
 	val newArray = ByteArray(size * 8)
 	repeat(size) {
-		newArray.push(this[it], it * 8)
+		newArray.put(this[it], it * 8)
 	}
 	return newArray
 }
@@ -83,7 +82,7 @@ fun LongArray.toByteArray(): ByteArray {
 fun FloatArray.toByteArray(): ByteArray {
 	val newArray = ByteArray(size * 4)
 	repeat(size) {
-		newArray.push(this[it], it * 4)
+		newArray.put(this[it], it * 4)
 	}
 	return newArray
 }
@@ -91,7 +90,7 @@ fun FloatArray.toByteArray(): ByteArray {
 fun DoubleArray.toByteArray(): ByteArray {
 	val newArray = ByteArray(size * 8)
 	repeat(size) {
-		newArray.push(this[it], it * 8)
+		newArray.put(this[it], it * 8)
 	}
 	return newArray
 }
@@ -222,7 +221,7 @@ fun Long.ntoh(): Long {
 	}
 }
 
-fun ByteArray.push(char: Char, offset: Int = 0) {
+fun ByteArray.put(char: Char, offset: Int = 0) {
 	val value = char.toInt()
 	when (ByteOrder.nativeOrder()) {
 		ByteOrder.BIG_ENDIAN -> {
@@ -236,7 +235,7 @@ fun ByteArray.push(char: Char, offset: Int = 0) {
 	}
 }
 
-fun ByteArray.push(short: Short, offset: Int = 0) {
+fun ByteArray.put(short: Short, offset: Int = 0) {
 	val value = short.toInt()
 	when (ByteOrder.nativeOrder()) {
 		ByteOrder.BIG_ENDIAN -> {
@@ -250,7 +249,7 @@ fun ByteArray.push(short: Short, offset: Int = 0) {
 	}
 }
 
-fun ByteArray.push(int: Int, offset: Int = 0) {
+fun ByteArray.put(int: Int, offset: Int = 0) {
 	when (ByteOrder.nativeOrder()) {
 		ByteOrder.BIG_ENDIAN -> {
 			this[offset] = int.toByte()
@@ -267,7 +266,7 @@ fun ByteArray.push(int: Int, offset: Int = 0) {
 	}
 }
 
-fun ByteArray.push(long: Long, offset: Int = 0) {
+fun ByteArray.put(long: Long, offset: Int = 0) {
 	when (ByteOrder.nativeOrder()) {
 		ByteOrder.BIG_ENDIAN -> {
 			this[offset] = long.toByte()
@@ -292,90 +291,90 @@ fun ByteArray.push(long: Long, offset: Int = 0) {
 	}
 }
 
-fun ByteArray.push(float: Float, offset: Int = 0) {
-	push(float.toBits(), offset)
+fun ByteArray.put(float: Float, offset: Int = 0) {
+	put(float.toBits(), offset)
 }
 
-fun ByteArray.push(double: Double, offset: Int = 0) {
-	push(double.toBits(), offset)
+fun ByteArray.put(double: Double, offset: Int = 0) {
+	put(double.toBits(), offset)
 }
 
-fun ByteArray.push(charArray: CharArray, offset: Int = 0, addLength: Boolean = true) {
+fun ByteArray.put(charArray: CharArray, offset: Int = 0, addLength: Boolean = true) {
 	var index = offset
 	if (addLength) {
-		push(charArray.size, index)
+		put(charArray.size, index)
 		index += 4
 	}
 	charArray.forEach {
-		push(it)
+		put(it)
 		index += 2
 	}
 }
 
-fun ByteArray.push(shortArray: ShortArray, offset: Int = 0, addLength: Boolean = true) {
+fun ByteArray.put(shortArray: ShortArray, offset: Int = 0, addLength: Boolean = true) {
 	var index = offset
 	if (addLength) {
-		push(shortArray.size, index)
+		put(shortArray.size, index)
 		index += 4
 	}
 	shortArray.forEach {
-		push(it)
+		put(it)
 		index += 2
 	}
 }
 
-fun ByteArray.push(intArray: IntArray, offset: Int = 0, addLength: Boolean = true) {
+fun ByteArray.put(intArray: IntArray, offset: Int = 0, addLength: Boolean = true) {
 	var index = offset
 	if (addLength) {
-		push(intArray.size, index)
+		put(intArray.size, index)
 		index += 4
 	}
 	intArray.forEach {
-		push(it)
+		put(it)
 		index += 4
 	}
 }
 
-fun ByteArray.push(longArray: LongArray, offset: Int = 0, addLength: Boolean = true) {
+fun ByteArray.put(longArray: LongArray, offset: Int = 0, addLength: Boolean = true) {
 	var index = offset
 	if (addLength) {
-		push(longArray.size, index)
+		put(longArray.size, index)
 		index += 4
 	}
 	longArray.forEach {
-		push(it)
+		put(it)
 		index += 8
 	}
 }
 
-fun ByteArray.push(floatArray: FloatArray, offset: Int = 0, addLength: Boolean = true) {
+fun ByteArray.put(floatArray: FloatArray, offset: Int = 0, addLength: Boolean = true) {
 	var index = offset
 	if (addLength) {
-		push(floatArray.size, index)
+		put(floatArray.size, index)
 		index += 4
 	}
 	floatArray.forEach {
-		push(it)
+		put(it)
 		index += 4
 	}
 }
 
-fun ByteArray.push(doubleArray: DoubleArray, offset: Int = 0, addLength: Boolean = true) {
+fun ByteArray.put(doubleArray: DoubleArray, offset: Int = 0, addLength: Boolean = true) {
 	var index = offset
 	if (addLength) {
-		push(doubleArray.size, index)
+		put(doubleArray.size, index)
 		index += 4
 	}
 	doubleArray.forEach {
-		push(it)
+		put(it)
 		index += 8
 	}
 }
 
-fun ByteArray.push(str: String, offset: Int = 0, addLength: Boolean = false): Int {
+fun ByteArray.put(str: String, offset: Int = 0, addLength: Boolean = false): Int {
 	val utf8Array = str.toByteArray()
 	return if (addLength) {
-		push(utf8Array.size)
+		put(utf8Array.size)
 		utf8Array.copyInto(this, offset + 4)
 		utf8Array.size + 4
 	} else {
@@ -434,7 +433,7 @@ fun Int.asFloat(): Float = Float.fromBits(this)
 fun Long.asDouble(): Double = Double.fromBits(this)
 
 
-fun ByteArray.push(obj: Any, offset: Int = 0): Int {
+fun ByteArray.put(obj: Any, offset: Int = 0): Int {
 	return when (obj) {
 		is Byte -> if (offset < size) {
 			this[offset] = obj
@@ -443,64 +442,64 @@ fun ByteArray.push(obj: Any, offset: Int = 0): Int {
 			throw IndexOutOfBoundsException()
 		}
 		is Char -> {
-			push(obj, offset)
+			put(obj, offset)
 			2
 		}
 		is Short -> {
-			push(obj, offset)
+			put(obj, offset)
 			2
 		}
 		is Int -> {
-			push(obj, offset)
+			put(obj, offset)
 			4
 		}
 		is Long -> {
-			push(obj, offset)
+			put(obj, offset)
 			8
 		}
 		is Float -> {
-			push(obj, offset)
+			put(obj, offset)
 			4
 		}
 		is Double -> {
-			push(obj, offset)
+			put(obj, offset)
 			8
 		}
 		
 		is ByteArray -> if (size < offset + obj.size) {
-			push(obj.size, offset)
+			put(obj.size, offset)
 			obj.copyInto(this, offset + 4)
 			obj.size + 4
 		} else {
 			throw IndexOutOfBoundsException()
 		}
 		is CharArray -> {
-			push(obj, offset)
+			put(obj, offset)
 			obj.size * 2 + 4
 		}
 		is ShortArray -> {
-			push(obj, offset)
+			put(obj, offset)
 			obj.size * 2 + 4
 		}
 		is IntArray -> {
-			push(obj, offset)
+			put(obj, offset)
 			obj.size * 4 + 4
 		}
 		is LongArray -> {
-			push(obj, offset)
+			put(obj, offset)
 			obj.size * 8 + 4
 		}
 		is FloatArray -> {
-			push(obj, offset)
+			put(obj, offset)
 			obj.size * 4 + 4
 		}
 		is DoubleArray -> {
-			push(obj, offset)
+			put(obj, offset)
 			obj.size * 8 + 4
 		}
 		
 		is String -> {
-			push(obj, offset, true)
+			put(obj, offset, true)
 		}
 		
 		else -> throw WrongPushTypeException()

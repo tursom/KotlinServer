@@ -1,7 +1,6 @@
 package cn.tursom.socket
 
 import cn.tursom.utils.*
-import com.sun.xml.internal.ws.streaming.XMLStreamReaderUtil.close
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -141,12 +140,12 @@ suspend inline fun AsyncSocket.send(message: String?) {
 }
 
 suspend inline fun AsyncSocket.send(message: Int, buffer: ByteArray = ByteArray(4)) {
-	buffer.push(message)
+	buffer.put(message)
 	send(buffer)
 }
 
 suspend inline fun AsyncSocket.send(message: Long, buffer: ByteArray = ByteArray(8)) {
-	buffer.push(message)
+	buffer.put(message)
 	send(buffer)
 }
 

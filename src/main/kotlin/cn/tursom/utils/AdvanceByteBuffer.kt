@@ -12,7 +12,10 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	
 	private var readLocation = 0
 	
-	var position
+	/**
+	 * 各种位置变量
+	 */
+	var writePosition
 		get() = buffer.position()
 		set(value) {
 			buffer.position(value)
@@ -24,27 +27,31 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 		}
 	
 	val capacity get() = buffer.capacity()
-	val array: ByteArray get() = buffer.array()
+	val array: ByteArray = buffer.array()
 	val arrayOffset get() = buffer.arrayOffset()
 	val readPosition get() = readLocation
-	
 	val readOffset get() = arrayOffset + readPosition
-	val readSize get() = position - readPosition
-	val writeOffset get() = arrayOffset + position
-	val writeSize get() = limit - position
+	val readSize get() = writePosition - readPosition
+	val available get() = readSize
+	val writeOffset get() = arrayOffset + writePosition
+	val writeSize get() = limit - writePosition
 	
-	fun needSize(size: Int) {
+	/**
+	 * 位置控制方法
+	 */
+	
+	fun needReadSize(size: Int) {
 		if (readSize < size) throw OutOfBufferException()
 	}
 	
-	fun useSize(size: Int): Int {
-		needSize(size)
+	fun useReadSize(size: Int): Int {
+		needReadSize(size)
 		readLocation += size
 		return size
 	}
 	
 	fun take(size: Int): Int {
-		needSize(size)
+		needReadSize(size)
 		val offset = readOffset
 		readLocation += size
 		return offset
@@ -52,29 +59,12 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	
 	fun push(size: Int): Int {
 		val offset = writeOffset
-		position += size
+		writePosition += size
 		return offset
 	}
 	
-	fun get() = array[take(1)]
-	fun getChar() = array.toChar(take(2))
-	fun getShort() = array.toShort(take(2))
-	fun getInt() = array.toInt(take(4))
-	fun getLong() = array.toLong(take(8))
-	fun getFloat() = array.toFloat(take(4))
-	fun getDouble() = array.toDouble(take(8))
-	fun getString(size: Int = readSize) = String(array, readOffset, useSize(size))
-	
-	fun put(char: Char) = array.push(char, push(2))
-	fun put(short: Short) = array.push(short, push(2))
-	fun put(int: Int) = array.push(int, push(4))
-	fun put(long: Long) = array.push(long, push(8))
-	fun put(float: Float) = array.push(float, push(4))
-	fun put(double: Double) = array.push(double, push(8))
-	
-	fun putByte(byte: Byte): ByteBuffer = buffer.put(byte)
-	fun put(byteArray: ByteArray): ByteBuffer = buffer.put(byteArray)
-	fun put(str: String) = put(str.toByteArray())
+	fun readAllSize() = useReadSize(readSize)
+	fun takeAll() = take(readSize)
 	
 	fun clear() {
 		readLocation = 0
@@ -82,18 +72,58 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	}
 	
 	fun reset() {
-		val array = this.array
-		array.copyInto(array, arrayOffset, readOffset, arrayOffset + position)
-		position = readSize
+		array.copyInto(array, arrayOffset, readOffset, arrayOffset + writePosition)
+		writePosition = readSize
 		readLocation = 0
 	}
 	
 	fun reset(outputStream: OutputStream) {
-		outputStream.write(array, readOffset, arrayOffset + position)
-		position = 0
+		outputStream.write(array, readOffset, arrayOffset + writePosition)
+		writePosition = 0
 		readLocation = 0
 	}
 	
+	
+	/**
+	 * 数据获取方法
+	 */
+	fun get() = array[take(1)]
+	
+	fun getChar() = array.toChar(take(2))
+	fun getShort() = array.toShort(take(2))
+	fun getInt() = array.toInt(take(4))
+	fun getLong() = array.toLong(take(8))
+	fun getFloat() = array.toFloat(take(4))
+	fun getDouble() = array.toDouble(take(8))
+	fun getBytes() = array.copyOfRange(arrayOffset, readAllSize())
+	fun getString(size: Int = readSize) = String(array, readOffset, useReadSize(size))
+	
+	fun get(buffer: ByteArray, size: Int = readSize, offset: Int = 0): Int {
+		array.copyInto(buffer, offset, arrayOffset, useReadSize(size))
+		return size
+	}
+	
+	fun toByteArray() = getBytes()
+	
+	
+	/**
+	 * 数据写入方法
+	 */
+	fun put(char: Char) = array.put(char, push(2))
+	
+	fun put(short: Short) = array.put(short, push(2))
+	fun put(int: Int) = array.put(int, push(4))
+	fun put(long: Long) = array.put(long, push(8))
+	fun put(float: Float) = array.put(float, push(4))
+	fun put(double: Double) = array.put(double, push(8))
+	
+	fun putByte(byte: Byte): ByteBuffer = buffer.put(byte)
+	fun put(byteArray: ByteArray): ByteBuffer = buffer.put(byteArray)
+	fun put(str: String) = put(str.toByteArray())
+	
+	/**
+	 * 缓冲区用完异常
+	 */
 	class OutOfBufferException : Exception()
 }
 
