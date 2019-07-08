@@ -2,6 +2,7 @@
 
 package cn.tursom.utils
 
+import sun.security.provider.SHA
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.ObjectInputStream
@@ -10,6 +11,42 @@ import java.lang.IndexOutOfBoundsException
 import java.nio.ByteOrder
 
 class WrongPushTypeException : Exception()
+
+fun Char.toByteArray(): ByteArray {
+	val array = ByteArray(2)
+	array.push(this)
+	return array
+}
+
+fun Short.toByteArray(): ByteArray {
+	val array = ByteArray(2)
+	array.push(this)
+	return array
+}
+
+fun Int.toByteArray(): ByteArray {
+	val array = ByteArray(4)
+	array.push(this)
+	return array
+}
+
+fun Long.toByteArray(): ByteArray {
+	val array = ByteArray(8)
+	array.push(this)
+	return array
+}
+
+fun Float.toByteArray(): ByteArray {
+	val array = ByteArray(4)
+	array.push(this)
+	return array
+}
+
+fun Double.toByteArray(): ByteArray {
+	val array = ByteArray(8)
+	array.push(this)
+	return array
+}
 
 fun CharArray.toByteArray(): ByteArray {
 	val newArray = ByteArray(size * 2)
@@ -348,6 +385,42 @@ fun ByteArray.push(str: String, offset: Int = 0, addLength: Boolean = false): In
 	}
 }
 
+fun ByteArray.pop(array: CharArray, offset: Int = 0, fromIndex: Int = 0, size: Int = (this.size - fromIndex) / 2) {
+	repeat(size) {
+		array[offset + it] = toChar(fromIndex + it * 2)
+	}
+}
+
+fun ByteArray.pop(array: ShortArray, offset: Int = 0, fromIndex: Int = 0, size: Int = (this.size - fromIndex) / 2) {
+	repeat(size) {
+		array[offset + it] = toShort(fromIndex + it * 2)
+	}
+}
+
+fun ByteArray.pop(array: IntArray, offset: Int = 0, fromIndex: Int = 0, size: Int = (this.size - fromIndex) / 4) {
+	repeat(size) {
+		array[offset + it] = toInt(fromIndex + it * 4)
+	}
+}
+
+fun ByteArray.pop(array: LongArray, offset: Int = 0, fromIndex: Int = 0, size: Int = (this.size - fromIndex) / 8) {
+	repeat(size) {
+		array[offset + it] = toLong(fromIndex + it * 8)
+	}
+}
+
+fun ByteArray.pop(array: FloatArray, offset: Int = 0, fromIndex: Int = 0, size: Int = (this.size - fromIndex) / 4) {
+	repeat(size) {
+		array[offset + it] = toFloat(fromIndex + it * 4)
+	}
+}
+
+fun ByteArray.pop(array: DoubleArray, offset: Int = 0, fromIndex: Int = 0, size: Int = (this.size - fromIndex) / 8) {
+	repeat(size) {
+		array[offset + it] = toDouble(fromIndex + it * 8)
+	}
+}
+
 fun ByteArray.strlen(offset: Int = 0): Int {
 	for (index in offset until size) {
 		if (get(index).toInt() == 0) return index
@@ -355,8 +428,8 @@ fun ByteArray.strlen(offset: Int = 0): Int {
 	return size
 }
 
-fun Float.asInt(): Int = toBits()
-fun Double.asLong(): Long = toBits()
+fun Float.asInt(): Int = toRawBits()
+fun Double.asLong(): Long = toRawBits()
 fun Int.asFloat(): Float = Float.fromBits(this)
 fun Long.asDouble(): Double = Double.fromBits(this)
 

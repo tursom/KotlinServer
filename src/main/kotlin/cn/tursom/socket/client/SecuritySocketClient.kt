@@ -2,7 +2,7 @@ package cn.tursom.socket.client
 
 import cn.tursom.socket.BaseSocket
 import cn.tursom.utils.Gzip
-import cn.tursom.utils.RSA
+import cn.tursom.utils.encrypt.RSA
 import java.net.Socket
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator

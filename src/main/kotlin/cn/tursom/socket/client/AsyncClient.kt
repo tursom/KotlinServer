@@ -1,5 +1,6 @@
 package cn.tursom.socket.client
 
+import cn.tursom.socket.AsyncCachedSocket
 import cn.tursom.socket.AsyncSocket
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -37,5 +38,17 @@ object AsyncClient {
 			socketChannel.connect(InetSocketAddress(host, port) as SocketAddress, cont, handler)
 		}
 		return AsyncSocket(socketChannel)
+	}
+	
+	suspend fun connectCached(host: String, port: Int): AsyncSocket {
+		@Suppress("BlockingMethodInNonBlockingContext")
+		return connectCached(AsynchronousSocketChannel.open()!!, host, port)
+	}
+	
+	suspend fun connectCached(socketChannel: AsynchronousSocketChannel, host: String, port: Int): AsyncSocket {
+		suspendCoroutine<Void?> { cont ->
+			socketChannel.connect(InetSocketAddress(host, port) as SocketAddress, cont, handler)
+		}
+		return AsyncCachedSocket(socketChannel)
 	}
 }

@@ -1,6 +1,7 @@
 package cn.tursom.socket
 
 import cn.tursom.utils.*
+import com.sun.xml.internal.ws.streaming.XMLStreamReaderUtil.close
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -18,6 +19,8 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 open class AsyncSocket(private val socketChannel: AsynchronousSocketChannel) : Closeable {
+	fun cached() = AsyncCachedSocket(socketChannel)
+	
 	suspend fun write(buffer: ByteBuffer, timeout: Long = defaultTimeout, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
 		return suspendCoroutine { cont ->
 			this.socketChannel.write(buffer, timeout, timeUnit, cont, awaitHandler)
@@ -34,14 +37,6 @@ open class AsyncSocket(private val socketChannel: AsynchronousSocketChannel) : C
 		socketChannel.close()
 	}
 	
-	suspend inline infix operator fun <T> invoke(@Suppress("REDUNDANT_INLINE_SUSPEND_FUNCTION_TYPE") block: suspend AsyncSocket.() -> T): T {
-		@Suppress("ConvertTryFinallyToUseCall")
-		try {
-			return this.block()
-		} finally {
-			close()
-		}
-	}
 	
 	companion object {
 		const val defaultTimeout = 60_000L
@@ -61,19 +56,18 @@ open class AsyncSocket(private val socketChannel: AsynchronousSocketChannel) : C
 }
 
 @Suppress("unused")
-suspend fun AsyncSocket.write(message: String, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS) =
+suspend inline fun AsyncSocket.write(message: String, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS) =
 	write(ByteBuffer.wrap(message.toByteArray()), timeout, timeUnit)
 
-
 @Suppress("unused")
-suspend fun AsyncSocket.recvStr(buffer: ByteBuffer, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): String {
-	//buffer.clear()
+suspend inline fun AsyncSocket.recvStr(buffer: ByteBuffer, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): String {
+	//readBuffer.clear()
 	read(buffer, timeout, timeUnit)
 	return String(buffer.array(), buffer.arrayOffset(), buffer.position())
 }
 
 
-suspend fun AsyncSocket.recv(
+suspend inline fun AsyncSocket.recv(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = AsyncSocket.defaultTimeout,
 	buffer: ByteBuffer = ByteBuffer.allocate(1024)
@@ -99,12 +93,12 @@ suspend fun AsyncSocket.recv(
 	return byteStream.toByteArray()
 }
 
-suspend fun AsyncSocket.recvStr(
+suspend inline fun AsyncSocket.recvStr(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = AsyncSocket.defaultTimeout
 ) = String(recv(readTimeout, firstTimeout))
 
-suspend fun AsyncSocket.recvInt(
+suspend inline fun AsyncSocket.recvInt(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = AsyncSocket.defaultTimeout,
 	buffer: ByteBuffer = ByteBuffer.allocate(4)
@@ -117,7 +111,7 @@ suspend fun AsyncSocket.recvInt(
 	return buffer.array().toInt(buffer.arrayOffset())
 }
 
-suspend fun AsyncSocket.recvLong(
+suspend inline fun AsyncSocket.recvLong(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = AsyncSocket.defaultTimeout,
 	buffer: ByteBuffer = ByteBuffer.allocate(8)
@@ -131,29 +125,27 @@ suspend fun AsyncSocket.recvLong(
 }
 
 @Suppress("UNCHECKED_CAST")
-suspend fun <T> AsyncSocket.recvObject(
+suspend inline fun <T> AsyncSocket.recvObject(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = AsyncSocket.defaultTimeout
 ): T? {
 	return unSerialize(recv(readTimeout, firstTimeout)) as T?
 }
 
-suspend fun AsyncSocket.send(message: ByteArray?) {
+suspend inline fun AsyncSocket.send(message: ByteArray?) {
 	write(ByteBuffer.wrap(message ?: return))
 }
 
-suspend fun AsyncSocket.send(message: String?) {
+suspend inline fun AsyncSocket.send(message: String?) {
 	send((message ?: return).toByteArray())
 }
 
-suspend fun AsyncSocket.send(message: Int) {
-	val buffer = ByteArray(4)
+suspend inline fun AsyncSocket.send(message: Int, buffer: ByteArray = ByteArray(4)) {
 	buffer.push(message)
 	send(buffer)
 }
 
-suspend fun AsyncSocket.send(message: Long) {
-	val buffer = ByteArray(8)
+suspend inline fun AsyncSocket.send(message: Long, buffer: ByteArray = ByteArray(8)) {
 	buffer.push(message)
 	send(buffer)
 }
@@ -163,7 +155,7 @@ suspend fun AsyncSocket.sendObject(obj: Any?): Boolean {
 	return true
 }
 
-fun <T> AsyncSocket.use(block: suspend AsyncSocket.() -> T): T {
+inline fun <T> AsyncSocket.use(crossinline block: suspend AsyncSocket.() -> T): T {
 	var exception: Throwable? = null
 	try {
 		return runBlocking { block() }
@@ -182,7 +174,7 @@ fun <T> AsyncSocket.use(block: suspend AsyncSocket.() -> T): T {
 	}
 }
 
-inline fun AsyncSocket.useNonBlock(crossinline block: suspend AsyncSocket.() -> Unit) =
+inline infix fun AsyncSocket.useNonBlock(crossinline block: suspend AsyncSocket.() -> Unit) =
 	GlobalScope.launch {
 		try {
 			block()
@@ -194,3 +186,24 @@ inline fun AsyncSocket.useNonBlock(crossinline block: suspend AsyncSocket.() -> 
 			}
 		}
 	}
+
+suspend inline infix operator fun <T> AsyncSocket.invoke(
+	@Suppress("REDUNDANT_INLINE_SUSPEND_FUNCTION_TYPE") block: suspend AsyncSocket.() -> T
+): T {
+	var exception: Throwable? = null
+	try {
+		return block()
+	} catch (e: Throwable) {
+		exception = e
+		throw e
+	} finally {
+		when (exception) {
+			null -> close()
+			else -> try {
+				close()
+			} catch (closeException: Throwable) {
+				// cause.addSuppressed(closeException) // ignored here
+			}
+		}
+	}
+}

@@ -1,7 +1,7 @@
 package cn.tursom.socket.server
 
-import cn.tursom.socket.AsyncSocket
-import cn.tursom.socket.useNonBlock
+import cn.tursom.socket.AsyncCachedSocket
+import cn.tursom.socket.useCachedNonBlock
 import java.io.Closeable
 import java.net.InetSocketAddress
 import java.nio.channels.AsynchronousCloseException
@@ -9,13 +9,12 @@ import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.CompletionHandler
 
-class AsyncSocketServer(
+class AsyncCachedSocketServer(
 	port: Int,
 	host: String = "0.0.0.0",
-	private val handler: suspend AsyncSocket.() -> Unit
+	private val handler: suspend AsyncCachedSocket.() -> Unit
 ) : Runnable, Closeable {
-	private val server = AsynchronousServerSocketChannel
-		.open()
+	private val server = AsynchronousServerSocketChannel.open()
 		.bind(InetSocketAddress(host, port))
 	
 	
@@ -27,7 +26,7 @@ class AsyncSocketServer(
 				} catch (e: Throwable) {
 					e.printStackTrace()
 				}
-				AsyncSocket(result ?: return) useNonBlock {
+				AsyncCachedSocket(result ?: return) useCachedNonBlock {
 					handler()
 				}
 			}
@@ -46,4 +45,3 @@ class AsyncSocketServer(
 		server.close()
 	}
 }
-

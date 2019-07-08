@@ -1,6 +1,9 @@
 package cn.tursom.socket.server
 
-import cn.tursom.utils.RSA
+import cn.tursom.socket.BaseSocket
+import cn.tursom.socket.SecuritySocket
+import cn.tursom.utils.encrypt.AES
+import cn.tursom.utils.encrypt.RSA
 import java.net.ServerSocket
 import java.net.SocketException
 import javax.crypto.Cipher
@@ -9,7 +12,7 @@ import javax.crypto.spec.SecretKeySpec
 class SecuritySocketServer(
 	port: Int,
 	val exception: Exception.() -> Unit = { printStackTrace() },
-	handle: SecurityHandler.() -> Unit = {}
+	handle: SecuritySocket.() -> Unit = {}
 ) : SecurityServer(handle) {
 	val socket = ServerSocket(port)
 	
@@ -17,17 +20,13 @@ class SecuritySocketServer(
 		while (!socket.isClosed) {
 			try {
 				socket.accept().use {
-					val decrypt = Cipher.getInstance("AES")
-					val encrypt = Cipher.getInstance("AES")
 					val rsa = RSA()
-					val socket = SecurityHandler(it, decrypt, encrypt)
+					val preSocket = BaseSocket(it)
 					
-					socket.send(rsa.publicKey.encoded)
-					val keySize = socket.recvInt()!!
-					val originalKey = SecretKeySpec(rsa.decrypt(socket.recv(128)), 0, keySize, "AES")
-					
-					decrypt.init(Cipher.DECRYPT_MODE, originalKey)
-					encrypt.init(Cipher.ENCRYPT_MODE, originalKey)
+					preSocket.send(rsa.publicKey.encoded)
+					val keySize = preSocket.recvInt()!!
+					val originalKey = preSocket.recv(keySize)
+					val socket = SecuritySocket(it, AES(originalKey, keySize))
 					
 					try {
 						socket.handler()

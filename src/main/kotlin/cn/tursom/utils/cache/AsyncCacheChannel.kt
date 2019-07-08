@@ -15,6 +15,7 @@ class AsyncMemoryPoolChanel(val blockSize: Int = 1024, val blockCount: Int = 16)
 	
 	override suspend fun put(cache: ByteBuffer): Boolean {
 		return if (memoryPool.contain(cache)) {
+			cache.clear()
 			channel.send(cache)
 			true
 		} else {
