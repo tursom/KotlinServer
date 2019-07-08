@@ -26,9 +26,9 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 			buffer.limit(value)
 		}
 	
-	val capacity get() = buffer.capacity()
+	val capacity: Int = buffer.capacity()
 	val array: ByteArray = buffer.array()
-	val arrayOffset get() = buffer.arrayOffset()
+	val arrayOffset: Int = buffer.arrayOffset()
 	val readPosition get() = readLocation
 	val readOffset get() = arrayOffset + readPosition
 	val readSize get() = writePosition - readPosition
