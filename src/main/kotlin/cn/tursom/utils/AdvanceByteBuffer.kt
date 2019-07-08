@@ -36,7 +36,7 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	val writeOffset get() = arrayOffset + writePosition
 	val writeSize get() = limit - writePosition
 	
-	/**
+	/*
 	 * 位置控制方法
 	 */
 	
@@ -84,11 +84,11 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	}
 	
 	
-	/**
+	/*
 	 * 数据获取方法
 	 */
-	fun get() = array[take(1)]
 	
+	fun get() = array[take(1)]
 	fun getChar() = array.toChar(take(2))
 	fun getShort() = array.toShort(take(2))
 	fun getInt() = array.toInt(take(4))
@@ -98,28 +98,28 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	fun getBytes() = array.copyOfRange(arrayOffset, readAllSize())
 	fun getString(size: Int = readSize) = String(array, readOffset, useReadSize(size))
 	
-	fun get(buffer: ByteArray, size: Int = readSize, offset: Int = 0): Int {
-		array.copyInto(buffer, offset, arrayOffset, useReadSize(size))
+	fun get(buffer: ByteArray, size: Int = readSize, bufferOffset: Int = 0): Int {
+		array.copyInto(buffer, bufferOffset, arrayOffset, useReadSize(size))
 		return size
 	}
 	
 	fun toByteArray() = getBytes()
 	
 	
-	/**
+	/*
 	 * 数据写入方法
 	 */
-	fun put(char: Char) = array.put(char, push(2))
 	
+	fun putByte(byte: Byte): ByteBuffer = buffer.put(byte)
+	fun put(char: Char) = array.put(char, push(2))
 	fun put(short: Short) = array.put(short, push(2))
 	fun put(int: Int) = array.put(int, push(4))
 	fun put(long: Long) = array.put(long, push(8))
 	fun put(float: Float) = array.put(float, push(4))
 	fun put(double: Double) = array.put(double, push(8))
-	
-	fun putByte(byte: Byte): ByteBuffer = buffer.put(byte)
-	fun put(byteArray: ByteArray): ByteBuffer = buffer.put(byteArray)
 	fun put(str: String) = put(str.toByteArray())
+	fun put(byteArray: ByteArray, startIndex: Int = 0, endIndex: Int = byteArray.size) =
+		byteArray.copyInto(array, push(endIndex - startIndex), startIndex, endIndex)
 	
 	/**
 	 * 缓冲区用完异常
