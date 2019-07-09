@@ -1,10 +1,26 @@
 package cn.tursom.utils
 
 import kotlinx.coroutines.*
+import sun.misc.Unsafe
+import java.lang.reflect.ParameterizedType
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
+
+
+//利用Unsafe绕过构造函数获取变量
+val unsafe by lazy {
+	val field = Unsafe::class.java.getDeclaredField("theUnsafe")
+	//允许通过反射设置属性的值
+	field.isAccessible = true
+	field.get(null) as Unsafe
+}
+
+val Class<*>.actualTypeArguments
+	get() = (genericSuperclass as ParameterizedType).actualTypeArguments
+
+fun Class<*>.isInheritanceFrom(parent: Class<*>) = parent.isAssignableFrom(this)
 
 suspend fun <T> io(block: suspend CoroutineScope.() -> T): T {
 	return withContext(Dispatchers.IO, block)

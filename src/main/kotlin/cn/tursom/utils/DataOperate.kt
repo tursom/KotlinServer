@@ -2,10 +2,7 @@
 
 package cn.tursom.utils
 
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
+import java.io.*
 import java.lang.IndexOutOfBoundsException
 import java.nio.ByteOrder
 
@@ -113,17 +110,19 @@ fun ByteArray.toShort(offset: Int = 0): Short {
 
 fun ByteArray.toInt(offset: Int = 0): Int {
 	return if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
-		this[offset].toInt() or (this[offset + 1].toInt() shl 8) or (this[offset + 2].toInt() shl 16) or (this[offset + 3].toInt() shl 24)
+		this[offset].toInt() and 0xff or (this[offset + 1].toInt() shl 8 and 0xff00) or
+			(this[offset + 2].toInt() shl 16 and 0xff0000) or (this[offset + 3].toInt() shl 24 and 0xff000000.toInt())
 	} else {
-		this[offset + 3].toInt() or (this[offset + 2].toInt() shl 8) or (this[offset + 1].toInt() shl 16) or (this[offset].toInt() shl 24)
+		this[offset + 3].toInt() and 0xff or (this[offset + 2].toInt() shl 8 and 0xff00) or
+			(this[offset + 1].toInt() shl 16 and 0xff0000) or (this[offset].toInt() shl 24 and 0xff000000.toInt())
 	}
 }
 
 fun ByteArray.toLong(offset: Int = 0): Long {
 	return if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
-		toInt(offset).toLong() or toInt(offset + 4).toLong().shl(32)
+		toInt(offset).toLong() or (toInt(offset + 4).toLong().shl(32) and 0xffff_ffffL.inv())
 	} else {
-		toInt(offset + 4).toLong() or toInt(offset).toLong().shl(32)
+		toInt(offset + 4).toLong() or (toInt(offset).toLong().shl(32) and 0xffff_ffffL.inv())
 	}.toLong()
 }
 
@@ -516,10 +515,15 @@ fun formatIpAddress(ip: Int) =
 /**
  * 序列化
  */
+fun <T : OutputStream> serialize(outputStream: T, obj: Any): T {
+	val oos = ObjectOutputStream(outputStream)
+	oos.writeObject(obj)
+	return outputStream
+}
+
 fun serialize(obj: Any): ByteArray? = try {
 	val baos = ByteArrayOutputStream()
-	val oos = ObjectOutputStream(baos)
-	oos.writeObject(obj)
+	serialize(baos, obj)
 	baos.toByteArray()
 } catch (e: Exception) {
 	null
@@ -528,8 +532,14 @@ fun serialize(obj: Any): ByteArray? = try {
 /**
  * 反序列化
  */
-fun unSerialize(bytes: ByteArray): Any? = try {
-	ObjectInputStream(ByteArrayInputStream(bytes)).readObject()
+fun unSerialize(bytes: ByteArray, offset: Int = 0, size: Int = bytes.size): Any? = try {
+	ObjectInputStream(ByteArrayInputStream(bytes, offset, size)).readObject()
 } catch (e: Exception) {
 	null
 }
+
+private val ByteArrayOutputStream_buf = ByteArrayOutputStream::class.java.getDeclaredField("buf").apply { isAccessible = true }
+private val ByteArrayOutputStream_count = ByteArrayOutputStream::class.java.getDeclaredField("count").apply { isAccessible = true }
+
+val ByteArrayOutputStream.buf get() = ByteArrayOutputStream_buf.get(this) as ByteArray
+val ByteArrayOutputStream.count get() = ByteArrayOutputStream_count.get(this) as Int

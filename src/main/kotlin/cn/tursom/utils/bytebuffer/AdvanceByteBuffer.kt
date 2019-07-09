@@ -1,5 +1,6 @@
-package cn.tursom.utils
+package cn.tursom.utils.bytebuffer
 
+import cn.tursom.utils.*
 import java.io.OutputStream
 import java.nio.ByteBuffer
 
@@ -8,7 +9,7 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	
 	constructor(size: Int) : this(ByteBuffer.allocate(size))
 	
-	constructor(buffer: ByteArray, offset: Int = 0, size: Int = buffer.size - offset) : this(HeapByteBuffer.warp(buffer, size, offset))
+	constructor(buffer: ByteArray, offset: Int = 0, size: Int = buffer.size - offset) : this(HeapByteBuffer.wrap(buffer, size, offset))
 	
 	private var readLocation = 0
 	
@@ -83,6 +84,10 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 		readLocation = 0
 	}
 	
+	fun requireAvailableSize(size: Int) {
+		if (limit - readPosition < size) reset()
+	}
+	
 	
 	/*
 	 * 数据获取方法
@@ -98,8 +103,15 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	fun getBytes() = array.copyOfRange(arrayOffset, readAllSize())
 	fun getString(size: Int = readSize) = String(array, readOffset, useReadSize(size))
 	
-	fun get(buffer: ByteArray, size: Int = readSize, bufferOffset: Int = 0): Int {
+	fun writeTo(buffer: ByteArray, bufferOffset: Int = 0, size: Int = readSize): Int {
 		array.copyInto(buffer, bufferOffset, arrayOffset, useReadSize(size))
+		return size
+	}
+	
+	fun writeTo(buffer: AdvanceByteBuffer): Int {
+		val size = readAllSize()
+		buffer.writePosition += size
+		array.copyInto(buffer.array, buffer.arrayOffset, arrayOffset, size)
 		return size
 	}
 	
@@ -125,10 +137,4 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	 * 缓冲区用完异常
 	 */
 	class OutOfBufferException : Exception()
-}
-
-fun main() {
-	val buffer = AdvanceByteBuffer(ByteBuffer.allocate(1024))
-	buffer.put("hello world!")
-	println(buffer.getString())
 }

@@ -19,5 +19,5 @@ object HeapByteBuffer {
 		constructor.isAccessible = true
 	}
 	
-	fun warp(array: ByteArray, size: Int = array.size, offset: Int = 0): ByteBuffer = constructor.newInstance(array, -1, 0, size, size, offset)
+	fun wrap(array: ByteArray, size: Int = array.size, offset: Int = 0): ByteBuffer = constructor.newInstance(array, -1, 0, size, size, offset)
 }

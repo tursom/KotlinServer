@@ -30,7 +30,7 @@ class AsyncMemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) : Asy
 			index
 		}.toInt()
 		return if (index < 0 || index > blockCount) null
-		else HeapByteBuffer.warp(memoryPool, blockSize, blockSize * index)
+		else HeapByteBuffer.wrap(memoryPool, blockSize, blockSize * index)
 	}
 	
 	fun contain(buffer: ByteBuffer) = buffer.array() === memoryPool

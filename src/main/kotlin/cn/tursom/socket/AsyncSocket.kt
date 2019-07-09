@@ -6,6 +6,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
+import java.io.OutputStream
 import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
@@ -66,6 +67,32 @@ suspend inline fun AsyncSocket.recvStr(buffer: ByteBuffer, timeout: Long = 0L, t
 }
 
 
+suspend inline fun <T : OutputStream> AsyncSocket.recv(
+	outputStream: T,
+	readTimeout: Long = 100L,
+	firstTimeout: Long = AsyncSocket.defaultTimeout,
+	buffer: ByteBuffer = ByteBuffer.allocate(1024)
+): T {
+	buffer.clear()
+	
+	try {
+		read(buffer, firstTimeout)
+		@Suppress("BlockingMethodInNonBlockingContext")
+		outputStream.write(buffer.array(), buffer.arrayOffset(), buffer.position())
+		buffer.clear()
+		
+		while (read(buffer, readTimeout) > 0) {
+			@Suppress("BlockingMethodInNonBlockingContext")
+			outputStream.write(buffer.array(), buffer.arrayOffset(), buffer.position())
+			buffer.clear()
+		}
+	} catch (e: SocketTimeoutException) {
+	} catch (e: InterruptedByTimeoutException) {
+	}
+	
+	return outputStream
+}
+
 suspend inline fun AsyncSocket.recv(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = AsyncSocket.defaultTimeout,
@@ -73,29 +100,20 @@ suspend inline fun AsyncSocket.recv(
 ): ByteArray {
 	buffer.clear()
 	val byteStream = ByteArrayOutputStream()
-	
-	try {
-		read(buffer, firstTimeout)
-		@Suppress("BlockingMethodInNonBlockingContext")
-		byteStream.write(buffer.array(), buffer.arrayOffset(), buffer.position())
-		buffer.clear()
-		
-		while (read(buffer, readTimeout) > 0) {
-			@Suppress("BlockingMethodInNonBlockingContext")
-			byteStream.write(buffer.array(), buffer.arrayOffset(), buffer.position())
-			buffer.clear()
-		}
-	} catch (e: SocketTimeoutException) {
-	} catch (e: InterruptedByTimeoutException) {
-	}
-	
+	recv(byteStream, readTimeout, firstTimeout, buffer)
 	return byteStream.toByteArray()
 }
 
 suspend inline fun AsyncSocket.recvStr(
 	readTimeout: Long = 100L,
-	firstTimeout: Long = AsyncSocket.defaultTimeout
-) = String(recv(readTimeout, firstTimeout))
+	firstTimeout: Long = AsyncSocket.defaultTimeout,
+	buffer: ByteBuffer = ByteBuffer.allocate(1024)
+): String {
+	buffer.clear()
+	val byteStream = ByteArrayOutputStream()
+	recv(byteStream, readTimeout, firstTimeout, buffer)
+	return String(byteStream.buf, 0, byteStream.count)
+}
 
 suspend inline fun AsyncSocket.recvInt(
 	readTimeout: Long = 100L,
@@ -124,15 +142,16 @@ suspend inline fun AsyncSocket.recvLong(
 }
 
 @Suppress("UNCHECKED_CAST")
-suspend inline fun <T> AsyncSocket.recvObject(
+suspend inline fun <T> AsyncSocket.unSerializeObject(
+	buffer: ByteBuffer = ByteBuffer.allocate(1024),
 	readTimeout: Long = 100L,
 	firstTimeout: Long = AsyncSocket.defaultTimeout
 ): T? {
-	return unSerialize(recv(readTimeout, firstTimeout)) as T?
+	return recv(ByteArrayOutputStream(), readTimeout, firstTimeout, buffer).let { unSerialize(it.buf, 0, it.count) as T? }
 }
 
-suspend inline fun AsyncSocket.send(message: ByteArray?) {
-	write(ByteBuffer.wrap(message ?: return))
+suspend inline fun AsyncSocket.send(message: ByteArray?, offset: Int = 0, size: Int = message?.size ?: 0) {
+	write(HeapByteBuffer.wrap(message ?: return, size, offset))
 }
 
 suspend inline fun AsyncSocket.send(message: String?) {
@@ -149,9 +168,11 @@ suspend inline fun AsyncSocket.send(message: Long, buffer: ByteArray = ByteArray
 	send(buffer)
 }
 
-suspend fun AsyncSocket.sendObject(obj: Any?): Boolean {
-	send(serialize(obj ?: return false) ?: return false)
-	return true
+suspend fun AsyncSocket.sendObject(obj: Any?): Int {
+	val byteArrayOutputStream = ByteArrayOutputStream()
+	serialize(byteArrayOutputStream, obj ?: return -1)
+	send(byteArrayOutputStream.buf, 0, byteArrayOutputStream.count)
+	return byteArrayOutputStream.count
 }
 
 inline fun <T> AsyncSocket.use(crossinline block: suspend AsyncSocket.() -> T): T {

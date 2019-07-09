@@ -25,7 +25,7 @@ repositories {
 
 dependencies {
 	implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-//	implementation "com.google.code.gson:gson:2.8.2"
+	implementation "com.google.code.gson:gson:2.8.2"
 //	implementation 'org.apache.commons:commons-lang3:3.5'
 
 	// 数据库与序列化部分可选

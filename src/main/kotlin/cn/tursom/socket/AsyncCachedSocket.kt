@@ -2,10 +2,12 @@ package cn.tursom.socket
 
 import cn.tursom.socket.AsyncSocket.Companion.defaultTimeout
 import cn.tursom.utils.*
+import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
+import java.io.OutputStream
 import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
@@ -26,35 +28,65 @@ class AsyncCachedSocket(socketChannel: AsynchronousSocketChannel, readBuffer: By
 	}
 }
 
+
+suspend inline fun AsyncCachedSocket.recv(
+	outputStream: OutputStream,
+	readTimeout: Long = 100L,
+	firstTimeout: Long = defaultTimeout
+) {
+	readBuffer.reset(outputStream)
+	
+	try {
+		read(firstTimeout)
+		readBuffer.reset(outputStream)
+		
+		while (read(readTimeout) > 0) {
+			readBuffer.reset(outputStream)
+		}
+	} catch (e: SocketTimeoutException) {
+	} catch (e: InterruptedByTimeoutException) {
+	}
+}
+
 suspend inline fun AsyncCachedSocket.recv(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = defaultTimeout
 ): ByteArray {
 	val byteStream = ByteArrayOutputStream()
-	readBuffer.reset(byteStream)
-	
-	try {
-		read(firstTimeout)
-		readBuffer.reset(byteStream)
-		
-		while (read(readTimeout) > 0) {
-			readBuffer.reset(byteStream)
-		}
-	} catch (e: SocketTimeoutException) {
-	} catch (e: InterruptedByTimeoutException) {
-	}
-	
+	recv(byteStream, readTimeout, firstTimeout)
 	return byteStream.toByteArray()
 }
 
 suspend inline fun AsyncCachedSocket.recvStr(
+	charset: String = "utf-8",
 	readTimeout: Long = 100L,
 	firstTimeout: Long = defaultTimeout
-) = String(recv(readTimeout, firstTimeout))
+): String {
+	val byteStream = ByteArrayOutputStream()
+	recv(byteStream, readTimeout, firstTimeout)
+	return byteStream.toString(charset)
+}
+
+suspend inline fun AsyncCachedSocket.recvChar(
+	readTimeout: Long = 100L
+): Char {
+	readBuffer.requireAvailableSize(2)
+	while (readBuffer.readSize < 4) read(readTimeout)
+	return readBuffer.getChar()
+}
+
+suspend inline fun AsyncCachedSocket.recvShort(
+	readTimeout: Long = 100L
+): Short {
+	readBuffer.requireAvailableSize(2)
+	while (readBuffer.readSize < 8) read(readTimeout)
+	return readBuffer.getShort()
+}
 
 suspend inline fun AsyncCachedSocket.recvInt(
 	readTimeout: Long = 100L
 ): Int {
+	readBuffer.requireAvailableSize(4)
 	while (readBuffer.readSize < 4) read(readTimeout)
 	return readBuffer.getInt()
 }
@@ -62,16 +94,35 @@ suspend inline fun AsyncCachedSocket.recvInt(
 suspend inline fun AsyncCachedSocket.recvLong(
 	readTimeout: Long = 100L
 ): Long {
+	readBuffer.requireAvailableSize(8)
 	while (readBuffer.readSize < 8) read(readTimeout)
 	return readBuffer.getLong()
 }
 
+suspend inline fun AsyncCachedSocket.recvFloat(
+	readTimeout: Long = 100L
+): Float {
+	readBuffer.requireAvailableSize(4)
+	while (readBuffer.readSize < 4) read(readTimeout)
+	return readBuffer.getFloat()
+}
+
+suspend inline fun AsyncCachedSocket.recvDouble(
+	readTimeout: Long = 100L
+): Double {
+	readBuffer.requireAvailableSize(8)
+	while (readBuffer.readSize < 8) read(readTimeout)
+	return readBuffer.getDouble()
+}
+
 @Suppress("UNCHECKED_CAST")
-suspend inline fun <T> AsyncCachedSocket.recvObject(
+suspend inline fun <T> AsyncCachedSocket.unSerializeObject(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = defaultTimeout
 ): T? {
-	return unSerialize(recv(readTimeout, firstTimeout)) as T?
+	val byteArrayOutputStream = ByteArrayOutputStream()
+	recv(byteArrayOutputStream, readTimeout, firstTimeout)
+	return unSerialize(byteArrayOutputStream.buf, 0, byteArrayOutputStream.count) as T?
 }
 
 suspend inline fun AsyncCachedSocket.send(message: Int) {
