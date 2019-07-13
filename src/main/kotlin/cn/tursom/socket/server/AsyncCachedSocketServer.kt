@@ -14,7 +14,8 @@ class AsyncCachedSocketServer(
 	host: String = "0.0.0.0",
 	private val handler: suspend AsyncCachedSocket.() -> Unit
 ) : Runnable, Closeable {
-	private val server = AsynchronousServerSocketChannel.open()
+	private val server = AsynchronousServerSocketChannel
+		.open()
 		.bind(InetSocketAddress(host, port))
 	
 	

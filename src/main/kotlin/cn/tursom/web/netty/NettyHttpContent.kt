@@ -16,9 +16,9 @@ import kotlin.collections.set
 
 open class NettyHttpContent(
 	private val ctx: ChannelHandlerContext,
-	private val msg: FullHttpRequest,
-	override val uri: String
+	private val msg: FullHttpRequest
 ) : AdvanceHttpContent {
+	override val uri: String = msg.uri()
 	private val headers by lazy { msg.headers() }
 	private val paramMap by lazy { RequestParser.parse(msg) }
 	private val responseMap = HashMap<String, Any>()

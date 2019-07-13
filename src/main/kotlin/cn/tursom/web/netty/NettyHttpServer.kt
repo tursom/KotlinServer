@@ -19,7 +19,7 @@ class NettyHttpHandler(
 ) : SimpleChannelInboundHandler<FullHttpRequest>() {
 	
 	override fun channelRead0(ctx: ChannelHandlerContext, msg: FullHttpRequest) {
-		val handlerContext = NettyHttpContent(ctx, msg, msg.uri())
+		val handlerContext = NettyHttpContent(ctx, msg)
 		try {
 			handler.handle(handlerContext)
 		} catch (e: Throwable) {

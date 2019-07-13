@@ -19,11 +19,11 @@ class AsyncCachedSocket(socketChannel: AsynchronousSocketChannel, readBuffer: By
 	
 	constructor(socketChannel: AsynchronousSocketChannel) : this(socketChannel, ByteBuffer.allocate(1024), ByteBuffer.allocate(8))
 	
-	suspend fun write(timeout: Long = defaultTimeout, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
+	suspend fun write(timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
 		return write(writeBuffer, timeout, timeUnit)
 	}
 	
-	suspend fun read(timeout: Long = defaultTimeout, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
+	suspend fun read(timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
 		return read(readBuffer.buffer, timeout, timeUnit)
 	}
 }

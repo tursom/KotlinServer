@@ -18,7 +18,7 @@ class AsyncReadFirstRWLock(val maxReadOperatorTime: Long, val delayTime: Long = 
 			return block()
 		} finally {
 			readNumber.decrementAndGet()
-			if (readNumber.get() == 0) writeList.notify()
+			if (readNumber.get() == 0) writeList.resume()
 		}
 	}
 	

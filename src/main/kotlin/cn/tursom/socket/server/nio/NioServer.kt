@@ -1,5 +1,6 @@
 package cn.tursom.socket.server.nio
 
+
 import io.netty.bootstrap.ServerBootstrap
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.ByteBufAllocator
@@ -11,6 +12,7 @@ import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
 import java.io.Closeable
+
 
 open class NioServer(
 	port: Int,
@@ -29,7 +31,7 @@ open class NioServer(
 		.option(ChannelOption.SO_BACKLOG, 128)
 		.childOption(ChannelOption.SO_KEEPALIVE, true)!!
 	private val f = b.bind(port).sync()!!
-	
+
 	final override fun close() {
 		f.channel().close()
 		workerGroup.shutdownGracefully()
@@ -50,3 +52,4 @@ fun ChannelHandlerContext.send(data: ByteArray) {
 fun ChannelHandlerContext.send(message: String) {
 	send(message.toByteArray())
 }
+

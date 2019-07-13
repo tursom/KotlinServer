@@ -8,6 +8,17 @@ import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
 
+inline fun <T> Collection<T>.doEach(block: (T) -> Any): String {
+	val iterator = iterator()
+	if (!iterator.hasNext()) return "[]"
+	val sb = StringBuilder("[${block(iterator.next())}")
+	iterator.forEach {
+		sb.append(", ")
+		sb.append(block(it))
+	}
+	sb.append("]")
+	return sb.toString()
+}
 
 //利用Unsafe绕过构造函数获取变量
 val unsafe by lazy {

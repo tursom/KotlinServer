@@ -1,13 +1,15 @@
 package cn.tursom.socket
 
+import cn.tursom.socket.client.AsyncClient
+import cn.tursom.socket.server.AsyncSocketServer
 import cn.tursom.utils.*
+import cn.tursom.utils.bytebuffer.HeapByteBuffer
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.io.OutputStream
-import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.CompletionHandler
@@ -19,15 +21,17 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 open class AsyncSocket(private val socketChannel: AsynchronousSocketChannel) : Closeable {
+	val address get() = socketChannel.remoteAddress
+	
 	fun cached() = AsyncCachedSocket(socketChannel)
 	
-	suspend fun write(buffer: ByteBuffer, timeout: Long = defaultTimeout, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
+	suspend fun write(buffer: ByteBuffer, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
 		return suspendCoroutine { cont ->
 			this.socketChannel.write(buffer, timeout, timeUnit, cont, awaitHandler)
 		}
 	}
 	
-	suspend fun read(buffer: ByteBuffer, timeout: Long = defaultTimeout, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
+	suspend fun read(buffer: ByteBuffer, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
 		return suspendCoroutine { cont ->
 			this.socketChannel.read(buffer, timeout, timeUnit, cont, awaitHandler)
 		}
@@ -37,6 +41,11 @@ open class AsyncSocket(private val socketChannel: AsynchronousSocketChannel) : C
 		socketChannel.close()
 	}
 	
+	fun reset() {
+		val field = socketChannel.javaClass.getDeclaredField("readKilled")
+		field.isAccessible = true
+		field.set(socketChannel, true)
+	}
 	
 	companion object {
 		const val defaultTimeout = 60_000L
@@ -59,7 +68,6 @@ open class AsyncSocket(private val socketChannel: AsynchronousSocketChannel) : C
 suspend inline fun AsyncSocket.write(message: String, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS) =
 	write(ByteBuffer.wrap(message.toByteArray()), timeout, timeUnit)
 
-@Suppress("unused")
 suspend inline fun AsyncSocket.recvStr(buffer: ByteBuffer, timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): String {
 	//readBuffer.clear()
 	read(buffer, timeout, timeUnit)
@@ -76,7 +84,7 @@ suspend inline fun <T : OutputStream> AsyncSocket.recv(
 	buffer.clear()
 	
 	try {
-		read(buffer, firstTimeout)
+		if (read(buffer, firstTimeout) <= 0) throw InterruptedByTimeoutException()
 		@Suppress("BlockingMethodInNonBlockingContext")
 		outputStream.write(buffer.array(), buffer.arrayOffset(), buffer.position())
 		buffer.clear()
@@ -86,7 +94,6 @@ suspend inline fun <T : OutputStream> AsyncSocket.recv(
 			outputStream.write(buffer.array(), buffer.arrayOffset(), buffer.position())
 			buffer.clear()
 		}
-	} catch (e: SocketTimeoutException) {
 	} catch (e: InterruptedByTimeoutException) {
 	}
 	
@@ -224,6 +231,40 @@ suspend inline infix operator fun <T> AsyncSocket.invoke(
 			} catch (closeException: Throwable) {
 				// cause.addSuppressed(closeException) // ignored here
 			}
+		}
+	}
+}
+
+fun main() {
+	val port = 12345
+	val server = AsyncSocketServer(port) {
+		val buffer = ByteBuffer.allocate(1024)
+		while (true) {
+			buffer.clear()
+			read(buffer)
+			buffer.flip()
+			println("recv [${buffer.limit()}]")
+			write(buffer)
+		}
+	}
+	server.run()
+	
+	val input = System.`in`.bufferedReader()
+	runBlocking {
+		val client = AsyncClient.connect("127.0.0.1", port)
+		val buffer = ByteBuffer.allocate(1024)
+		while (true) {
+			@Suppress("BlockingMethodInNonBlockingContext") val line = input.readLine()
+			println("sending [${line.length}]")
+			client.send(line)
+			while (client.read(buffer) == buffer.limit()) {
+				println("client recv [${buffer.position()}]")
+				println(String(buffer.array(), 0, buffer.position()))
+				buffer.clear()
+			}
+			println("client recv [${buffer.position()}]")
+			println(String(buffer.array(), 0, buffer.position()))
+			buffer.clear()
 		}
 	}
 }

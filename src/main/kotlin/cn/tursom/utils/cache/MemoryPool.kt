@@ -1,6 +1,6 @@
 package cn.tursom.utils.cache
 
-import cn.tursom.utils.HeapByteBuffer
+import cn.tursom.utils.bytebuffer.HeapByteBuffer
 import cn.tursom.utils.datastruct.ArrayBitSet
 import java.nio.ByteBuffer
 

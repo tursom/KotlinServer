@@ -1,7 +1,6 @@
 package cn.tursom.utils.asynclock
 
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.Continuation
 
 class AsyncMutexLock : AsyncLock {
 	private val lock = AtomicBoolean(false)
@@ -11,7 +10,7 @@ class AsyncMutexLock : AsyncLock {
 		var loopTime = 20
 		while (loopTime-- > 0) if (!lock.get()) return
 		waitList.wait()
-		waitList.notify()
+		waitList.resume()
 	}
 	
 	override suspend fun sync(block: suspend () -> Unit) {
@@ -39,7 +38,7 @@ class AsyncMutexLock : AsyncLock {
 	
 	private suspend fun AtomicBoolean.release() {
 		if (waitList.notEmpty) {
-			waitList.notify()
+			waitList.resume()
 		} else {
 			set(false)
 		}

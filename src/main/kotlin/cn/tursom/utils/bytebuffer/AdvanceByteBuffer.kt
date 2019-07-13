@@ -36,6 +36,7 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	val available get() = readSize
 	val writeOffset get() = arrayOffset + writePosition
 	val writeSize get() = limit - writePosition
+	val size = buffer.capacity()
 	
 	/*
 	 * 位置控制方法
