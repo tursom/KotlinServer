@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
 
+
 inline fun <T> Collection<T>.doEach(block: (T) -> Any): String {
 	val iterator = iterator()
 	if (!iterator.hasNext()) return "[]"
@@ -27,6 +28,9 @@ val unsafe by lazy {
 	field.isAccessible = true
 	field.get(null) as Unsafe
 }
+
+@Suppress("UNCHECKED_CAST")
+fun <T> Class<T>.unsafeInstance() = unsafe.allocateInstance(this) as T
 
 val Class<*>.actualTypeArguments
 	get() = (genericSuperclass as ParameterizedType).actualTypeArguments

@@ -1,4 +1,4 @@
-package cn.tursom.socket.server
+package cn.tursom.socket.server.async
 
 import cn.tursom.socket.AsyncCachedSocket
 import cn.tursom.socket.useCachedNonBlock

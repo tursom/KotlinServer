@@ -1,7 +1,7 @@
 package cn.tursom.socket
 
 import cn.tursom.socket.client.AsyncClient
-import cn.tursom.socket.server.AsyncNettySocketServer
+import cn.tursom.socket.server.async.AsyncNettySocketServer
 import cn.tursom.utils.asynclock.AsyncWaitList
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
@@ -9,7 +9,6 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelInboundHandlerAdapter
 import io.netty.channel.socket.SocketChannel
 import io.netty.util.CharsetUtil
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -86,11 +85,18 @@ fun main() {
 		write(buf)
 	}
 	//println(server.f.channel().javaClass)
+	val clientArray = Array<AsyncSocket?>(10) { null }
 	runBlocking {
-		val client = AsyncClient.connect("127.0.0.1", port).cached()
-		client.send("hello")
-		delay(1000)
-		println("client recv: ${client.recvStr(firstTimeout = 1000)}")
+		repeat(10) {
+			val client = AsyncClient.connect("127.0.0.1", port).cached()
+			client.send("hello")
+			clientArray[it] = client
+		}
+		
+		clientArray.forEach { client ->
+			client ?: return@forEach
+			println("client recv: ${client.recvStr(firstTimeout = 1000)}")
+		}
 	}
 	println("close server")
 	server.close()
