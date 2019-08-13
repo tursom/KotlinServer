@@ -1,4 +1,4 @@
-package cn.tursom.utils.datastruct
+package cn.tursom.utils
 
 import okhttp3.*
 import java.io.File
@@ -64,9 +64,9 @@ object AsyncHttpRequest {
 		}
 		
 		return sendRequest(
-			client.newCall(
-				requestBuilder.build()
-			)
+				client.newCall(
+						requestBuilder.build()
+				)
 		)
 	}
 	
@@ -106,10 +106,10 @@ object AsyncHttpRequest {
 		headers: Map<String, String>? = null,
 		client: OkHttpClient = defaultClient
 	) = post(
-		url,
-		RequestBody.create(MediaType.parse("text/plain;charset=utf-8"), body),
-		headers,
-		client
+			url,
+			RequestBody.create(MediaType.parse("text/plain;charset=utf-8"), body),
+			headers,
+			client
 	)
 	
 	suspend fun post(
@@ -118,10 +118,10 @@ object AsyncHttpRequest {
 		headers: Map<String, String>? = null,
 		client: OkHttpClient = defaultClient
 	) = post(
-		url,
-		RequestBody.create(MediaType.parse("application/octet-stream"), body),
-		headers,
-		client
+			url,
+			RequestBody.create(MediaType.parse("application/octet-stream"), body),
+			headers,
+			client
 	)
 	
 	suspend fun post(
@@ -130,10 +130,10 @@ object AsyncHttpRequest {
 		headers: Map<String, String>? = null,
 		client: OkHttpClient = defaultClient
 	) = post(
-		url,
-		RequestBody.create(MediaType.parse("application/octet-stream"), body),
-		headers,
-		client
+			url,
+			RequestBody.create(MediaType.parse("application/octet-stream"), body),
+			headers,
+			client
 	)
 	
 	suspend fun getStr(
@@ -189,10 +189,10 @@ object AsyncHttpRequest {
 		headers: Map<String, String>? = null,
 		client: OkHttpClient
 	): String = postStr(
-		url,
-		RequestBody.create(MediaType.parse("text/plain;charset=utf-8"), body),
-		headers,
-		client
+			url,
+			RequestBody.create(MediaType.parse("text/plain;charset=utf-8"), body),
+			headers,
+			client
 	)
 	
 	suspend fun postStr(
@@ -207,10 +207,10 @@ object AsyncHttpRequest {
 		headers: Map<String, String>? = null,
 		client: OkHttpClient
 	): String = postStr(
-		url,
-		RequestBody.create(MediaType.parse("application/octet-stream"), body),
-		headers,
-		client
+			url,
+			RequestBody.create(MediaType.parse("application/octet-stream"), body),
+			headers,
+			client
 	)
 	
 	suspend fun getByteArray(
@@ -268,10 +268,10 @@ object AsyncHttpRequest {
 		headers: Map<String, String>? = null,
 		client: OkHttpClient
 	): ByteArray = postByteArray(
-		url,
-		RequestBody.create(MediaType.parse("text/plain;charset=utf-8"), body),
-		headers,
-		client
+			url,
+			RequestBody.create(MediaType.parse("text/plain;charset=utf-8"), body),
+			headers,
+			client
 	)
 	
 	suspend fun postByteArray(
@@ -286,9 +286,9 @@ object AsyncHttpRequest {
 		headers: Map<String, String>? = null,
 		client: OkHttpClient
 	): ByteArray = postByteArray(
-		url,
-		RequestBody.create(MediaType.parse("application/octet-stream"), body),
-		headers,
-		client
+			url,
+			RequestBody.create(MediaType.parse("application/octet-stream"), body),
+			headers,
+			client
 	)
 }
