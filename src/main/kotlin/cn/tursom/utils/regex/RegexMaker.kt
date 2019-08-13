@@ -255,7 +255,9 @@ object RegexMaker {
         }
         val sb = StringBuilder()
         str.forEach { c ->
-            if (c == '\\' || c == '-') sb.append("\\")
+            when (c) {
+                '\\', '-', ':' -> sb.append("\\")
+            }
             sb.append(c)
         }
         return !sb
