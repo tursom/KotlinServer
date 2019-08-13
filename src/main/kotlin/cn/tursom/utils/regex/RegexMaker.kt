@@ -32,7 +32,7 @@ package cn.tursom.utils.regex
  * [1-2]{0,5}[ABC\-\\a-z0-9]{2,3}[A-Z].{3,}\^+(还行){2}
  */
 
-@Suppress("unused", "MemberVisibilityCanBePrivate")
+@Suppress("unused", "MemberVisibilityCanBePrivate", "DuplicatedCode")
 object RegexMaker {
     operator fun String.unaryPlus() = StringRegexUnit(this)
     operator fun String.unaryMinus() = UnitRegexUnit(this)
@@ -99,16 +99,16 @@ object RegexMaker {
     infix operator fun (() -> RegexUnit).invoke(unit: () -> RegexUnit) = this() link unit()
     infix operator fun (() -> RegexUnit).invoke(unit: RegexUnit) = this() link unit
     infix operator fun RegexUnit.plus(unit: RegexUnit) = this link unit
-    infix operator fun (() -> RegexUnit).plus(unit: () -> RegexUnit) = this() link unit()
     infix operator fun RegexUnit.plus(unit: () -> RegexUnit) = this link unit()
+    infix operator fun (() -> RegexUnit).plus(unit: () -> RegexUnit) = this() link unit()
     infix operator fun (() -> RegexUnit).plus(unit: RegexUnit) = this() link unit
     infix operator fun RegexUnit.minus(unit: RegexUnit) = this link unit
     infix operator fun RegexUnit.minus(unit: () -> RegexUnit) = this link unit()
     infix operator fun (() -> RegexUnit).minus(unit: RegexUnit) = this() link unit
     infix operator fun (() -> RegexUnit).minus(unit: () -> RegexUnit) = this() link unit()
     infix operator fun RegexUnit.rangeTo(unit: RegexUnit) = this link unit
-    infix operator fun (() -> RegexUnit).rangeTo(unit: () -> RegexUnit) = this() link unit()
     infix operator fun RegexUnit.rangeTo(unit: () -> RegexUnit) = this link unit()
+    infix operator fun (() -> RegexUnit).rangeTo(unit: () -> RegexUnit) = this() link unit()
     infix operator fun (() -> RegexUnit).rangeTo(unit: RegexUnit) = this() link unit
 
     val Iterable<RegexUnit>.toSet: StringRegexUnit?
