@@ -3,7 +3,7 @@ package cn.tursom.utils.regex
 class UnitListRegexUnit(private val valList: String) : RegexUnit {
 	constructor(from: Char, to: Char) : this("$from-$to")
 	constructor(range: Pair<Char, Char>) : this("${range.first}-${range.second}")
-	constructor(range: CharRange) : this("${range.start}-${range.last}")
+	constructor(range: CharRange) : this("${range.first}-${range.last}")
 	constructor(range: UnitListRegexUnit) : this(range.valList)
 	
 	val reverse
