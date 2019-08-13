@@ -15,7 +15,6 @@ class UnitListRegexUnit(private val valList: String) : RegexUnit {
 	infix fun also(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
 	infix fun and(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
 	infix fun link(unitList: UnitListRegexUnit) = UnitListRegexUnit("$valList${unitList.valList}")
-	
-	override val unit = "[$valList]"
-	override fun toString() = unit
+
+	override fun toString() =  "[$valList]"
 }

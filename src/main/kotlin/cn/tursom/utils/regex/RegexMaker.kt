@@ -34,181 +34,195 @@ package cn.tursom.utils.regex
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 object RegexMaker {
-	operator fun String.unaryPlus() = StringRegexUnit(this)
-	operator fun String.unaryMinus() = UnitRegexUnit(this)
-	
-	val Any.str
-		get() = +toString()
-	val Any.unit
-		get() = -toString()
-	
-	val slush = -"\\\\"
-	val point = -"\\."
-	val caret = -"\\^"
-	val dollar = -"\\$"
-	val plus = -"\\+"
-	val star = -"\\*"
-	val roundBrackets = -"\\("
-	val squareBrackets = -"\\["
-	val curlyBrackets = -"\\{"
-	val backslash = -"\\\\"
-	val verticalBar = -"\\|"
-	val questionMark = -"\\?"
-	val nextPage = -"\\f"
-	val nextLine = -"\\n"
-	val enter = -"\\r"
-	val space = -"\\s"
-	val nonSpace = -"\\S"
-	val tab = -"\\t"
-	val vertical = -"\\v"
-	val wordBoundary = -"\\b"
-	val nonWordBoundary = -"\\B"
-	
-	/**
-	 * @warning except \n
-	 */
-	val any = -"."
-	val beg = -"^"
-	val end = -"$"
-	val empty = -"()"
-	
-	val uppercase = 'A' % 'Z'
-	val lowercase = 'a' % 'z'
-	val numbers = '0' % '9'
-	
-	val Char.control
-		get() = ControlCharRegexUnit(this)
-	
-	infix fun RegexUnit.link(target: RegexUnit) = +"$this$target"
-	infix fun RegexUnit.link(target: (() -> RegexUnit)) = +"$this${target()}"
-	infix fun (() -> RegexUnit).link(target: RegexUnit) = +"${this()}$target"
-	infix fun (() -> RegexUnit).link(target: (() -> RegexUnit)) = +"${this()}${target()}"
-	infix fun RegexUnit.also(target: RegexUnit) = this link target
-	infix fun RegexUnit.also(target: (() -> RegexUnit)) = this link target()
-	infix fun (() -> RegexUnit).also(target: RegexUnit) = this() link target
-	infix fun (() -> RegexUnit).also(target: (() -> RegexUnit)) = this() link target()
-	infix operator fun RegexUnit.invoke(unit: RegexUnit) = this link unit
-	infix operator fun RegexUnit.invoke(unit: () -> RegexUnit) = this link unit()
-	infix operator fun (() -> RegexUnit).invoke(unit: () -> RegexUnit) = this() link unit()
-	infix operator fun (() -> RegexUnit).invoke(unit: RegexUnit) = this() link unit
-	infix operator fun RegexUnit.plus(unit: RegexUnit) = this link unit
-	infix operator fun (() -> RegexUnit).plus(unit: () -> RegexUnit) = this() link unit()
-	infix operator fun RegexUnit.plus(unit: () -> RegexUnit) = this link unit()
-	infix operator fun (() -> RegexUnit).plus(unit: RegexUnit) = this() link unit
-	infix operator fun RegexUnit.minus(unit: RegexUnit) = this link unit
-	infix operator fun RegexUnit.minus(unit: () -> RegexUnit) = this link unit()
-	infix operator fun (() -> RegexUnit).minus(unit: RegexUnit) = this() link unit
-	infix operator fun (() -> RegexUnit).minus(unit: () -> RegexUnit) = this() link unit()
-	infix operator fun RegexUnit.rangeTo(unit: RegexUnit) = this link unit
-	infix operator fun (() -> RegexUnit).rangeTo(unit: () -> RegexUnit) = this() link unit()
-	infix operator fun RegexUnit.rangeTo(unit: () -> RegexUnit) = this link unit()
-	infix operator fun (() -> RegexUnit).rangeTo(unit: RegexUnit) = this() link unit
-	
-	val Iterable<RegexUnit>.toSet: StringRegexUnit?
-		get() {
-			val iterator = iterator()
-			if (!iterator.hasNext()) return null
-			val stringBuilder = StringBuilder()
-			stringBuilder.append(iterator.next().unit)
-			forEach {
-				stringBuilder.append("|${it.unit}")
-			}
-			return StringRegexUnit(stringBuilder.toString())
-		}
-	
-	val Array<out RegexUnit>.toSet: StringRegexUnit?
-		get() {
-			val iterator = iterator()
-			if (!iterator.hasNext()) return null
-			val stringBuilder = StringBuilder()
-			stringBuilder.append(iterator.next().unit)
-			forEach {
-				stringBuilder.append("|${it.unit}")
-			}
-			return StringRegexUnit(stringBuilder.toString())
-		}
-	
-	infix fun RegexUnit.or(target: RegexUnit): StringRegexUnit {
-		val unit = this.unit
-		val targetUnit = target.unit
-		return +when {
-			unit == null -> targetUnit ?: ""
-			targetUnit == null -> unit
-			else -> "$unit|$targetUnit"
-		}
-	}
-	
-	val RegexUnit.onceMore
-		get() = RepeatRegexUnit(this, 1, -1)
-	
-	val RegexUnit.anyTime
-		get() = RepeatRegexUnit(this, -1)
-	
-	val RegexUnit.onceBelow
-		get() = RepeatRegexUnit(this, 0, 1)
-	
-	infix fun RegexUnit.repeat(times: Int) = RepeatRegexUnit(this, times)
-	infix fun RegexUnit.repeat(times: IntRange) = RepeatRegexUnit(this, times)
-	infix fun RegexUnit.repeat(times: Pair<Int, Int>) = RepeatRegexUnit(this, times)
-	fun RegexUnit.timeRange(from: Int, to: Int) = RepeatRegexUnit(this, from, to)
-	
-	infix operator fun RegexUnit.invoke(times: Int) = this repeat times
-	infix operator fun RegexUnit.invoke(times: IntRange) = this repeat times
-	infix operator fun RegexUnit.invoke(times: Pair<Int, Int>) = this repeat times
-	operator fun RegexUnit.invoke(from: Int, to: Int) = this.timeRange(from, to)
-	
-	infix operator fun (() -> RegexUnit).invoke(unit: Int) = this()(unit)
-	infix operator fun (() -> RegexUnit).invoke(unit: IntRange) = this()(unit)
-	infix operator fun (() -> RegexUnit).invoke(unit: Pair<Int, Int>) = this()(unit)
-	
-	infix fun RegexUnit.upTo(times: Int) = RepeatRegexUnit(this, 0, times)
-	infix fun RegexUnit.repeatTime(times: Int) = RepeatRegexUnit(this, times)
-	infix fun RegexUnit.repeatLast(times: Int) = RepeatRegexUnit(this, times, -1)
-	infix fun RegexUnit.last(times: Int) = RepeatRegexUnit(this, times, -1)
-	
-	infix operator fun RegexUnit.rem(times: Int) = RepeatRegexUnit(this, times, -1)
-	infix operator fun RegexUnit.times(times: Int) = RepeatRegexUnit(this, times)
-	infix operator fun RegexUnit.minus(times: Int) = RepeatRegexUnit(this, 0, times)
-	infix operator fun RegexUnit.div(times: Int) = RepeatRegexUnit(this, 0, times)
-	infix operator fun RegexUnit.rangeTo(range: Int) = RepeatRegexUnit(this, range)
-	
-	infix operator fun RegexUnit.rem(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
-	infix operator fun RegexUnit.rem(range: IntRange) = RepeatRegexUnit(this, range)
-	infix operator fun RegexUnit.times(range: IntRange) = RepeatRegexUnit(this, range)
-	infix operator fun RegexUnit.times(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
-	infix operator fun RegexUnit.minus(range: IntRange) = RepeatRegexUnit(this, range)
-	infix operator fun RegexUnit.minus(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
-	infix operator fun RegexUnit.rangeTo(range: IntRange) = RepeatRegexUnit(this, range)
-	infix operator fun RegexUnit.rangeTo(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
-	
-	infix fun Char.list(target: Char) = UnitListRegexUnit(this, target)
-	infix operator fun Char.rem(char: Char) = UnitListRegexUnit(this, char)
-	operator fun CharRange.unaryPlus() = UnitListRegexUnit(this)
-	operator fun CharRange.unaryMinus() = UnitListRegexUnit(this)
-	operator fun CharRange.not() = UnitListRegexUnit(this)
-	operator fun Pair<Char, Char>.unaryPlus() = UnitListRegexUnit(this)
-	operator fun Pair<Char, Char>.unaryMinus() = UnitListRegexUnit(this)
-	operator fun Pair<Char, Char>.not() = UnitListRegexUnit(this)
-	
-	infix operator fun UnitListRegexUnit.invoke(unitList: UnitListRegexUnit) = this and unitList
-	
-	object UnitList {
-		const val hyphen = "\\-"
-		const val slush = "\\\\"
-	}
-	
-	class UnitListCheckException : Exception()
-	
-	operator fun String.not() = UnitListRegexUnit(this)
-	operator fun Any.not() = !toString()
-	fun list(func: UnitList.() -> String) = UnitList.func().let {
-		if (it.filterIndexed { index, c -> c == '-' && (index == 0 || it[index - 1] != '\\') }.isNotEmpty())
-			throw UnitListCheckException()
-		!it
-	}
-	
-	@Suppress("UNUSED_EXPRESSION")
-	fun make(func: RegexMaker.() -> RegexUnit) = func()
+    operator fun String.unaryPlus() = StringRegexUnit(this)
+    operator fun String.unaryMinus() = UnitRegexUnit(this)
+
+    val Any.str
+        get() = +toString()
+    val Any.unit
+        get() = -toString()
+
+    val slush = -"\\\\"
+    val point = -"\\."
+    val caret = -"\\^"
+    val dollar = -"\\$"
+    val plus = -"\\+"
+    val star = -"\\*"
+    val roundBrackets = -"\\("
+    val squareBrackets = -"\\["
+    val curlyBrackets = -"\\{"
+    val backslash = -"\\\\"
+    val verticalBar = -"\\|"
+    val questionMark = -"\\?"
+    val nextPage = -"\\f"
+    val nextLine = -"\\n"
+    val enter = -"\\r"
+    val blankCharacter = -"\\s"
+    val nonBlankCharacter = -"\\S"
+    val tab = -"\\t"
+    val verticalTab = -"\\v"
+    val wordBoundary = -"\\b"
+    val nonWordBoundary = -"\\B"
+    val number = -"\\d"
+    val nonNumber = -"\\D"
+    val pageBreak = -"\\f"
+    val lineBreak = -"n"
+    val carriageReturn = -"\\r"
+    val lettersNumbersUnderscores = -"\\w"
+    val nonLettersNumbersUnderscores = -"\\W"
+
+    /**
+     * @warning except \n
+     */
+    val any = -"."
+    val beg = -"^"
+    val end = -"$"
+    val empty = -"()"
+
+    val uppercase = 'A' % 'Z'
+    val lowercase = 'a' % 'z'
+    val numbers = '0' % '9'
+
+    val Char.control
+        get() = ControlCharRegexUnit(this)
+
+    infix fun RegexUnit.link(target: RegexUnit) = +"$this$target"
+    infix fun RegexUnit.link(target: (() -> RegexUnit)) = +"$this${target()}"
+    infix fun (() -> RegexUnit).link(target: RegexUnit) = +"${this()}$target"
+    infix fun (() -> RegexUnit).link(target: (() -> RegexUnit)) = +"${this()}${target()}"
+    infix fun RegexUnit.also(target: RegexUnit) = this link target
+    infix fun RegexUnit.also(target: (() -> RegexUnit)) = this link target()
+    infix fun (() -> RegexUnit).also(target: RegexUnit) = this() link target
+    infix fun (() -> RegexUnit).also(target: (() -> RegexUnit)) = this() link target()
+    infix operator fun RegexUnit.invoke(unit: RegexUnit) = this link unit
+    infix operator fun RegexUnit.invoke(unit: () -> RegexUnit) = this link unit()
+    infix operator fun (() -> RegexUnit).invoke(unit: () -> RegexUnit) = this() link unit()
+    infix operator fun (() -> RegexUnit).invoke(unit: RegexUnit) = this() link unit
+    infix operator fun RegexUnit.plus(unit: RegexUnit) = this link unit
+    infix operator fun (() -> RegexUnit).plus(unit: () -> RegexUnit) = this() link unit()
+    infix operator fun RegexUnit.plus(unit: () -> RegexUnit) = this link unit()
+    infix operator fun (() -> RegexUnit).plus(unit: RegexUnit) = this() link unit
+    infix operator fun RegexUnit.minus(unit: RegexUnit) = this link unit
+    infix operator fun RegexUnit.minus(unit: () -> RegexUnit) = this link unit()
+    infix operator fun (() -> RegexUnit).minus(unit: RegexUnit) = this() link unit
+    infix operator fun (() -> RegexUnit).minus(unit: () -> RegexUnit) = this() link unit()
+    infix operator fun RegexUnit.rangeTo(unit: RegexUnit) = this link unit
+    infix operator fun (() -> RegexUnit).rangeTo(unit: () -> RegexUnit) = this() link unit()
+    infix operator fun RegexUnit.rangeTo(unit: () -> RegexUnit) = this link unit()
+    infix operator fun (() -> RegexUnit).rangeTo(unit: RegexUnit) = this() link unit
+
+    val Iterable<RegexUnit>.toSet: StringRegexUnit?
+        get() {
+            val iterator = iterator()
+            if (!iterator.hasNext()) return null
+            val stringBuilder = StringBuilder()
+            stringBuilder.append(iterator.next().unit)
+            forEach {
+                stringBuilder.append("|${it.unit}")
+            }
+            return StringRegexUnit(stringBuilder.toString())
+        }
+
+    val Array<out RegexUnit>.toSet: StringRegexUnit?
+        get() {
+            val iterator = iterator()
+            if (!iterator.hasNext()) return null
+            val stringBuilder = StringBuilder()
+            stringBuilder.append(iterator.next().unit)
+            forEach {
+                stringBuilder.append("|${it.unit}")
+            }
+            return StringRegexUnit(stringBuilder.toString())
+        }
+
+    infix fun RegexUnit.or(target: RegexUnit): StringRegexUnit {
+        val unit = this.unit
+        val targetUnit = target.unit
+        return +when {
+            unit == null -> targetUnit ?: ""
+            targetUnit == null -> unit
+            else -> "$unit|$targetUnit"
+        }
+    }
+
+    val RegexUnit.onceMore
+        get() = RepeatRegexUnit(this, 1, -1)
+
+    val RegexUnit.anyTime
+        get() = RepeatRegexUnit(this, -1)
+
+    val RegexUnit.onceBelow
+        get() = RepeatRegexUnit(this, 0, 1)
+
+    infix fun RegexUnit.repeat(times: Int) = RepeatRegexUnit(this, times)
+    infix fun RegexUnit.repeat(times: IntRange) = RepeatRegexUnit(this, times)
+    infix fun RegexUnit.repeat(times: Pair<Int, Int>) = RepeatRegexUnit(this, times)
+    fun RegexUnit.timeRange(from: Int, to: Int) = RepeatRegexUnit(this, from, to)
+
+    infix operator fun RegexUnit.invoke(times: Int) = this repeat times
+    infix operator fun RegexUnit.invoke(times: IntRange) = this repeat times
+    infix operator fun RegexUnit.invoke(times: Pair<Int, Int>) = this repeat times
+    operator fun RegexUnit.invoke(from: Int, to: Int) = this.timeRange(from, to)
+
+    infix operator fun (() -> RegexUnit).invoke(unit: Int) = this()(unit)
+    infix operator fun (() -> RegexUnit).invoke(unit: IntRange) = this()(unit)
+    infix operator fun (() -> RegexUnit).invoke(unit: Pair<Int, Int>) = this()(unit)
+
+    infix fun RegexUnit.upTo(times: Int) = RepeatRegexUnit(this, 0, times)
+    infix fun RegexUnit.repeatTime(times: Int) = RepeatRegexUnit(this, times)
+    infix fun RegexUnit.repeatLast(times: Int) = RepeatRegexUnit(this, times, -1)
+    infix fun RegexUnit.last(times: Int) = RepeatRegexUnit(this, times, -1)
+
+    infix operator fun RegexUnit.rem(times: Int) = RepeatRegexUnit(this, times, -1)
+    infix operator fun RegexUnit.times(times: Int) = RepeatRegexUnit(this, times)
+    infix operator fun RegexUnit.minus(times: Int) = RepeatRegexUnit(this, 0, times)
+    infix operator fun RegexUnit.div(times: Int) = RepeatRegexUnit(this, 0, times)
+    infix operator fun RegexUnit.rangeTo(range: Int) = RepeatRegexUnit(this, range)
+
+    infix operator fun RegexUnit.rem(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
+    infix operator fun RegexUnit.rem(range: IntRange) = RepeatRegexUnit(this, range)
+    infix operator fun RegexUnit.times(range: IntRange) = RepeatRegexUnit(this, range)
+    infix operator fun RegexUnit.times(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
+    infix operator fun RegexUnit.minus(range: IntRange) = RepeatRegexUnit(this, range)
+    infix operator fun RegexUnit.minus(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
+    infix operator fun RegexUnit.rangeTo(range: IntRange) = RepeatRegexUnit(this, range)
+    infix operator fun RegexUnit.rangeTo(range: Pair<Int, Int>) = RepeatRegexUnit(this, range)
+
+    infix fun Char.list(target: Char) = UnitListRegexUnit(this, target)
+    infix operator fun Char.rem(char: Char) = UnitListRegexUnit(this, char)
+    operator fun CharRange.unaryPlus() = UnitListRegexUnit(this)
+    operator fun CharRange.unaryMinus() = UnitListRegexUnit(this)
+    operator fun CharRange.not() = UnitListRegexUnit(this)
+    operator fun Pair<Char, Char>.unaryPlus() = UnitListRegexUnit(this)
+    operator fun Pair<Char, Char>.unaryMinus() = UnitListRegexUnit(this)
+    operator fun Pair<Char, Char>.not() = UnitListRegexUnit(this)
+
+    infix operator fun UnitListRegexUnit.invoke(unitList: UnitListRegexUnit) = this and unitList
+
+    object UnitList {
+        const val hyphen = "\\-"
+        const val slush = "\\\\"
+    }
+
+    class UnitListCheckException : Exception()
+
+    operator fun String.not() = UnitListRegexUnit(this)
+    operator fun Any.not() = !toString()
+    fun list(func: UnitList.() -> String) = UnitList.func().let {
+        if (it.filterIndexed { index, c -> c == '-' && (index == 0 || it[index - 1] != '\\') }.isNotEmpty())
+            throw UnitListCheckException()
+        !it
+    }
+
+    val RegexUnit.nonGetMatch get() = NonGetMatchingUnit(this)
+    val RegexUnit.lookAheadPositiveAssert get() = LookAheadPositiveAssertUnit(this)
+    val RegexUnit.lookAheadNegativeAssert get() = LookAheadNegativeAssertUnit(this)
+    val RegexUnit.lookBehindPositiveAssert get() = LookBehindPositiveAssertUnit(this)
+    val RegexUnit.lookBehindNegativeAssert get() = LookBehindNegativeAssertUnit(this)
+
+    fun make(func: RegexMaker.() -> RegexUnit) = this.func()
+
+    operator fun invoke(func: RegexMaker.() -> RegexUnit) = this.func()
 }
 
 fun regex(func: RegexMaker.() -> RegexUnit) = Regex(RegexMaker.func().toString())
