@@ -39,16 +39,16 @@ interface AsyncMap<K, V> {
 
 operator fun <K, V> AsyncMap<out K, V>.iterator(): AsyncIterator<Map.Entry<K, V>> = entries.iterator()
 
-interface AsyncPutableMap<K, V> : AsyncMap<K, V> {
+interface AsyncPotableMap<K, V> : AsyncMap<K, V> {
 	suspend fun clear()
 	suspend fun put(key: K, value: V): V?
 	suspend infix fun putAll(from: Map<out K, V>)
 	suspend infix fun remove(key: K): V?
 }
 
-interface AsyncPutableSet<K> : AsyncSet<K> {
-	suspend fun clear(): AsyncPutableSet<K>
-	suspend fun put(key: K): AsyncPutableSet<K>
-	suspend infix fun putAll(from: Set<K>): AsyncPutableSet<K>
-	suspend infix fun remove(key: K): AsyncPutableSet<K>
+interface AsyncPotableSet<K> : AsyncSet<K> {
+	suspend fun clear(): AsyncPotableSet<K>
+	suspend fun put(key: K): AsyncPotableSet<K>
+	suspend infix fun putAll(from: Set<K>): AsyncPotableSet<K>
+	suspend infix fun remove(key: K): AsyncPotableSet<K>
 }

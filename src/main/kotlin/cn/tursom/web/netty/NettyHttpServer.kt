@@ -4,39 +4,15 @@ import cn.tursom.web.ExceptionContent
 import cn.tursom.web.HttpHandler
 import cn.tursom.web.HttpServer
 import io.netty.bootstrap.ServerBootstrap
-import io.netty.channel.*
+import io.netty.channel.ChannelFuture
+import io.netty.channel.ChannelInitializer
+import io.netty.channel.ChannelOption
 import io.netty.channel.nio.NioEventLoopGroup
 import io.netty.channel.socket.SocketChannel
 import io.netty.channel.socket.nio.NioServerSocketChannel
-import io.netty.handler.codec.http.FullHttpRequest
 import io.netty.handler.codec.http.HttpObjectAggregator
 import io.netty.handler.codec.http.HttpRequestDecoder
 import io.netty.handler.codec.http.HttpResponseEncoder
-
-@ChannelHandler.Sharable
-class NettyHttpHandler(
-	private val handler: HttpHandler<NettyHttpContent>
-) : SimpleChannelInboundHandler<FullHttpRequest>() {
-	
-	override fun channelRead0(ctx: ChannelHandlerContext, msg: FullHttpRequest) {
-		val handlerContext = NettyHttpContent(ctx, msg)
-		try {
-			handler.handle(handlerContext)
-		} catch (e: Throwable) {
-			handlerContext.write("${e.javaClass}: ${e.message}")
-		}
-	}
-	
-	override fun channelReadComplete(ctx: ChannelHandlerContext) {
-		super.channelReadComplete(ctx)
-		ctx.flush()
-	}
-	
-	override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
-		if (cause != null) handler.exception(NettyExceptionContent(ctx, cause))
-		ctx?.close()
-	}
-}
 
 class NettyHttpServer(
 	override val port: Int,

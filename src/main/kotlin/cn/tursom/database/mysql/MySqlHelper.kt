@@ -1,6 +1,13 @@
 package cn.tursom.database.mysql
 
 import cn.tursom.database.*
+import cn.tursom.database.SqlUtils.fieldStr
+import cn.tursom.database.SqlUtils.tableName
+import cn.tursom.database.SqlUtils.appendField
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.valueStr
+import cn.tursom.database.SqlUtils.isSqlField
+import cn.tursom.database.SqlUtils.fieldValue
 import cn.tursom.database.annotation.FieldType
 import cn.tursom.database.annotation.ForeignKey
 import cn.tursom.database.annotation.Getter
@@ -10,18 +17,16 @@ import java.lang.reflect.Field
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.SQLSyntaxErrorException
-import java.text.DateFormat
-import java.text.SimpleDateFormat
 
 /**
  * MySQLHelper，SQLite辅助使用类
  * 实现创建表格、查询、插入和更新功能
  */
 @Suppress("SqlNoDataSourceInspection", "SqlDialectInspection")
-class MySQLHelper(
+class MySqlHelper(
 	@Suppress("MemberVisibilityCanBePrivate") val connection: Connection,
 	base: String? = null
-) : SQLHelper {
+) : SqlHelper {
 	
 	@Suppress("MemberVisibilityCanBePrivate")
 	var basename: String? = null
@@ -106,13 +111,13 @@ class MySQLHelper(
 	 * @param maxCount 最大查询数量
 	 */
 	override fun <T : Any> select(
-		adapter: SQLAdapter<T>,
+		adapter: SqlAdapter<T>,
 		fields: Iterable<String>?,
 		where: Clause,
 		order: Field?,
 		reverse: Boolean,
 		maxCount: Int?
-	): SQLAdapter<T> = select(
+	): SqlAdapter<T> = select(
 		adapter = adapter,
 		fields = fields?.fieldStr() ?: "*",
 		where = where.sqlStr,
@@ -123,13 +128,13 @@ class MySQLHelper(
 	
 	
 	override fun <T : Any> select(
-		adapter: SQLAdapter<T>,
+		adapter: SqlAdapter<T>,
 		fields: String,
 		where: String?,
 		order: String?,
 		reverse: Boolean,
 		maxCount: Int?
-	): SQLAdapter<T> {
+	): SqlAdapter<T> {
 		val sql = "SELECT $fields FROM ${adapter.clazz.tableName
 		}${if (where != null) " WHERE $where" else ""
 		}${if (order != null) " ORDER BY $order ${if (reverse) "DESC" else "ASC"}" else ""
@@ -271,7 +276,7 @@ class MySQLHelper(
 			}
 			
 			if (primaryKeySet.isNotEmpty()) {
-				valueStrBuilder.append("PRIMARY KEY(${primaryKeySet.fieldNameStr()}),")
+				valueStrBuilder.append("PRIMARY KEY(${primaryKeySet.fieldName}),")
 			}
 			
 			if (foreignKey != null && foreignKeyList.isEmpty()) {

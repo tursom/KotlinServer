@@ -2,6 +2,7 @@ package cn.tursom.database
 
 import java.lang.reflect.Field
 import kotlin.reflect.KProperty
+import cn.tursom.database.SqlUtils.fieldName
 
 class FieldSelector : HashSet<String>() {
 	//	operator fun String.unaryPlus() = add(this.sqlStr)

@@ -1,13 +1,15 @@
 package cn.tursom.database
 
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.sqlStr
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
 import java.lang.reflect.Field
 import kotlin.reflect.KProperty
 
 class SqlSelector<T : Any>(
-	private val helper: SQLHelper,
-	private val adapter: SQLAdapter<T>
+	private val helper: SqlHelper,
+	private val adapter: SqlAdapter<T>
 ) {
 	private var where: String? = null
 	private var fields: FieldSelector = FieldSelector()
@@ -30,7 +32,7 @@ class SqlSelector<T : Any>(
 	}
 	
 	fun select() =
-		helper.select(adapter, fields.fieldNameStr() ?: "*", where, order, reverse, maxCount)
+		helper.select(adapter, fields.fieldName ?: "*", where, order, reverse, maxCount)
 	
 	infix fun orderBy(field: String) {
 		order = field.sqlStr

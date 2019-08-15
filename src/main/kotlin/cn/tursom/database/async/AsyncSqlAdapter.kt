@@ -1,9 +1,9 @@
 package cn.tursom.database.async
 
-import cn.tursom.database.SQLAdapter
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlAdapter
 import cn.tursom.database.annotation.NotNull
 import cn.tursom.database.annotation.Constructor
-import cn.tursom.database.fieldName
 import io.vertx.core.json.JsonArray
 import io.vertx.ext.sql.ResultSet
 import sun.misc.Unsafe
@@ -19,7 +19,7 @@ class AsyncSqlAdapter<T>(
 	@Suppress("MemberVisibilityCanBePrivate") val clazz: Class<T>,
 	private val adapter: (ArrayList<T>.(
 		resultSet: ResultSet,
-		fieldList: List<SQLAdapter.FieldData>
+		fieldList: List<SqlAdapter.FieldData>
 	) -> Unit)? = null
 ) : ArrayList<T>() {
 	val fieldNameMap: Map<String, Field> = run {

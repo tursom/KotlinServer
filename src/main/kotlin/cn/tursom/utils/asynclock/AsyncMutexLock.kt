@@ -36,7 +36,7 @@ class AsyncMutexLock : AsyncLock {
 		waitList.wait()
 	}
 	
-	private suspend fun AtomicBoolean.release() {
+	override suspend fun AtomicBoolean.release() {
 		if (waitList.notEmpty) {
 			waitList.resume()
 		} else {

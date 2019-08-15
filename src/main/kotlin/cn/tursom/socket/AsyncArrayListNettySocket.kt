@@ -76,28 +76,3 @@ class AsyncArrayListNettySocket(override val channel: SocketChannel) : AsyncNett
 		}
 	}
 }
-
-fun main() {
-	val port = 12345
-	val server = AsyncNettySocketServer(port) {
-		val buf = read(10000)!!
-		println("server recv ${buf.toString(CharsetUtil.UTF_8)}")
-		write(buf)
-	}
-	//println(server.f.channel().javaClass)
-	val clientArray = Array<AsyncSocket?>(10) { null }
-	runBlocking {
-		repeat(10) {
-			val client = AsyncClient.connect("127.0.0.1", port).cached()
-			client.send("hello")
-			clientArray[it] = client
-		}
-		
-		clientArray.forEach { client ->
-			client ?: return@forEach
-			println("client recv: ${client.recvStr(firstTimeout = 1000)}")
-		}
-	}
-	println("close server")
-	server.close()
-}

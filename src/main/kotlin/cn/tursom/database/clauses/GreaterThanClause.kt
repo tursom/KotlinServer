@@ -1,6 +1,6 @@
 package cn.tursom.database.clauses
 
-import cn.tursom.database.fieldName
+import cn.tursom.database.SqlUtils.fieldName
 import java.lang.reflect.Field
 import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaField

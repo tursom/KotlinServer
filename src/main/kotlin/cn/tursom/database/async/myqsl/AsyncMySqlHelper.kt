@@ -9,6 +9,13 @@ import cn.tursom.database.async.AsyncSqlAdapter
 import cn.tursom.database.async.AsyncSqlHelper
 import cn.tursom.database.async.vertx
 import cn.tursom.database.clauses.Clause
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.fieldStr
+import cn.tursom.database.SqlUtils.tableName
+import cn.tursom.database.SqlUtils.valueStr
+import cn.tursom.database.SqlUtils.fieldValue
+import cn.tursom.database.SqlUtils.appendField
+import cn.tursom.database.SqlUtils.getAnnotation
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.jdbc.JDBCClient
 import io.vertx.ext.sql.SQLConnection
@@ -249,7 +256,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 			}
 			
 			if (primaryKeySet.isNotEmpty()) {
-				valueStrBuilder.append("PRIMARY KEY(${primaryKeySet.fieldNameStr()}),")
+				valueStrBuilder.append("PRIMARY KEY(${primaryKeySet.fieldName}),")
 			}
 			
 			if (foreignKey != null && foreignKeyList.isEmpty()) {

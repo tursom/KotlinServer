@@ -1,7 +1,8 @@
 package cn.tursom.database
 
-import cn.tursom.database.annotation.NotNull
+import cn.tursom.database.SqlUtils.fieldName
 import cn.tursom.database.annotation.Constructor
+import cn.tursom.database.annotation.NotNull
 import sun.misc.Unsafe
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
@@ -11,9 +12,9 @@ import java.sql.SQLException
 import java.util.*
 import kotlin.collections.forEach
 
-open class SQLAdapter<T : Any>(
+open class SqlAdapter<T : Any>(
 	@Suppress("MemberVisibilityCanBePrivate") val clazz: Class<T>,
-	private val adapter: (SQLAdapter<T>.(
+	private val adapter: (SqlAdapter<T>.(
 		resultSet: ResultSet,
 		fieldList: List<FieldData>
 	) -> Unit)? = null
@@ -45,11 +46,11 @@ open class SQLAdapter<T : Any>(
 					} catch (e: SQLException) {
 					}
 				}
-				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldList)
+				(adapter ?: SqlAdapter<T>::adaptOnce)(resultSet, fieldList)
 			}
 			// 遍历ResultSet
 			while (resultSet.next()) {
-				(adapter ?: SQLAdapter<T>::adaptOnce)(resultSet, fieldList)
+				(adapter ?: SqlAdapter<T>::adaptOnce)(resultSet, fieldList)
 			}
 		} catch (e: SQLException) {
 			// ignored

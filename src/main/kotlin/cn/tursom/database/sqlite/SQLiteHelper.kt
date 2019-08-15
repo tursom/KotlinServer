@@ -1,5 +1,12 @@
 package cn.tursom.database.sqlite
 
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.fieldValue
+import cn.tursom.database.SqlUtils.isSqlField
+import cn.tursom.database.SqlUtils.valueStr
+import cn.tursom.database.SqlUtils.fieldStr
+import cn.tursom.database.SqlUtils.tableName
+import cn.tursom.database.SqlUtils.getAnnotation
 import cn.tursom.database.*
 import cn.tursom.database.annotation.*
 import cn.tursom.database.clauses.Clause
@@ -22,7 +29,7 @@ open class SQLiteHelper
 /**
  * 创建名为 base.db 的数据库连接
  */
-(base: String) : SQLHelper {
+(base: String) : SqlHelper {
 	private val connection: Connection
 	private val path = File(base).absolutePath.simplifyPath()
 	
@@ -99,18 +106,18 @@ open class SQLiteHelper
 	 * @param maxCount 最大查询数量
 	 */
 	override fun <T : Any> select(
-		adapter: SQLAdapter<T>,
+		adapter: SqlAdapter<T>,
 		fields: Iterable<String>?,
 		where: Clause,
 		order: Field?,
 		reverse: Boolean,
 		maxCount: Int?
-	): SQLAdapter<T> =
+	): SqlAdapter<T> =
 		select(adapter, fields?.fieldStr() ?: "*", where.sqlStr, order?.fieldName, reverse, maxCount)
 	
 	override fun <T : Any> select(
-		adapter: SQLAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
-	): SQLAdapter<T> {
+		adapter: SqlAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
+	): SqlAdapter<T> {
 		val sql = "SELECT $fields FROM ${adapter.clazz.tableName
 		}${if (where != null) " WHERE $where" else ""
 		}${if (order != null) " ORDER BY $order ${if (reverse) "DESC" else "ASC"}" else ""

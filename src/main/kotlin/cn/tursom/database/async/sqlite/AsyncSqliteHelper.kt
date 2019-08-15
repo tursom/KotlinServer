@@ -7,6 +7,12 @@ import cn.tursom.database.async.AsyncSqlHelper
 import cn.tursom.database.async.vertx
 import cn.tursom.database.clauses.Clause
 import cn.tursom.utils.simplifyPath
+import cn.tursom.database.SqlUtils.fieldStr
+import cn.tursom.database.SqlUtils.tableName
+import cn.tursom.database.SqlUtils.getAnnotation
+import cn.tursom.database.SqlUtils.valueStr
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.fieldValue
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.jdbc.JDBCClient
 import io.vertx.ext.sql.SQLConnection

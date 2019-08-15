@@ -1,13 +1,16 @@
 package cn.tursom.database
 
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.tableName
+import cn.tursom.database.SqlUtils.sqlStr
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
 import java.lang.reflect.Field
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
-class SqlUpdater(val helper: SQLHelper) {
-	constructor(helper: SQLHelper, table: String) : this(helper) {
+class SqlUpdater(val helper: SqlHelper) {
+	constructor(helper: SqlHelper, table: String) : this(helper) {
 		this.table = table
 	}
 	

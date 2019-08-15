@@ -1,6 +1,8 @@
 package cn.tursom.database.async
 
 import cn.tursom.database.*
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.sqlStr
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
 import java.lang.reflect.Field
@@ -22,16 +24,16 @@ class AsyncSqlSelector<T : Any>(
 			}
 		}
 	
-	suspend  fun fields(selector:suspend  FieldSelector.() -> Unit) {
+	suspend fun fields(selector: suspend FieldSelector.() -> Unit) {
 		fields.selector()
 	}
 	
-	suspend fun where(clause:suspend  ClauseMaker.() -> Clause) {
+	suspend fun where(clause: suspend ClauseMaker.() -> Clause) {
 		where = ClauseMaker.clause().sqlStr
 	}
 	
 	suspend fun select() =
-		helper.select(adapter, fields.fieldNameStr() ?: "*", where, order, reverse, maxCount)
+		helper.select(adapter, fields.fieldName ?: "*", where, order, reverse, maxCount)
 	
 	infix fun orderBy(field: String) {
 		order = field.sqlStr

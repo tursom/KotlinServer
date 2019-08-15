@@ -3,7 +3,7 @@ package cn.tursom.utils.datastruct
 import cn.tursom.utils.asynclock.AsyncMutexLock
 import cn.tursom.utils.asynclock.AsyncWriteFirstRWLock
 
-class AsyncArrayMap<K : Comparable<K>, V> : AsyncPutableMap<K, V> {
+class AsyncArrayMap<K : Comparable<K>, V> : AsyncPotableMap<K, V> {
 	private val lock = AsyncWriteFirstRWLock()
 	private val map = ArrayMap<K, V>()
 	

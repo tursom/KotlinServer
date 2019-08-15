@@ -1,7 +1,7 @@
 package cn.tursom.database.clauses
 
-import cn.tursom.database.fieldName
-import cn.tursom.database.sqlStr
+import cn.tursom.database.SqlUtils.sqlStr
+import cn.tursom.database.SqlUtils.fieldName
 import cn.tursom.utils.regex.RegexMaker
 import cn.tursom.utils.regex.RegexUnit
 import java.lang.reflect.Field

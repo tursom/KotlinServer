@@ -1,18 +1,10 @@
 package cn.tursom.database.clauses
 
-import cn.tursom.database.fieldName
-import cn.tursom.database.sqlStr
+import cn.tursom.database.SqlUtils.sqlStr
+import cn.tursom.database.SqlUtils.fieldName
 import java.lang.reflect.Field
 import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaField
-
-object LikeWildcard {
-	val single: String = "_"
-	val many: String = "%"
-	fun charList(charList: String) = "[$charList]"
-	fun unCharList(charList: String) = "[!$charList]"
-	infix operator fun String.rangeTo(target: String) = "$this-$target"
-}
 
 class LikeClause(field: String, value: String) : Clause {
 	constructor(field: Field, value: String) : this(field.fieldName, value)
@@ -29,4 +21,12 @@ class LikeClause(field: String, value: String) : Clause {
 	
 	override val sqlStr = "$field LIKE '${value.sqlStr}'"
 	override fun toString() = sqlStr
+	
+	object LikeWildcard {
+		val single: String = "_"
+		val many: String = "%"
+		fun charList(charList: String) = "[$charList]"
+		fun unCharList(charList: String) = "[!$charList]"
+		infix operator fun String.rangeTo(target: String) = "$this-$target"
+	}
 }

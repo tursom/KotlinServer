@@ -3,7 +3,7 @@ package cn.tursom.utils.datastruct
 /**
  * map require iterator functioncv
  */
-class AsyncArraySet<K : Comparable<K>>(private val map: AsyncPutableMap<K, Unit> = AsyncArrayMap()) : AsyncPutableSet<K> {
+class AsyncArraySet<K : Comparable<K>>(private val map: AsyncPotableMap<K, Unit> = AsyncArrayMap()) : AsyncPotableSet<K> {
 	
 	override val size: Int
 		get() = map.size
@@ -27,22 +27,22 @@ class AsyncArraySet<K : Comparable<K>>(private val map: AsyncPutableMap<K, Unit>
 		return true
 	}
 	
-	override suspend fun clear(): AsyncPutableSet<K> {
+	override suspend fun clear(): AsyncPotableSet<K> {
 		map.clear()
 		return this
 	}
 	
-	override suspend fun put(key: K): AsyncPutableSet<K> {
+	override suspend fun put(key: K): AsyncPotableSet<K> {
 		map.put(key, Unit)
 		return this
 	}
 	
-	override suspend fun putAll(from: Set<K>): AsyncPutableSet<K> {
+	override suspend fun putAll(from: Set<K>): AsyncPotableSet<K> {
 		map.putAll(SetMap(from))
 		return this
 	}
 	
-	override suspend fun remove(key: K): AsyncPutableSet<K> {
+	override suspend fun remove(key: K): AsyncPotableSet<K> {
 		map.remove(key)
 		return this
 	}

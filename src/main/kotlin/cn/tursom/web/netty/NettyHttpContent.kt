@@ -4,10 +4,8 @@ import cn.tursom.web.AdvanceHttpContent
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
-import io.netty.handler.codec.http.multipart.Attribute
-import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder
 import java.io.ByteArrayOutputStream
-import java.util.HashMap
+import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -127,44 +125,3 @@ open class NettyHttpContent(
 	}
 }
 
-/**
- * HTTP请求参数解析器, 支持GET, POST
- */
-object RequestParser {
-	fun parse(fullReq: FullHttpRequest): HashMap<String, List<String>> {
-		val method = fullReq.method()
-		
-		val paramMap = HashMap<String, List<String>>()
-		
-		when {
-			HttpMethod.GET === method -> try {
-				// 是GET请求
-				val decoder = QueryStringDecoder(fullReq.uri())
-				decoder.parameters().entries.forEach { entry ->
-					paramMap[entry.key] = entry.value
-				}
-			} catch (e: Exception) {
-			}
-			HttpMethod.POST === method -> try {
-				// 是POST请求
-				val decoder = HttpPostRequestDecoder(fullReq)
-				decoder.offer(fullReq)
-				
-				val paramList = decoder.bodyHttpDatas
-				
-				for (param in paramList) {
-					val data = param as Attribute
-					if (!paramMap.containsKey(data.name)) {
-						paramMap[data.name] = ArrayList()
-					}
-					(paramMap[data.name] as ArrayList).add(data.value)
-				}
-			} catch (e: Exception) {
-			}
-			else -> // 不支持其它方法
-				throw Exception("") // 这是个自定义的异常, 可删掉这一行
-		}
-		
-		return paramMap
-	}
-}

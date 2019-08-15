@@ -2,7 +2,7 @@ package cn.tursom.database.async
 
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
-import cn.tursom.database.tableName
+import cn.tursom.database.SqlUtils.tableName
 import io.vertx.ext.sql.SQLConnection
 import java.lang.reflect.Field
 

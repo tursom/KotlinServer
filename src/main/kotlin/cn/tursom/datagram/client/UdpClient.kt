@@ -7,6 +7,7 @@ import java.net.InetSocketAddress
 import java.net.SocketAddress
 
 
+@Suppress("CanBeParameter")
 class UdpClient(
 	private val host: String,
 	private val port: Int,

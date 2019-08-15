@@ -53,7 +53,3 @@ class AES(secKey: SecretKey) : Encrypt {
 		fun get256() = AES(generator256.generateKey())
 	}
 }
-
-fun main() {
-	println(AES::class.java.declaredFields.toList().filter { !it.isStatic() })
-}

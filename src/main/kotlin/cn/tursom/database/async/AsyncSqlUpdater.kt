@@ -1,11 +1,10 @@
 package cn.tursom.database.async
 
-import cn.tursom.database.SQLHelper
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.tableName
+import cn.tursom.database.SqlUtils.sqlStr
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
-import cn.tursom.database.fieldName
-import cn.tursom.database.sqlStr
-import cn.tursom.database.tableName
 import java.lang.reflect.Field
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
