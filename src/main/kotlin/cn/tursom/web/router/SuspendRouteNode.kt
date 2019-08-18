@@ -12,16 +12,16 @@ internal open class SuspendRouteNode<T>(
 ) : SuspendRouterNode<T> {
 	val route: String = routeList[index]
 	var wildSubRouter: SuspendAnyRouteNode<T>? = null
-	
+
 	private val placeholderRouterListLock = AsyncReadFirstRWLock(maxReadTime)
 	protected open val placeholderRouterList: ArrayList<SuspendPlaceholderRouteNode<T>>? = ArrayList(0)
-	
+
 	private val subRouterMapLock = AsyncReadFirstRWLock(maxReadTime)
 	val subRouterMap = HashMap<String, SuspendRouteNode<T>>(0)
-	
+
 	override val lastRoute
 		get() = "/$route"
-	
+
 	override val fullRoute: String by lazy {
 		val stringBuilder = StringBuilder("")
 		for (i in 0..index) {
@@ -30,16 +30,16 @@ internal open class SuspendRouteNode<T>(
 		}
 		stringBuilder.toString()
 	}
-	
+
 	val placeholderRouterListEmpty
 		get() = placeholderRouterList?.isEmpty() ?: true
-	
+
 	override val empty: Boolean
 		get() = value == null &&
 			subRouterMap.isEmpty() &&
 			placeholderRouterListEmpty &&
 			wildSubRouter == null
-	
+
 	override suspend fun forEach(action: suspend (node: SuspendRouterNode<T>) -> Unit) {
 		placeholderRouterListLock.doRead {
 			placeholderRouterList?.forEach { action(it) }
@@ -49,20 +49,20 @@ internal open class SuspendRouteNode<T>(
 		}
 		wildSubRouter?.let { action(it) }
 	}
-	
+
 	suspend fun forEachPlaceholderRouter(block: suspend (SuspendPlaceholderRouteNode<T>) -> Unit) {
 		placeholderRouterListLock.doRead { placeholderRouterList?.forEach { block(it) } }
 	}
-	
+
 	suspend fun getPlaceholderRouter(length: Int): SuspendPlaceholderRouteNode<T>? {
 		return placeholderRouterListLock.doRead { placeholderRouterList!!.binarySearch { it.size - length } }
 	}
-	
+
 	open fun match(
 		route: List<String>,
 		startIndex: Int
 	): Pair<Boolean, Int> = (route.size > startIndex && route[startIndex] == this.route) to 1
-	
+
 	suspend fun addNode(route: List<String>, startIndex: Int, value: T? = null): Int {
 		val r = route[startIndex]
 		return when {
@@ -94,30 +94,30 @@ internal open class SuspendRouteNode<T>(
 			}
 		}
 	}
-	
+
 	operator fun get(route: List<String>, startIndex: Int = 0): Pair<SuspendRouteNode<T>?, Int> {
 		val r = route[startIndex]
 		if (r.isEmpty()) return this to 1
-		
+
 		val value = subRouterMap[r]
 		if (value != null) return value to 1
-		
+
 		val matchLength = route.size - startIndex
 		val exactRoute = placeholderRouterList?.let { list ->
 			list.binarySearch { matchLength - it.size }
 		}
 		if (exactRoute != null) return exactRoute to matchLength
-		
+
 		placeholderRouterList?.let { list ->
 			list.forEach {
 				val subRoute = it.getRoute(route, startIndex + it.size)
 				if (subRoute != null) return subRoute to route.size - startIndex
 			}
 		}
-		
+
 		return wildSubRouter to 1
 	}
-	
+
 	fun getRoute(route: List<String>, startIndex: Int = 0): SuspendRouteNode<T>? {
 		var index = startIndex
 		var routeNode = this
@@ -128,8 +128,8 @@ internal open class SuspendRouteNode<T>(
 		}
 		return routeNode
 	}
-	
-	suspend fun get(
+
+	open suspend fun get(
 		route: List<String>,
 		startIndex: Int = 0,
 		routeList: java.util.AbstractList<Pair<String, String>>
@@ -138,10 +138,10 @@ internal open class SuspendRouteNode<T>(
 		if (r.isEmpty()) {
 			return this to 1
 		}
-		
+
 		val value = subRouterMapLock.doRead { subRouterMap[r] }
 		if (value != null) return value to 1
-		
+
 		val matchLength = route.size - startIndex
 		val exactRoute = placeholderRouterListLock.doRead {
 			placeholderRouterList?.binarySearch { matchLength - it.size }
@@ -152,48 +152,50 @@ internal open class SuspendRouteNode<T>(
 			}
 			return exactRoute to matchLength
 		}
-		
-		val list = ArrayList<Pair<String, String>>()
-		val detected = placeholderRouterListLock.doRead {
-			placeholderRouterList?.let { routerList ->
-				routerList.forEach {
-					list.clear()
-					val subRoute = it.getRoute(route, startIndex + it.size, list)
-					if (subRoute != null) {
-						subRoute.routeList.forEachIndexed { index, s ->
-							if (s.isNotEmpty()) when {
-								s == "*" -> for (i in index until route.size) {
-									routeList.add("*" to route[i])
+
+		if (placeholderRouterList != null) {
+			val list = ArrayList<Pair<String, String>>()
+			val detected = placeholderRouterListLock.doRead {
+				placeholderRouterList?.let { routerList ->
+					routerList.forEach {
+						list.clear()
+						val subRoute = it.getRoute(route, startIndex + it.size, list)
+						if (subRoute != null) {
+							subRoute.routeList.forEachIndexed { index, s ->
+								if (s.isNotEmpty()) when {
+									s == "*" -> for (i in index until route.size) {
+										routeList.add("*" to route[i])
+									}
+									s[0] == ':' -> routeList.add(s.substring(1) to route[index])
 								}
-								s[0] == ':' -> routeList.add(s.substring(1) to route[index])
 							}
-						}
-						var listIndex = 0
-						var routeIndex = 0
-						while (listIndex < list.size && routeIndex <= index) {
-							val s = this.routeList[routeIndex++]
-							if (s.isNotEmpty() && s[0] == ':') {
-								routeList.add(s to list[listIndex++].second)
+							var listIndex = 0
+							var routeIndex = 0
+							while (listIndex < list.size && routeIndex <= index) {
+								val s = this.routeList[routeIndex++]
+								if (s.isNotEmpty() && s[0] == ':') {
+									routeList.add(s to list[listIndex++].second)
+								}
 							}
+							return@doRead subRoute to route.size - startIndex
 						}
-						return@doRead subRoute to route.size - startIndex
 					}
 				}
+				null
 			}
-			null
+			if (detected != null) return detected
 		}
-		if (detected != null) return detected
-		
+
 		for (i in startIndex until route.size)
 			routeList.add("*" to route[i])
 		return wildSubRouter to 1
 	}
-	
+
 	suspend fun get(
 		route: List<String>,
 		routeList: java.util.AbstractList<Pair<String, String>>
 	) = getRoute(route, 0, routeList)
-	
+
 	suspend fun getRoute(
 		route: List<String>,
 		startIndex: Int = 0,
@@ -201,14 +203,14 @@ internal open class SuspendRouteNode<T>(
 	): SuspendRouteNode<T>? {
 		var index = startIndex
 		var routeNode = this
-		while (routeNode !is SuspendAnyRouteNode && index < route.size) {
+		while (index < route.size) {
 			val (node, size) = routeNode.get(route, index, routeList)
 			routeNode = node ?: return null
 			index += size
 		}
 		return routeNode
 	}
-	
+
 	override fun toString(): String {
 		val stringBuilder = StringBuilder("/")
 		for (i in 0..index) {

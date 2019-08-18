@@ -13,5 +13,6 @@ classes
 gradle/
 KotlinServer.iml
 src/main/kotlin/META-INF/
+gradlew
 将删除 classes/
 将删除 test.db
