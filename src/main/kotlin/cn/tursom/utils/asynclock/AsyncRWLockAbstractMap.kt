@@ -16,6 +16,8 @@ class AsyncRWLockAbstractMap<K, V>(
 	suspend fun remove(key: K) {
 		lock.doWrite { map.remove(key) }
 	}
+
+	override fun toString(): String = map.toString()
 }
 
 fun <K, V> ReadWriteLockHashMap() = AsyncRWLockAbstractMap<K, V>(AsyncWriteFirstRWLock())

@@ -34,4 +34,6 @@ open class AsyncLockMap<K, V>(
 			}
 		}
 	}
+
+	override fun toString(): String = map.toString()
 }
