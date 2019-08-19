@@ -13,6 +13,7 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 
 	private var readLocation = 0
 	private var _readMode = false
+	private var mark = 0
 
 	/**
 	 * 各种位置变量
@@ -45,7 +46,7 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	 */
 
 	fun readMode() {
-		buffer.mark()
+		mark = buffer.position()
 		buffer.limit(buffer.position())
 		buffer.position(readPosition)
 		_readMode = true
@@ -54,7 +55,7 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	fun resumeWriteMode() {
 		readLocation = buffer.position()
 		buffer.limit(buffer.capacity())
-		buffer.reset()
+		buffer.position(mark)
 		_readMode = false
 	}
 
