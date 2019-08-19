@@ -1,5 +1,6 @@
 package cn.tursom.utils
 
+import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousFileChannel
 import java.nio.channels.CompletionHandler
@@ -37,15 +38,29 @@ class AsyncFile(val path: Path) {
 		}
 	}
 
+	suspend fun write(buffer: AdvanceByteBuffer, position: Long = 0): Int {
+		buffer.readMode()
+		return try {
+			writeAndWait(buffer.buffer, position)
+		} finally {
+			buffer.resumeWriteMode()
+		}
+	}
+
 	fun append(buffer: ByteBuffer, position: Long = size) {
-		create()
-		writeChannel.write(buffer, position)
+		write(buffer, position)
 	}
 
 	suspend fun appendAndWait(buffer: ByteBuffer, position: Long = size): Int {
-		create()
-		return suspendCoroutine {
-			writeChannel.write(buffer, position, it, handler)
+		return writeAndWait(buffer, position)
+	}
+
+	suspend fun append(buffer: AdvanceByteBuffer, position: Long = size): Int {
+		buffer.readMode()
+		return try {
+			appendAndWait(buffer.buffer, position)
+		} finally {
+			buffer.resumeWriteMode()
 		}
 	}
 
@@ -53,6 +68,10 @@ class AsyncFile(val path: Path) {
 		return suspendCoroutine {
 			readChannel.read(buffer, position, it, handler)
 		}
+	}
+
+	suspend fun read(buffer: AdvanceByteBuffer, position: Long = size): Int {
+		return read(buffer.buffer, position)
 	}
 
 	fun create() = if (existsCache || !exists) {

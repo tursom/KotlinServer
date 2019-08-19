@@ -1,5 +1,6 @@
 package cn.tursom.web.utils
 
+import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.web.HttpContent
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
@@ -25,7 +26,8 @@ class EmptyHttpContent(
 	override fun setResponseHeader(name: String, value: Any) {}
 	override fun write(message: String) {}
 	override fun write(byte: Int) {}
-	override fun write(bytes: ByteArray) {}
+	override fun write(bytes: ByteArray, offset: Int, size: Int) {}
+	override fun write(buffer: AdvanceByteBuffer) {}
 	override fun reset() {}
 	override fun finish() {}
 }
