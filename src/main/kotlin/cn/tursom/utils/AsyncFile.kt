@@ -64,13 +64,13 @@ class AsyncFile(val path: Path) {
 		}
 	}
 
-	suspend fun read(buffer: ByteBuffer, position: Long = size): Int {
+	suspend fun read(buffer: ByteBuffer, position: Long = 0): Int {
 		return suspendCoroutine {
 			readChannel.read(buffer, position, it, handler)
 		}
 	}
 
-	suspend fun read(buffer: AdvanceByteBuffer, position: Long = size): Int {
+	suspend fun read(buffer: AdvanceByteBuffer, position: Long = 0): Int {
 		return read(buffer.buffer, position)
 	}
 
