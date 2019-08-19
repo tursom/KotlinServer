@@ -17,7 +17,11 @@ import kotlin.coroutines.suspendCoroutine
 class AsyncFile(val path: Path) {
 	constructor(path: String) : this(Paths.get(path))
 
-	var exists = false
+	private var existsCache = false
+
+	val exists get() = Files.exists(path)
+	val size get() = if (existsCache && exists) Files.size(path) else 0
+
 	val writeChannel: AsynchronousFileChannel by lazy { AsynchronousFileChannel.open(path, StandardOpenOption.WRITE) }
 	val readChannel: AsynchronousFileChannel by lazy { AsynchronousFileChannel.open(path, StandardOpenOption.READ) }
 
@@ -33,38 +37,36 @@ class AsyncFile(val path: Path) {
 		}
 	}
 
-	fun append(buffer: ByteBuffer, position: Long = size()) {
+	fun append(buffer: ByteBuffer, position: Long = size) {
 		create()
 		writeChannel.write(buffer, position)
 	}
 
-	suspend fun appendAndWait(buffer: ByteBuffer, position: Long = size()): Int {
+	suspend fun appendAndWait(buffer: ByteBuffer, position: Long = size): Int {
 		create()
 		return suspendCoroutine {
 			writeChannel.write(buffer, position, it, handler)
 		}
 	}
 
-	suspend fun read(buffer: ByteBuffer, position: Long = size()): Int {
+	suspend fun read(buffer: ByteBuffer, position: Long = size): Int {
 		return suspendCoroutine {
 			readChannel.read(buffer, position, it, handler)
 		}
 	}
 
-	fun create() = if (exists || !Files.exists(path)) {
+	fun create() = if (existsCache || !exists) {
 		Files.createFile(path)
-		exists = true
+		existsCache = true
 		true
 	} else {
 		false
 	}
 
 	fun delete(): Boolean {
-		exists = false
+		existsCache = false
 		return Files.deleteIfExists(path)
 	}
-
-	fun size() = Files.size(path)
 
 	companion object {
 		@JvmStatic
