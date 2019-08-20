@@ -14,7 +14,7 @@ class EmptyHttpContent(
 	override val body: AdvanceByteBuffer? = null,
 	override val clientIp: SocketAddress = InetSocketAddress(0),
 	override val method: String = "GET",
-	override val responseBody: OutputStream = ByteArrayOutputStream(0)
+	override val responseBody: ByteArrayOutputStream = ByteArrayOutputStream(0)
 ) : HttpContent {
 	override fun getHeader(header: String): String? = null
 	override fun getHeaders(): List<Map.Entry<String, String>> = listOf()
@@ -28,5 +28,13 @@ class EmptyHttpContent(
 	override fun write(buffer: AdvanceByteBuffer) {}
 	override fun reset() {}
 	override fun finish() {}
+	override fun finish(response: ByteArray, offset: Int, size: Int) {}
+	override fun finish(code: Int) {}
+	override fun finishHtml(code: Int) {}
+	override fun finishText(code: Int) {}
+	override fun finishJson(code: Int) {}
+	override fun finishHtml(code: Int, response: ByteArray) {}
+	override fun finishText(code: Int, response: ByteArray) {}
+	override fun finishJson(code: Int, response: ByteArray) {}
 }
 

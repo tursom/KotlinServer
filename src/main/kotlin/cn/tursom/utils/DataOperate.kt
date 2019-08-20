@@ -464,7 +464,7 @@ fun ByteArray.put(obj: Any, offset: Int = 0): Int {
 			put(obj, offset)
 			8
 		}
-		
+
 		is ByteArray -> if (size < offset + obj.size) {
 			put(obj.size, offset)
 			obj.copyInto(this, offset + 4)
@@ -496,11 +496,11 @@ fun ByteArray.put(obj: Any, offset: Int = 0): Int {
 			put(obj, offset)
 			obj.size * 8 + 4
 		}
-		
+
 		is String -> {
 			put(obj, offset, true)
 		}
-		
+
 		else -> throw WrongPushTypeException()
 	}
 }

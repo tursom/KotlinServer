@@ -1,9 +1,7 @@
 package cn.tursom.web.netty
 
-import cn.tursom.utils.buf
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.NettyAdvanceByteBuffer
-import cn.tursom.utils.count
 import cn.tursom.web.AdvanceHttpContent
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
@@ -22,19 +20,19 @@ open class NettyHttpContent(
 	val ctx: ChannelHandlerContext,
 	val msg: FullHttpRequest
 ) : AdvanceHttpContent {
-	override val uri: String = msg.uri()
-	val headers: HttpHeaders by lazy { msg.headers() }
+	override val uri: String get() = msg.uri()
+	val headers: HttpHeaders get() = msg.headers()
 	private val paramMap by lazy { RequestParser.parse(msg) }
 	val responseMap = HashMap<String, Any>()
 
 	override var responseCode: Int = 200
 	override var responseMessage: String? = null
-	override val clientIp = ctx.channel().remoteAddress()!!
-	override val method: String = msg.method().name()
+	override val clientIp get() = ctx.channel().remoteAddress()!!
+	override val method: String get() = httpMethod.name()
 
 	override val responseBody = ByteArrayOutputStream()
-	val httpMethod = msg.method()
-	val protocolVersion = msg.protocolVersion()
+	val httpMethod get() = msg.method()
+	val protocolVersion get() = msg.protocolVersion()
 
 	override val body = msg.content()?.let { NettyAdvanceByteBuffer(it) }
 
@@ -89,16 +87,16 @@ open class NettyHttpContent(
 		responseBody.reset()
 	}
 
-	override fun finish() {
-		val response = DefaultFullHttpResponse(
+	override fun finish(response: ByteArray, offset: Int, size: Int) {
+		val response1 = DefaultFullHttpResponse(
 			HttpVersion.HTTP_1_1,
 			if (responseMessage == null)
 				HttpResponseStatus.valueOf(responseCode)
 			else
 				HttpResponseStatus.valueOf(responseCode, responseMessage),
-			Unpooled.wrappedBuffer(responseBody.buf, 0, responseBody.count)
+			Unpooled.wrappedBuffer(response, offset, size)
 		)
-		finish(response)
+		finish(response1)
 	}
 
 	fun finish(response: ByteBuf) = finish(response, HttpResponseStatus.valueOf(responseCode))

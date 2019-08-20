@@ -1,7 +1,9 @@
 package cn.tursom.web
 
+import cn.tursom.utils.buf
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
-import java.io.OutputStream
+import cn.tursom.utils.count
+import java.io.ByteArrayOutputStream
 import java.net.SocketAddress
 
 interface HttpContent {
@@ -11,7 +13,7 @@ interface HttpContent {
 	val body: AdvanceByteBuffer?
 	val clientIp: SocketAddress
 	val method: String
-	val responseBody: OutputStream
+	val responseBody: ByteArrayOutputStream
 
 	fun getHeader(header: String): String?
 	fun getHeaders(): List<Map.Entry<String, String>>
@@ -28,7 +30,11 @@ interface HttpContent {
 	fun write(buffer: AdvanceByteBuffer)
 	fun reset()
 
-	fun finish()
+	fun finish() {
+		finish(responseBody.buf, 0, responseBody.count)
+	}
+
+	fun finish(response: ByteArray, offset: Int = 0, size: Int = response.size - offset)
 
 	fun finish(code: Int) = finishHtml(code)
 
@@ -48,5 +54,23 @@ interface HttpContent {
 		responseCode = code
 		setResponseHeader("content-type", "application/json; charset=UTF-8")
 		finish()
+	}
+
+	fun finishHtml(code: Int = responseCode, response: ByteArray) {
+		responseCode = code
+		setResponseHeader("content-type", "text/html; charset=UTF-8")
+		finish(response)
+	}
+
+	fun finishText(code: Int = responseCode, response: ByteArray) {
+		responseCode = code
+		setResponseHeader("content-type", "text/plain; charset=UTF-8")
+		finish(response)
+	}
+
+	fun finishJson(code: Int = responseCode, response: ByteArray) {
+		responseCode = code
+		setResponseHeader("content-type", "application/json; charset=UTF-8")
+		finish(response)
 	}
 }
