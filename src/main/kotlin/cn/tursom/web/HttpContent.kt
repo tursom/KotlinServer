@@ -29,4 +29,24 @@ interface HttpContent {
 	fun reset()
 
 	fun finish()
+
+	fun finish(code: Int) = finishHtml(code)
+
+	fun finishHtml(code: Int = responseCode) {
+		responseCode = code
+		setResponseHeader("content-type", "text/html; charset=UTF-8")
+		finish()
+	}
+
+	fun finishText(code: Int = responseCode) {
+		responseCode = code
+		setResponseHeader("content-type", "text/plain; charset=UTF-8")
+		finish()
+	}
+
+	fun finishJson(code: Int = responseCode) {
+		responseCode = code
+		setResponseHeader("content-type", "application/json; charset=UTF-8")
+		finish()
+	}
 }

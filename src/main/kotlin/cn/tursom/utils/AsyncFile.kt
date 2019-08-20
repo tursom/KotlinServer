@@ -1,7 +1,6 @@
 package cn.tursom.utils
 
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
-import cn.tursom.utils.bytebuffer.readMode
 import cn.tursom.utils.bytebuffer.readNioBuffer
 import cn.tursom.utils.bytebuffer.writeNioBuffer
 import java.nio.ByteBuffer

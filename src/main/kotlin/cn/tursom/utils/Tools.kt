@@ -1,5 +1,6 @@
 package cn.tursom.utils
 
+import com.google.gson.Gson
 import kotlinx.coroutines.*
 import sun.misc.Unsafe
 import java.lang.reflect.ParameterizedType
@@ -8,6 +9,8 @@ import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
 
+
+inline fun <reified T : Any> Gson.fromJson(json: String) = fromJson(json, T::class.java)
 
 inline fun <T> Collection<T>.doEach(block: (T) -> Any): String {
 	val iterator = iterator()

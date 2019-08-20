@@ -163,14 +163,14 @@ fun sendHead(
  *
  * @param url
  * 发送请求的 URL
- * @param param
+ * @param data
  * 请求参数，请求参数应该是 name1=value1&name2=value2 的形式。
  * @return 所代表远程资源的响应结果
  */
 @Throws(Exception::class)
 fun sendPost(
 	url: String,
-	param: ByteArray,
+	data: ByteArray,
 	headers: Map<String, String> = mapOf(
 		Pair("accept", "*/*"),
 		Pair("connection", "Keep-Alive"),
@@ -190,7 +190,7 @@ fun sendPost(
 	// 获取URLConnection对象对应的输出流
 	conn.outputStream.use { out ->
 		// 发送请求参数
-		out.write(param)
+		out.write(data)
 		// flush输出流的缓冲
 		out.flush()
 	}

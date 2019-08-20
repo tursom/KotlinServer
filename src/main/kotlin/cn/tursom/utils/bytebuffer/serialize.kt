@@ -207,23 +207,3 @@ fun <T> AdvanceByteBuffer.unSerialize(clazz: Class<T>): T {
 inline fun <reified T : Any> AdvanceByteBuffer.unSerialize(): T {
 	return unSerialize(T::class.java)
 }
-
-
-data class TestSub<T>(val float: Float?, val msg: String, val list: List<T>)
-
-data class Test(val int: Int, @Suppress("ArrayInDataClass") val byteArray: ByteArray, val testSub: TestSub<Int>)
-
-inline fun <reified T : Any> Gson.fromJson(json: String) = fromJson(json, T::class.java)
-
-val list = ArrayList<Int>()
-fun main() {
-	val clazz = TestSub<Int>::list.javaField!!.genericType
-	//val entityClass = (clazz.genericSuperclass as ParameterizedType).actualTypeArguments[0] as Class<*>
-	//println(ArrayList::class.java.actualTypeArguments.asList())
-	println(clazz)
-	//val test = Test(1, "123".toByteArray(), TestSub(5.4f, "hello, test!"))
-	//val buffer = AdvanceByteBuffer(ByteBuffer.allocate(128))
-	//buffer.serialize(arrayListOf(1, 2, 3, 4, 5))
-	//println(buffer.array.asList())
-	//println(buffer.unSerialize<ArrayList<Int>>())
-}

@@ -1,8 +1,11 @@
 package cn.tursom.web.netty
 
+import cn.tursom.utils.buf
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.NettyAdvanceByteBuffer
+import cn.tursom.utils.count
 import cn.tursom.web.AdvanceHttpContent
+import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
@@ -14,14 +17,15 @@ import kotlin.collections.component2
 import kotlin.collections.set
 
 
+@Suppress("MemberVisibilityCanBePrivate")
 open class NettyHttpContent(
-	private val ctx: ChannelHandlerContext,
-	private val msg: FullHttpRequest
+	val ctx: ChannelHandlerContext,
+	val msg: FullHttpRequest
 ) : AdvanceHttpContent {
 	override val uri: String = msg.uri()
-	private val headers by lazy { msg.headers() }
+	val headers: HttpHeaders by lazy { msg.headers() }
 	private val paramMap by lazy { RequestParser.parse(msg) }
-	private val responseMap = HashMap<String, Any>()
+	val responseMap = HashMap<String, Any>()
 
 	override var responseCode: Int = 200
 	override var responseMessage: String? = null
@@ -92,9 +96,18 @@ open class NettyHttpContent(
 				HttpResponseStatus.valueOf(responseCode)
 			else
 				HttpResponseStatus.valueOf(responseCode, responseMessage),
-			Unpooled.wrappedBuffer(responseBody.toByteArray())
+			Unpooled.wrappedBuffer(responseBody.buf, 0, responseBody.count)
 		)
+		finish(response)
+	}
 
+	fun finish(response: ByteBuf) = finish(response, HttpResponseStatus.valueOf(responseCode))
+	fun finish(response: ByteBuf, responseCode: HttpResponseStatus) {
+		val response1 = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, responseCode, response)
+		finish(response1)
+	}
+
+	fun finish(response: DefaultFullHttpResponse) {
 		val heads = response.headers()
 
 		heads.add(HttpHeaderNames.CONTENT_TYPE, "$contentType; charset=UTF-8")

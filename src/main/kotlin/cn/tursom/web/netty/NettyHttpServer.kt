@@ -29,7 +29,7 @@ class NettyHttpServer(
 			override fun handle(content: NettyHttpContent) {
 				handler(content)
 			}
-			
+
 			override fun exception(e: ExceptionContent) {
 				e.cause.printStackTrace()
 			}
@@ -57,10 +57,6 @@ class NettyHttpServer(
 	private lateinit var future: ChannelFuture
 	
 	override fun run() {
-		try {
-			close()
-		} catch (e: Exception) {
-		}
 		future = b.bind(port)
 		future.sync()
 	}
