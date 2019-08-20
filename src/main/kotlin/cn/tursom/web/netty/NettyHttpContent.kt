@@ -3,6 +3,7 @@ package cn.tursom.web.netty
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.NettyAdvanceByteBuffer
 import cn.tursom.web.AdvanceHttpContent
+import cn.tursom.web.utils.Cookie
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
@@ -24,17 +25,19 @@ open class NettyHttpContent(
 	val headers: HttpHeaders get() = msg.headers()
 	private val paramMap by lazy { RequestParser.parse(msg) }
 	val responseMap = HashMap<String, Any>()
+	val responseListMap = HashMap<String, ArrayList<Any>>()
+	override val body = msg.content()?.let { NettyAdvanceByteBuffer(it) }
+	override val responseBody = ByteArrayOutputStream()
 
 	override var responseCode: Int = 200
 	override var responseMessage: String? = null
 	override val clientIp get() = ctx.channel().remoteAddress()!!
 	override val method: String get() = httpMethod.name()
 
-	override val responseBody = ByteArrayOutputStream()
-	val httpMethod get() = msg.method()
-	val protocolVersion get() = msg.protocolVersion()
+	val httpMethod: HttpMethod get() = msg.method()
+	val protocolVersion: HttpVersion get() = msg.protocolVersion()
 
-	override val body = msg.content()?.let { NettyAdvanceByteBuffer(it) }
+	override val cookieMap by lazy { super.cookieMap }
 
 	override fun getHeader(header: String): String? {
 		return headers[header]
@@ -65,6 +68,15 @@ open class NettyHttpContent(
 
 	override fun setResponseHeader(name: String, value: Any) {
 		responseMap[name] = value
+	}
+
+	override fun addResponseHeader(name: String, value: Any) {
+		val list = responseListMap[name] ?: run {
+			val newList = ArrayList<Any>()
+			responseListMap[name] = newList
+			newList
+		}
+		list.add(value)
 	}
 
 	override fun write(message: String) {
@@ -108,7 +120,13 @@ open class NettyHttpContent(
 	fun finish(response: DefaultFullHttpResponse) {
 		val heads = response.headers()
 
-		heads.set(HttpHeaderNames.CONTENT_TYPE, "$contentType; charset=UTF-8")
+		responseListMap.forEach { (t, u) ->
+			u.forEach {
+				heads.add(t, it)
+			}
+		}
+
+		heads.set(HttpHeaderNames.CONTENT_TYPE, "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8")
 		heads.set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes())
 		heads.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE)
 
@@ -117,10 +135,6 @@ open class NettyHttpContent(
 		}
 
 		ctx.writeAndFlush(response)
-	}
-
-	companion object {
-		private val contentType = HttpHeaderValues.TEXT_PLAIN
 	}
 }
 

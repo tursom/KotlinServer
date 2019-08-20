@@ -4,10 +4,16 @@ import com.google.gson.Gson
 import kotlinx.coroutines.*
 import sun.misc.Unsafe
 import java.lang.reflect.ParameterizedType
+import java.net.URLDecoder
+import java.net.URLEncoder
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
+
+
+val String.urlDecode: String get() = URLDecoder.decode(this, "utf-8")
+val String.urlEncode: String get() = URLEncoder.encode(this, "utf-8")
 
 inline fun <T> usingTime(action: () -> T): Long {
 	val t1 = System.currentTimeMillis()

@@ -22,6 +22,7 @@ class EmptyHttpContent(
 	override fun getParams(): Map<String, List<String>> = mapOf()
 	override fun getParams(param: String): List<String>? = null
 	override fun setResponseHeader(name: String, value: Any) {}
+	override fun addResponseHeader(name: String, value: Any) {}
 	override fun write(message: String) {}
 	override fun write(byte: Int) {}
 	override fun write(bytes: ByteArray, offset: Int, size: Int) {}
