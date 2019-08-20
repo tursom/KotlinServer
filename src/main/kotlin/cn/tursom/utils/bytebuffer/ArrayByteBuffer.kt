@@ -39,7 +39,7 @@ class ArrayByteBuffer(val array: ByteArray, val offset: Int = 0, val size: Int =
 	}
 	
 	fun needReadSize(size: Int) {
-		if (readableSize < size) throw AdvanceByteBuffer.OutOfBufferException()
+		if (readableSize < size) throw OutOfBufferException()
 	}
 	
 	fun take(size: Int): Int {

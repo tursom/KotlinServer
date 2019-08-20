@@ -1,8 +1,11 @@
 package cn.tursom.socket
 
 import cn.tursom.socket.AsyncSocket.Companion.defaultTimeout
-import cn.tursom.utils.*
-import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
+import cn.tursom.utils.buf
+import cn.tursom.utils.bytebuffer.NioAdvanceByteBuffer
+import cn.tursom.utils.count
+import cn.tursom.utils.put
+import cn.tursom.utils.unSerialize
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -15,7 +18,7 @@ import java.nio.channels.InterruptedByTimeoutException
 import java.util.concurrent.TimeUnit
 
 class AsyncCachedSocket(socketChannel: AsynchronousSocketChannel, readBuffer: ByteBuffer, val writeBuffer: ByteBuffer) : AsyncSocket(socketChannel) {
-	val readBuffer = AdvanceByteBuffer(readBuffer)
+	val readBuffer = NioAdvanceByteBuffer(readBuffer)
 	
 	constructor(socketChannel: AsynchronousSocketChannel) : this(socketChannel, ByteBuffer.allocate(1024), ByteBuffer.allocate(8))
 	
@@ -71,7 +74,7 @@ suspend inline fun AsyncCachedSocket.recvChar(
 	readTimeout: Long = 100L
 ): Char {
 	readBuffer.requireAvailableSize(2)
-	while (readBuffer.readSize < 4) read(readTimeout)
+	while (readBuffer.readableSize < 4) read(readTimeout)
 	return readBuffer.getChar()
 }
 
@@ -79,7 +82,7 @@ suspend inline fun AsyncCachedSocket.recvShort(
 	readTimeout: Long = 100L
 ): Short {
 	readBuffer.requireAvailableSize(2)
-	while (readBuffer.readSize < 8) read(readTimeout)
+	while (readBuffer.readableSize < 8) read(readTimeout)
 	return readBuffer.getShort()
 }
 
@@ -87,7 +90,7 @@ suspend inline fun AsyncCachedSocket.recvInt(
 	readTimeout: Long = 100L
 ): Int {
 	readBuffer.requireAvailableSize(4)
-	while (readBuffer.readSize < 4) read(readTimeout)
+	while (readBuffer.readableSize < 4) read(readTimeout)
 	return readBuffer.getInt()
 }
 
@@ -95,7 +98,7 @@ suspend inline fun AsyncCachedSocket.recvLong(
 	readTimeout: Long = 100L
 ): Long {
 	readBuffer.requireAvailableSize(8)
-	while (readBuffer.readSize < 8) read(readTimeout)
+	while (readBuffer.readableSize < 8) read(readTimeout)
 	return readBuffer.getLong()
 }
 
@@ -103,7 +106,7 @@ suspend inline fun AsyncCachedSocket.recvFloat(
 	readTimeout: Long = 100L
 ): Float {
 	readBuffer.requireAvailableSize(4)
-	while (readBuffer.readSize < 4) read(readTimeout)
+	while (readBuffer.readableSize < 4) read(readTimeout)
 	return readBuffer.getFloat()
 }
 
@@ -111,7 +114,7 @@ suspend inline fun AsyncCachedSocket.recvDouble(
 	readTimeout: Long = 100L
 ): Double {
 	readBuffer.requireAvailableSize(8)
-	while (readBuffer.readSize < 8) read(readTimeout)
+	while (readBuffer.readableSize < 8) read(readTimeout)
 	return readBuffer.getDouble()
 }
 

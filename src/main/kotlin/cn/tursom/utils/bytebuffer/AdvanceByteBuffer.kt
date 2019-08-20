@@ -1,142 +1,63 @@
 package cn.tursom.utils.bytebuffer
 
-import cn.tursom.utils.*
 import java.io.OutputStream
 import java.nio.ByteBuffer
 
-@Suppress("unused", "MemberVisibilityCanBePrivate")
-class AdvanceByteBuffer(val buffer: ByteBuffer) {
-
-	constructor(size: Int) : this(ByteBuffer.allocate(size))
-
-	constructor(buffer: ByteArray, offset: Int = 0, size: Int = buffer.size - offset) : this(HeapByteBuffer.wrap(buffer, size, offset))
-
-	private var readLocation = 0
-	private var _readMode = false
-	private var mark = 0
+interface AdvanceByteBuffer {
+	val nioBuffer: ByteBuffer
+	val nioBuffers: Array<out ByteBuffer>
 
 	/**
 	 * 各种位置变量
 	 */
-	var writePosition
-		get() = buffer.position()
-		set(value) {
-			buffer.position(value)
-		}
-	var limit
-		get() = buffer.limit()
-		set(value) {
-			buffer.limit(value)
-		}
+	var writePosition: Int
+	var limit: Int
+	val capacity: Int
+	val array: ByteArray
+	val arrayOffset: Int
+	val readPosition: Int
+	val readOffset: Int
+	val readableSize: Int
+	val available: Int
+	val writeOffset: Int
+	val writeableSize: Int
+	val size: Int
+	val readMode: Boolean
 
-	val capacity: Int = buffer.capacity()
-	val array: ByteArray = buffer.array()
-	val arrayOffset: Int = buffer.arrayOffset()
-	val readPosition get() = readLocation
-	val readOffset get() = arrayOffset + readPosition
-	val readSize get() = writePosition - readPosition
-	val available get() = readSize
-	val writeOffset get() = arrayOffset + writePosition
-	val writeSize get() = limit - writePosition
-	val size = buffer.capacity()
-	val readMode get() = _readMode
 
-	/*
-	 * 位置控制方法
-	 */
+	fun readMode()
+	fun resumeWriteMode()
 
-	fun readMode() {
-		mark = buffer.position()
-		buffer.limit(buffer.position())
-		buffer.position(readPosition)
-		_readMode = true
-	}
+	fun needReadSize(size: Int)
+	fun useReadSize(size: Int): Int
+	fun take(size: Int): Int
+	fun push(size: Int): Int
+	fun readAllSize(): Int
+	fun takeAll(): Int
 
-	fun resumeWriteMode() {
-		readLocation = buffer.position()
-		buffer.limit(buffer.capacity())
-		buffer.position(mark)
-		_readMode = false
-	}
-
-	fun needReadSize(size: Int) {
-		if (readSize < size) throw OutOfBufferException()
-	}
-
-	fun useReadSize(size: Int): Int {
-		needReadSize(size)
-		readLocation += size
-		return size
-	}
-
-	fun take(size: Int): Int {
-		needReadSize(size)
-		val offset = readOffset
-		readLocation += size
-		return offset
-	}
-
-	fun push(size: Int): Int {
-		val offset = writeOffset
-		writePosition += size
-		return offset
-	}
-
-	fun readAllSize() = useReadSize(readSize)
-	fun takeAll() = take(readSize)
-
-	fun clear() {
-		readLocation = 0
-		buffer.clear()
-	}
-
-	fun reset() {
-		array.copyInto(array, arrayOffset, readOffset, arrayOffset + writePosition)
-		writePosition = readSize
-		readLocation = 0
-	}
-
-	fun reset(outputStream: OutputStream) {
-		outputStream.write(array, readOffset, arrayOffset + writePosition)
-		writePosition = 0
-		readLocation = 0
-	}
-
-	fun requireAvailableSize(size: Int) {
-		if (limit - readPosition < size) reset()
-	}
+	fun clear()
+	fun reset()
+	fun reset(outputStream: OutputStream)
+	fun requireAvailableSize(size: Int)
 
 
 	/*
 	 * 数据获取方法
 	 */
 
-	fun get() = array[take(1)]
-	fun getChar() = array.toChar(take(2))
-	fun getShort() = array.toShort(take(2))
-	fun getInt() = array.toInt(take(4))
-	fun getLong() = array.toLong(take(8))
-	fun getFloat() = array.toFloat(take(4))
-	fun getDouble() = array.toDouble(take(8))
-	fun getBytes() = array.copyOfRange(arrayOffset, readAllSize())
-	fun getString(size: Int = readSize) = String(array, readOffset, useReadSize(size))
+	fun get(): Byte
+	fun getChar(): Char
+	fun getShort(): Short
+	fun getInt(): Int
+	fun getLong(): Long
+	fun getFloat(): Float
+	fun getDouble(): Double
+	fun getBytes(): ByteArray
+	fun getString(size: Int = readableSize): String
 
-	fun writeTo(buffer: ByteArray, bufferOffset: Int = 0, size: Int = readSize): Int {
-		array.copyInto(buffer, bufferOffset, arrayOffset, useReadSize(size))
-		return size
-	}
-
-	fun writeTo(buffer: AdvanceByteBuffer): Int {
-		val size = readAllSize()
-		buffer.writePosition += size
-		array.copyInto(buffer.array, buffer.arrayOffset, arrayOffset, size)
-		return size
-	}
-
-	fun writeTo(os: OutputStream) {
-		os.write(array, arrayOffset + readPosition, readAllSize())
-	}
-
+	fun writeTo(buffer: ByteArray, bufferOffset: Int = 0, size: Int = readableSize): Int
+	fun writeTo(buffer: AdvanceByteBuffer): Int
+	fun writeTo(os: OutputStream)
 	fun toByteArray() = getBytes()
 
 
@@ -144,19 +65,24 @@ class AdvanceByteBuffer(val buffer: ByteBuffer) {
 	 * 数据写入方法
 	 */
 
-	fun putByte(byte: Byte): ByteBuffer = buffer.put(byte)
-	fun put(char: Char) = array.put(char, push(2))
-	fun put(short: Short) = array.put(short, push(2))
-	fun put(int: Int) = array.put(int, push(4))
-	fun put(long: Long) = array.put(long, push(8))
-	fun put(float: Float) = array.put(float, push(4))
-	fun put(double: Double) = array.put(double, push(8))
-	fun put(str: String) = put(str.toByteArray())
-	fun put(byteArray: ByteArray, startIndex: Int = 0, endIndex: Int = byteArray.size) =
-		byteArray.copyInto(array, push(endIndex - startIndex), startIndex, endIndex)
+	fun putByte(byte: Byte): ByteBuffer
+	fun put(char: Char)
+	fun put(short: Short)
+	fun put(int: Int)
+	fun put(long: Long)
+	fun put(float: Float)
+	fun put(double: Double)
+	fun put(str: String)
+	fun put(byteArray: ByteArray, startIndex: Int = 0, endIndex: Int = byteArray.size)
 
-	/**
-	 * 缓冲区用完异常
-	 */
-	class OutOfBufferException : Exception()
 }
+
+inline fun <T> AdvanceByteBuffer.readMode(action: () -> T): T {
+	readMode()
+	return try {
+		action()
+	} finally {
+		resumeWriteMode()
+	}
+}
+
