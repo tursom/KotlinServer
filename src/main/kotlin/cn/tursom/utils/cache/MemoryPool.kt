@@ -28,7 +28,7 @@ class MemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) : CachePoo
 			index
 		}.toInt()
 		return if (index < 0 || index > blockCount) null
-		else HeapByteBuffer.wrap(memoryPool, blockSize, blockSize * index)
+		else HeapByteBuffer.wrap(memoryPool, blockSize * index, blockSize)
 	}
 	
 	fun contain(buffer: ByteBuffer) = buffer.array() === memoryPool

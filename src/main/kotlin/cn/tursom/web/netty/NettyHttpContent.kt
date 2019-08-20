@@ -1,6 +1,7 @@
 package cn.tursom.web.netty
 
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
+import cn.tursom.utils.bytebuffer.NettyAdvanceByteBuffer
 import cn.tursom.web.AdvanceHttpContent
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
@@ -31,25 +32,7 @@ open class NettyHttpContent(
 	val httpMethod = msg.method()
 	val protocolVersion = msg.protocolVersion()
 
-	val buf = msg.content()
-
-	override val body = when {
-		buf.readableBytes() == 0 -> null
-		buf.hasArray() -> buf.array()
-		else -> {
-			val bytes = ByteArray(buf.readableBytes())
-			buf.getBytes(buf.readerIndex(), bytes)
-			bytes
-		}
-	}
-
-	override val bodyOffSet = if (buf.hasArray()) {
-		buf.arrayOffset()
-	} else {
-		0
-	}
-
-	override val readableBytes: Int = buf.readableBytes()
+	override val body = msg.content()?.let { NettyAdvanceByteBuffer(it) }
 
 	override fun getHeader(header: String): String? {
 		return headers[header]

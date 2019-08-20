@@ -7,14 +7,14 @@ import java.nio.ByteBuffer
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	constructor(size: Int) : this(ByteBuffer.allocate(size))
-	constructor(buffer: ByteArray, offset: Int = 0, size: Int = buffer.size - offset) : this(HeapByteBuffer.wrap(buffer, size, offset))
+	constructor(buffer: ByteArray, offset: Int = 0, size: Int = buffer.size - offset) : this(HeapByteBuffer.wrap(buffer, offset, size))
 
 	override val nioBuffer: ByteBuffer get() = buffer
 	override val nioBuffers: Array<out ByteBuffer> get() = arrayOf(buffer)
 
-	private var readLocation = 0
 	private var _readMode = false
-	private var mark = 0
+	var readMark = 0
+	var writeMark = 0
 
 	/**
 	 * 各种位置变量
@@ -33,7 +33,7 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	override val capacity: Int = buffer.capacity()
 	override val array: ByteArray = buffer.array()
 	override val arrayOffset: Int = buffer.arrayOffset()
-	override val readPosition get() = readLocation
+	override var readPosition: Int = 0
 	override val readOffset get() = arrayOffset + readPosition
 	override val readableSize get() = writePosition - readPosition
 	override val available get() = readableSize
@@ -47,16 +47,17 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	 */
 
 	override fun readMode() {
-		mark = buffer.position()
+		writeMark = buffer.position()
+		readMark = readPosition
 		buffer.limit(buffer.position())
 		buffer.position(readPosition)
 		_readMode = true
 	}
 
-	override fun resumeWriteMode() {
-		readLocation = buffer.position()
+	override fun resumeWriteMode(usedSize: Int) {
+		readPosition = readMark + usedSize
 		buffer.limit(buffer.capacity())
-		buffer.position(mark)
+		buffer.position(writeMark)
 		_readMode = false
 	}
 
@@ -66,14 +67,14 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 
 	override fun useReadSize(size: Int): Int {
 		needReadSize(size)
-		readLocation += size
+		readPosition += size
 		return size
 	}
 
 	override fun take(size: Int): Int {
 		needReadSize(size)
 		val offset = readOffset
-		readLocation += size
+		readPosition += size
 		return offset
 	}
 
@@ -87,20 +88,20 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	override fun takeAll() = take(readableSize)
 
 	override fun clear() {
-		readLocation = 0
+		readPosition = 0
 		buffer.clear()
 	}
 
 	override fun reset() {
 		array.copyInto(array, arrayOffset, readOffset, arrayOffset + writePosition)
 		writePosition = readableSize
-		readLocation = 0
+		readPosition = 0
 	}
 
 	override fun reset(outputStream: OutputStream) {
 		outputStream.write(array, readOffset, arrayOffset + writePosition)
 		writePosition = 0
-		readLocation = 0
+		readPosition = 0
 	}
 
 	override fun requireAvailableSize(size: Int) {
@@ -134,8 +135,11 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 		return size
 	}
 
-	override fun writeTo(os: OutputStream) {
-		os.write(array, arrayOffset + readPosition, readAllSize())
+	override fun writeTo(os: OutputStream): Int {
+		val size = readableSize
+		os.write(array, arrayOffset + readPosition, size)
+		reset()
+		return size
 	}
 
 	override fun toByteArray() = getBytes()
@@ -145,7 +149,10 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	 * 数据写入方法
 	 */
 
-	override fun putByte(byte: Byte): ByteBuffer = buffer.put(byte)
+	override fun put(byte: Byte) {
+		buffer.put(byte)
+	}
+
 	override fun put(char: Char) = array.put(char, push(2))
 	override fun put(short: Short) = array.put(short, push(2))
 	override fun put(int: Int) = array.put(int, push(4))

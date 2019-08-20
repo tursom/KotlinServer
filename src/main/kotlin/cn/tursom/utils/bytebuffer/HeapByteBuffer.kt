@@ -12,7 +12,7 @@ object HeapByteBuffer {
 		field.isAccessible = true
 	}
 
-	fun wrap(array: ByteArray, size: Int = array.size, offset: Int = 0): ByteBuffer {
+	fun wrap(array: ByteArray, offset: Int = 0, size: Int = array.size - offset): ByteBuffer {
 		val buffer = ByteBuffer.wrap(array, 0, size)
 		field.set(buffer, offset)
 		return buffer

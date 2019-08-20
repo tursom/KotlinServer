@@ -5,8 +5,12 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 
 class NettyAdvanceByteBuffer(val byteBuf: ByteBuf) : AdvanceByteBuffer {
-	override val nioBuffer: ByteBuffer get() = byteBuf.nioBuffer()
-	override val nioBuffers: Array<out ByteBuffer> get() = byteBuf.nioBuffers()
+	override val nioBuffer: ByteBuffer
+		get() = if (readMode) byteBuf.nioBuffer(writePosition, limit)
+		else byteBuf.nioBuffer()
+	override val nioBuffers: Array<out ByteBuffer>
+		get() = if (readMode) byteBuf.nioBuffers(writePosition, limit)
+		else byteBuf.nioBuffers()
 
 	override var writePosition: Int
 		get() = byteBuf.writerIndex()
@@ -15,154 +19,130 @@ class NettyAdvanceByteBuffer(val byteBuf: ByteBuf) : AdvanceByteBuffer {
 		}
 	override var limit: Int
 		get() = byteBuf.capacity()
-		set(value) {}
-	override val capacity: Int get() = byteBuf.capacity()
+		set(value) {
+			byteBuf.capacity(value)
+		}
+	override val capacity get() = byteBuf.maxCapacity()
 	override val array: ByteArray get() = byteBuf.array()
 	override val arrayOffset: Int get() = byteBuf.arrayOffset()
-	override val readPosition: Int get() = byteBuf.readerIndex()
+	override var readPosition: Int
+		get() = byteBuf.readerIndex()
+		set(value) {
+			byteBuf.readerIndex(value)
+		}
 	override val readOffset: Int get() = byteBuf.arrayOffset() + byteBuf.readerIndex()
 	override val readableSize: Int
 		get() = byteBuf.readableBytes()
 	override val available: Int get() = readableSize
-	override val writeOffset: Int
-		get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
+	override val writeOffset: Int get() = writePosition
 	override val writeableSize: Int
-		get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
-	override val size: Int
-		get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
-	override val readMode: Boolean
-		get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
+		get() = limit - writePosition
+	override val size: Int get() = capacity
+	override var readMode: Boolean = false
 
 	override fun readMode() {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		readMode = true
 	}
 
-	override fun resumeWriteMode() {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	override fun resumeWriteMode(usedSize: Int) {
+		readPosition += usedSize
+		readMode = false
 	}
 
 	override fun needReadSize(size: Int) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun useReadSize(size: Int): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun take(size: Int): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun push(size: Int): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun readAllSize(): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun takeAll(): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		if (size > limit) {
+			if (size < capacity) byteBuf.capacity(size)
+			else throw IndexOutOfBoundsException()
+		}
 	}
 
 	override fun clear() {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.clear()
 	}
 
 	override fun reset() {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.discardReadBytes()
 	}
 
 	override fun reset(outputStream: OutputStream) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.readBytes(outputStream, readableSize)
+		byteBuf.clear()
 	}
 
-	override fun requireAvailableSize(size: Int) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun get(): Byte {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun getChar(): Char {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun getShort(): Short {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun getInt(): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun getLong(): Long {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun getFloat(): Float {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
-	override fun getDouble(): Double {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
+	override fun get(): Byte = byteBuf.readByte()
+	override fun getChar(): Char = byteBuf.readChar()
+	override fun getShort(): Short = byteBuf.readShort()
+	override fun getInt(): Int = byteBuf.readInt()
+	override fun getLong(): Long = byteBuf.readLong()
+	override fun getFloat(): Float = byteBuf.readFloat()
+	override fun getDouble(): Double = byteBuf.readDouble()
 
 	override fun getBytes(): ByteArray {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		val bytes = ByteArray(byteBuf.readableBytes())
+		byteBuf.readBytes(bytes)
+		return bytes
 	}
 
 	override fun getString(size: Int): String {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		val str = byteBuf.toString(readPosition, size, Charsets.UTF_8)
+		readPosition += size
+		return str
 	}
 
 	override fun writeTo(buffer: ByteArray, bufferOffset: Int, size: Int): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.readBytes(buffer, bufferOffset, size)
+		return size
 	}
 
 	override fun writeTo(buffer: AdvanceByteBuffer): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		val size = readAllSize()
+		nioBuffers.forEach {
+			buffer.nioBuffer.put(it)
+		}
+		return size
 	}
 
-	override fun writeTo(os: OutputStream) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	override fun writeTo(os: OutputStream): Int {
+		val size = readableSize
+		byteBuf.readBytes(os, size)
+		reset()
+		return size
 	}
 
-	override fun putByte(byte: Byte): ByteBuffer {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	override fun put(byte: Byte) {
+		byteBuf.writeByte(byte.toInt())
 	}
 
 	override fun put(char: Char) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.writeChar(char.toInt())
 	}
 
 	override fun put(short: Short) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.writeShort(short.toInt())
 	}
 
 	override fun put(int: Int) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.writeInt(int)
 	}
 
 	override fun put(long: Long) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.writeLong(long)
 	}
 
 	override fun put(float: Float) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.writeFloat(float)
 	}
 
 	override fun put(double: Double) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.writeDouble(double)
 	}
 
 	override fun put(str: String) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.writeCharSequence(str, Charsets.UTF_8)
 	}
 
 	override fun put(byteArray: ByteArray, startIndex: Int, endIndex: Int) {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+		byteBuf.writeBytes(byteArray, startIndex, endIndex - startIndex)
 	}
 
 }

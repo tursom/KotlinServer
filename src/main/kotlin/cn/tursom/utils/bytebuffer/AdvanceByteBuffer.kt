@@ -15,7 +15,7 @@ interface AdvanceByteBuffer {
 	val capacity: Int
 	val array: ByteArray
 	val arrayOffset: Int
-	val readPosition: Int
+	var readPosition: Int
 	val readOffset: Int
 	val readableSize: Int
 	val available: Int
@@ -26,19 +26,51 @@ interface AdvanceByteBuffer {
 
 
 	fun readMode()
-	fun resumeWriteMode()
+	fun resumeWriteMode(usedSize: Int = 0)
 
-	fun needReadSize(size: Int)
-	fun useReadSize(size: Int): Int
-	fun take(size: Int): Int
-	fun push(size: Int): Int
-	fun readAllSize(): Int
-	fun takeAll(): Int
+	fun needReadSize(size: Int) {
+		if (readableSize < size) throw OutOfBufferException()
+	}
+
+	fun useReadSize(size: Int): Int {
+		needReadSize(size)
+		readPosition += size
+		return size
+	}
+
+	fun take(size: Int): Int {
+		needReadSize(size)
+		val offset = readOffset
+		readPosition += size
+		return offset
+	}
+
+	fun push(size: Int): Int {
+		val offset = writeOffset
+		writePosition += size
+		return offset
+	}
+
+	fun readAllSize() = useReadSize(readableSize)
+	fun takeAll() = take(readableSize)
 
 	fun clear()
-	fun reset()
-	fun reset(outputStream: OutputStream)
-	fun requireAvailableSize(size: Int)
+
+	fun reset() {
+		array.copyInto(array, arrayOffset, readOffset, arrayOffset + writePosition)
+		writePosition = readableSize
+		readPosition = 0
+	}
+
+	fun reset(outputStream: OutputStream) {
+		outputStream.write(array, readOffset, arrayOffset + writePosition)
+		writePosition = 0
+		readPosition = 0
+	}
+
+	fun requireAvailableSize(size: Int) {
+		if (limit - readPosition < size) reset()
+	}
 
 
 	/*
@@ -57,7 +89,7 @@ interface AdvanceByteBuffer {
 
 	fun writeTo(buffer: ByteArray, bufferOffset: Int = 0, size: Int = readableSize): Int
 	fun writeTo(buffer: AdvanceByteBuffer): Int
-	fun writeTo(os: OutputStream)
+	fun writeTo(os: OutputStream): Int
 	fun toByteArray() = getBytes()
 
 
@@ -65,7 +97,7 @@ interface AdvanceByteBuffer {
 	 * 数据写入方法
 	 */
 
-	fun putByte(byte: Byte): ByteBuffer
+	fun put(byte: Byte)
 	fun put(char: Char)
 	fun put(short: Short)
 	fun put(int: Int)
@@ -73,8 +105,48 @@ interface AdvanceByteBuffer {
 	fun put(float: Float)
 	fun put(double: Double)
 	fun put(str: String)
-	fun put(byteArray: ByteArray, startIndex: Int = 0, endIndex: Int = byteArray.size)
 
+	fun put(byteArray: ByteArray, startIndex: Int = 0, endIndex: Int = byteArray.size) {
+		for (i in startIndex until endIndex) {
+			put(byteArray[i])
+		}
+	}
+
+	fun put(array: CharArray, index: Int = 0, size: Int = array.size - index) {
+		for (i in index until index + size) {
+			put(array[i])
+		}
+	}
+
+	fun put(array: ShortArray, index: Int = 0, size: Int = array.size - index) {
+		for (i in index until index + size) {
+			put(array[i])
+		}
+	}
+
+	fun put(array: IntArray, index: Int = 0, size: Int = array.size - index) {
+		for (i in index until index + size) {
+			put(array[i])
+		}
+	}
+
+	fun put(array: LongArray, index: Int = 0, size: Int = array.size - index) {
+		for (i in index until index + size) {
+			put(array[i])
+		}
+	}
+
+	fun put(array: FloatArray, index: Int = 0, size: Int = array.size - index) {
+		for (i in index until index + size) {
+			put(array[i])
+		}
+	}
+
+	fun put(array: DoubleArray, index: Int = 0, size: Int = array.size - index) {
+		for (i in index until index + size) {
+			put(array[i])
+		}
+	}
 }
 
 inline fun <T> AdvanceByteBuffer.readMode(action: () -> T): T {
@@ -83,6 +155,16 @@ inline fun <T> AdvanceByteBuffer.readMode(action: () -> T): T {
 		action()
 	} finally {
 		resumeWriteMode()
+	}
+}
+
+inline fun <T> AdvanceByteBuffer.readNioBuffer(action: (nioBuffer: ByteBuffer) -> T): T {
+	val buffer = nioBuffer
+	val position = nioBuffer.position()
+	return try {
+		action(buffer)
+	} finally {
+		resumeWriteMode(nioBuffer.position() - position)
 	}
 }
 

@@ -158,7 +158,7 @@ suspend inline fun <T> AsyncSocket.unSerializeObject(
 }
 
 suspend inline fun AsyncSocket.send(message: ByteArray?, offset: Int = 0, size: Int = message?.size ?: 0) {
-	write(HeapByteBuffer.wrap(message ?: return, size, offset))
+	write(HeapByteBuffer.wrap(message ?: return, offset, size))
 }
 
 suspend inline fun AsyncSocket.send(message: String?) {

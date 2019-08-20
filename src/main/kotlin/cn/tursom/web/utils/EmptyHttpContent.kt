@@ -11,9 +11,7 @@ class EmptyHttpContent(
 	override val uri: String = "/",
 	override var responseCode: Int = 200,
 	override var responseMessage: String? = null,
-	override val body: ByteArray? = null,
-	override val bodyOffSet: Int = 0,
-	override val readableBytes: Int = 0,
+	override val body: AdvanceByteBuffer? = null,
 	override val clientIp: SocketAddress = InetSocketAddress(0),
 	override val method: String = "GET",
 	override val responseBody: OutputStream = ByteArrayOutputStream(0)

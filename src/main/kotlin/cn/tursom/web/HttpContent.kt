@@ -8,9 +8,7 @@ interface HttpContent {
 	val uri: String
 	var responseCode: Int
 	var responseMessage: String?
-	val body: ByteArray?
-	val bodyOffSet: Int
-	val readableBytes: Int
+	val body: AdvanceByteBuffer?
 	val clientIp: SocketAddress
 	val method: String
 	val responseBody: OutputStream
