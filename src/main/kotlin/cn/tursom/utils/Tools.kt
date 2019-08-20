@@ -9,8 +9,14 @@ import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
 
+inline fun <T> usingTime(action: () -> T): Long {
+	val t1 = System.currentTimeMillis()
+	action()
+	val t2 = System.currentTimeMillis()
+	return t2 - t1
+}
 
-inline fun <reified T : Any> Gson.fromJson(json: String) = fromJson(json, T::class.java)
+inline fun <reified T : Any> Gson.fromJson(json: String) = this.fromJson(json, T::class.java)!!
 
 inline fun <T> Collection<T>.doEach(block: (T) -> Any): String {
 	val iterator = iterator()

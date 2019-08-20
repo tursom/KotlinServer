@@ -73,4 +73,7 @@ interface HttpContent {
 		setResponseHeader("content-type", "application/json; charset=UTF-8")
 		finish(response)
 	}
+
+	fun cacheTag(tag: Any) = setResponseHeader("Etag", tag)
+	fun getCacheTag(tag: Any): String? = getHeader("If-None-Match")
 }
