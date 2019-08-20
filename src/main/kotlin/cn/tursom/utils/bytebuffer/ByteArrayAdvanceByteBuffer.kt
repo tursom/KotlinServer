@@ -8,8 +8,6 @@ class ByteArrayAdvanceByteBuffer(override val array: ByteArray, val offset: Int 
 	override val nioBuffer: ByteBuffer
 		get() = if (readMode) readByteBuffer
 		else writeByteBuffer
-	override val nioBuffers: Array<out ByteBuffer>
-		get() = arrayOf(nioBuffer)
 	override var limit: Int = size
 	override val capacity: Int get() = size
 	override val arrayOffset: Int get() = offset

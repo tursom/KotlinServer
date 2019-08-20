@@ -2,6 +2,8 @@ package cn.tursom.utils
 
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.readMode
+import cn.tursom.utils.bytebuffer.readNioBuffer
+import cn.tursom.utils.bytebuffer.writeNioBuffer
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousFileChannel
 import java.nio.channels.CompletionHandler
@@ -40,16 +42,7 @@ class AsyncFile(val path: Path) {
 	}
 
 	suspend fun write(buffer: AdvanceByteBuffer, position: Long = 0): Int {
-		buffer.readMode()
-		return try {
-			var writeBytes = 0
-			buffer.nioBuffers.forEach {
-				writeBytes += writeAndWait(it, position)
-			}
-			writeBytes
-		} finally {
-			buffer.resumeWriteMode()
-		}
+		return buffer.readNioBuffer { writeAndWait(it, position) }
 	}
 
 	fun append(buffer: ByteBuffer, position: Long = size) {
@@ -61,16 +54,7 @@ class AsyncFile(val path: Path) {
 	}
 
 	suspend fun append(buffer: AdvanceByteBuffer, position: Long = size): Int {
-		buffer.readMode()
-		return try {
-			var writeBytes = 0
-			buffer.nioBuffers.forEach {
-				writeBytes += appendAndWait(it, position)
-			}
-			writeBytes
-		} finally {
-			buffer.resumeWriteMode()
-		}
+		return buffer.readNioBuffer { appendAndWait(it, position) }
 	}
 
 	suspend fun read(buffer: ByteBuffer, position: Long = 0): Int {
@@ -80,7 +64,7 @@ class AsyncFile(val path: Path) {
 	}
 
 	suspend fun read(buffer: AdvanceByteBuffer, position: Long = 0): Int {
-		return buffer.readMode {
+		return buffer.writeNioBuffer {
 			read(buffer.nioBuffer, position)
 		}
 	}

@@ -10,7 +10,6 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	constructor(buffer: ByteArray, offset: Int = 0, size: Int = buffer.size - offset) : this(HeapByteBuffer.wrap(buffer, offset, size))
 
 	override val nioBuffer: ByteBuffer get() = buffer
-	override val nioBuffers: Array<out ByteBuffer> get() = arrayOf(buffer)
 
 	private var _readMode = false
 	var readMark = 0

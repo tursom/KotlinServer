@@ -5,7 +5,6 @@ import java.nio.ByteBuffer
 
 interface AdvanceByteBuffer {
 	val nioBuffer: ByteBuffer
-	val nioBuffers: Array<out ByteBuffer>
 
 	/**
 	 * 各种位置变量
@@ -88,8 +87,15 @@ interface AdvanceByteBuffer {
 	fun getString(size: Int = readableSize): String
 
 	fun writeTo(buffer: ByteArray, bufferOffset: Int = 0, size: Int = readableSize): Int
-	fun writeTo(buffer: AdvanceByteBuffer): Int
 	fun writeTo(os: OutputStream): Int
+	fun writeTo(buffer: AdvanceByteBuffer): Int {
+		val size = readAllSize()
+		readNioBuffer {
+			buffer.nioBuffer.put(it)
+		}
+		return size
+	}
+
 	fun toByteArray() = getBytes()
 
 
@@ -165,6 +171,17 @@ inline fun <T> AdvanceByteBuffer.readNioBuffer(action: (nioBuffer: ByteBuffer) -
 		action(buffer)
 	} finally {
 		resumeWriteMode(nioBuffer.position() - position)
+	}
+}
+
+inline fun <T> AdvanceByteBuffer.writeNioBuffer(action: (nioBuffer: ByteBuffer) -> T): T {
+	val buffer = nioBuffer
+	val position = writePosition
+	val bufferPosition = nioBuffer.position()
+	return try {
+		action(buffer)
+	} finally {
+		writePosition = position + (nioBuffer.position() - bufferPosition)
 	}
 }
 

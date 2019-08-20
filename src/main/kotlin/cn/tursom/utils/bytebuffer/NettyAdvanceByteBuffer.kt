@@ -8,9 +8,6 @@ class NettyAdvanceByteBuffer(val byteBuf: ByteBuf) : AdvanceByteBuffer {
 	override val nioBuffer: ByteBuffer
 		get() = if (readMode) byteBuf.nioBuffer(writePosition, limit)
 		else byteBuf.nioBuffer()
-	override val nioBuffers: Array<out ByteBuffer>
-		get() = if (readMode) byteBuf.nioBuffers(writePosition, limit)
-		else byteBuf.nioBuffers()
 
 	override var writePosition: Int
 		get() = byteBuf.writerIndex()
@@ -91,14 +88,6 @@ class NettyAdvanceByteBuffer(val byteBuf: ByteBuf) : AdvanceByteBuffer {
 
 	override fun writeTo(buffer: ByteArray, bufferOffset: Int, size: Int): Int {
 		byteBuf.readBytes(buffer, bufferOffset, size)
-		return size
-	}
-
-	override fun writeTo(buffer: AdvanceByteBuffer): Int {
-		val size = readAllSize()
-		nioBuffers.forEach {
-			buffer.nioBuffer.put(it)
-		}
 		return size
 	}
 
