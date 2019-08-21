@@ -4,11 +4,14 @@ import cn.tursom.utils.buf
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.count
 import cn.tursom.web.utils.CacheControl
+import cn.tursom.web.utils.Chunked
 import cn.tursom.web.utils.Cookie
 import cn.tursom.web.utils.SameSite
 import io.netty.handler.codec.DateFormatter
 import io.netty.handler.codec.http.cookie.ServerCookieDecoder
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.RandomAccessFile
 import java.net.SocketAddress
 import java.util.*
 import kotlin.collections.HashMap
@@ -42,12 +45,8 @@ interface HttpContent {
 	fun write(buffer: AdvanceByteBuffer)
 	fun reset()
 
-	fun finish() {
-		finish(responseBody.buf, 0, responseBody.count)
-	}
-
+	fun finish() = finish(responseBody.buf, 0, responseBody.count)
 	fun finish(response: ByteArray, offset: Int = 0, size: Int = response.size - offset)
-
 	fun finish(code: Int) = finishHtml(code)
 
 	fun finishHtml(code: Int = responseCode) {
@@ -118,6 +117,18 @@ interface HttpContent {
 		if (sameSite != null) ": SameSite=$sameSite" else ""
 		}")
 
+	fun setCookie(
+		name: String,
+		value: Any,
+		maxAge: Int = 0,
+		domain: String? = null,
+		path: String? = null,
+		sameSite: SameSite? = null
+	) {
+		deleteCookie(name, path ?: "/")
+		addCookie(name, value, maxAge, domain, path, sameSite)
+	}
+
 	fun deleteCookie(name: String, path: String = "/") =
 		addCookie(name, "deleted; expires=Thu, 01 Jan 1970 00:00:00 GMT", path = path)
 
@@ -132,4 +143,13 @@ interface HttpContent {
 		}
 		return cookieMap
 	}
+
+	fun writeChunkedHeader()
+	fun addChunked(buffer: AdvanceByteBuffer)
+	fun finishChunked()
+
+	fun finishChunked(chunked: Chunked)
+
+	fun finishFile(file: File, chunkSize: Int = 8192)
+	fun finishFile(file: RandomAccessFile, offset: Long = 0, length: Long = file.length() - offset, chunkSize: Int = 8192)
 }

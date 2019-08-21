@@ -13,6 +13,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel
 import io.netty.handler.codec.http.HttpObjectAggregator
 import io.netty.handler.codec.http.HttpRequestDecoder
 import io.netty.handler.codec.http.HttpResponseEncoder
+import io.netty.handler.stream.ChunkedWriteHandler
 
 class NettyHttpServer(
 	override val port: Int,
@@ -36,7 +37,7 @@ class NettyHttpServer(
 		},
 		bodySize
 	)
-	
+
 	val httpHandler = NettyHttpHandler(handler)
 	private val group = NioEventLoopGroup()
 	private val b = ServerBootstrap().group(group)
@@ -48,6 +49,7 @@ class NettyHttpServer(
 					.addLast("decoder", HttpRequestDecoder())
 					.addLast("encoder", HttpResponseEncoder())
 					.addLast("aggregator", HttpObjectAggregator(bodySize))
+					.addLast("http-chunked", ChunkedWriteHandler()) //目的是支持异步大文件传输（）
 					.addLast("handle", httpHandler)
 			}
 		})
@@ -55,12 +57,12 @@ class NettyHttpServer(
 		.option(ChannelOption.SO_REUSEADDR, true)
 		.childOption(ChannelOption.SO_KEEPALIVE, java.lang.Boolean.TRUE)
 	private lateinit var future: ChannelFuture
-	
+
 	override fun run() {
 		future = b.bind(port)
 		future.sync()
 	}
-	
+
 	override fun close() {
 		future.cancel(false)
 		future.channel().close()

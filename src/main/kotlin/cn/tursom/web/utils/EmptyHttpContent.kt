@@ -3,7 +3,9 @@ package cn.tursom.web.utils
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.web.HttpContent
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.OutputStream
+import java.io.RandomAccessFile
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 
@@ -37,5 +39,11 @@ class EmptyHttpContent(
 	override fun finishHtml(code: Int, response: ByteArray) {}
 	override fun finishText(code: Int, response: ByteArray) {}
 	override fun finishJson(code: Int, response: ByteArray) {}
+	override fun writeChunkedHeader() {}
+	override fun addChunked(buffer: AdvanceByteBuffer) {}
+	override fun finishChunked() {}
+	override fun finishChunked(chunked: Chunked) {}
+	override fun finishFile(file: File, chunkSize: Int) {}
+	override fun finishFile(file: RandomAccessFile, offset: Long, length: Long, chunkSize: Int) {}
 }
 

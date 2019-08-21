@@ -7,7 +7,7 @@ interface HttpHandler<T : HttpContent> {
 		e.cause.printStackTrace()
 	}
 
-	operator fun <T : HttpContent> HttpHandler<T>.invoke(content: T) {
+	operator fun invoke(content: T) {
 		handle(content)
 	}
 }

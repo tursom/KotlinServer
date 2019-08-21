@@ -3,41 +3,44 @@ package cn.tursom.web.netty
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.NettyAdvanceByteBuffer
 import cn.tursom.web.AdvanceHttpContent
-import cn.tursom.web.utils.Cookie
+import cn.tursom.web.utils.Chunked
 import io.netty.buffer.ByteBuf
 import io.netty.buffer.Unpooled
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.*
+import io.netty.handler.stream.ChunkedFile
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.RandomAccessFile
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.set
 
-
-@Suppress("MemberVisibilityCanBePrivate")
+@Suppress("MemberVisibilityCanBePrivate", "unused")
 open class NettyHttpContent(
 	val ctx: ChannelHandlerContext,
 	val msg: FullHttpRequest
 ) : AdvanceHttpContent {
 	override val uri: String get() = msg.uri()
+	val httpMethod: HttpMethod get() = msg.method()
+	val protocolVersion: HttpVersion get() = msg.protocolVersion()
 	val headers: HttpHeaders get() = msg.headers()
 	private val paramMap by lazy { RequestParser.parse(msg) }
+	override val cookieMap by lazy { super.cookieMap }
+
+	val response get() = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
 	val responseMap = HashMap<String, Any>()
 	val responseListMap = HashMap<String, ArrayList<Any>>()
 	override val body = msg.content()?.let { NettyAdvanceByteBuffer(it) }
 	override val responseBody = ByteArrayOutputStream()
-
 	override var responseCode: Int = 200
 	override var responseMessage: String? = null
 	override val clientIp get() = ctx.channel().remoteAddress()!!
 	override val method: String get() = httpMethod.name()
+	val chunkedList = ArrayList<AdvanceByteBuffer>()
 
-	val httpMethod: HttpMethod get() = msg.method()
-	val protocolVersion: HttpVersion get() = msg.protocolVersion()
-
-	override val cookieMap by lazy { super.cookieMap }
 
 	override fun getHeader(header: String): String? {
 		return headers[header]
@@ -99,6 +102,11 @@ open class NettyHttpContent(
 		responseBody.reset()
 	}
 
+	override fun finish() {
+		response.status = HttpResponseStatus(responseCode, responseMessage)
+		ctx.write(response)
+	}
+
 	override fun finish(response: ByteArray, offset: Int, size: Int) {
 		val response1 = DefaultFullHttpResponse(
 			HttpVersion.HTTP_1_1,
@@ -109,6 +117,8 @@ open class NettyHttpContent(
 			Unpooled.wrappedBuffer(response, offset, size)
 		)
 		finish(response1)
+
+		response1.content()
 	}
 
 	fun finish(response: ByteBuf) = finish(response, HttpResponseStatus.valueOf(responseCode))
@@ -135,6 +145,39 @@ open class NettyHttpContent(
 		}
 
 		ctx.writeAndFlush(response)
+	}
+
+	override fun writeChunkedHeader() {
+		response.status = HttpResponseStatus(responseCode, responseMessage)
+		val heads = response.headers()
+		heads.set(HttpHeaderNames.CONTENT_TYPE, "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8")
+		heads.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE)
+		heads.set(HttpHeaderNames.TRANSFER_ENCODING, "chunked")
+		ctx.write(response)
+	}
+
+	override fun addChunked(buffer: AdvanceByteBuffer) {
+		chunkedList.add(buffer)
+	}
+
+	override fun finishChunked() {
+		val httpChunkWriter = HttpChunkedInput(NettyChunkedByteBuffer(chunkedList))
+		ctx.writeAndFlush(httpChunkWriter)
+	}
+
+	override fun finishChunked(chunked: Chunked) {
+		val httpChunkWriter = HttpChunkedInput(NettyChunkedInput(chunked))
+		ctx.writeAndFlush(httpChunkWriter)
+	}
+
+	override fun finishFile(file: File, chunkSize: Int) {
+		writeChunkedHeader()
+		ctx.writeAndFlush(HttpChunkedInput(ChunkedFile(file, chunkSize)))
+	}
+
+	override fun finishFile(file: RandomAccessFile, offset: Long, length: Long, chunkSize: Int) {
+		writeChunkedHeader()
+		ctx.writeAndFlush(HttpChunkedInput(ChunkedFile(file, offset, length, chunkSize)))
 	}
 }
 
