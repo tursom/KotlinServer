@@ -86,6 +86,24 @@ interface HttpContent {
 		finish(response)
 	}
 
+	fun finishHtml(code: Int = responseCode, response: AdvanceByteBuffer) {
+		responseCode = code
+		setResponseHeader("content-type", "text/html; charset=UTF-8")
+		finish(response)
+	}
+
+	fun finishText(code: Int = responseCode, response: AdvanceByteBuffer) {
+		responseCode = code
+		setResponseHeader("content-type", "text/plain; charset=UTF-8")
+		finish(response)
+	}
+
+	fun finishJson(code: Int = responseCode, response: AdvanceByteBuffer) {
+		responseCode = code
+		setResponseHeader("content-type", "application/json; charset=UTF-8")
+		finish(response)
+	}
+
 	fun usingCache() = finish(304)
 
 	fun setCacheTag(tag: Any) = setResponseHeader("Etag", tag)
