@@ -1,5 +1,6 @@
-package cn.tursom.utils.bytebuffer
+package cn.tursom.web.netty
 
+import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import io.netty.buffer.ByteBuf
 import java.io.OutputStream
 import java.nio.ByteBuffer

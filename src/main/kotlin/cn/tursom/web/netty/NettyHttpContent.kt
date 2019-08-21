@@ -1,7 +1,6 @@
 package cn.tursom.web.netty
 
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
-import cn.tursom.utils.bytebuffer.NettyAdvanceByteBuffer
 import cn.tursom.web.AdvanceHttpContent
 import cn.tursom.web.utils.Chunked
 import io.netty.buffer.ByteBuf
@@ -103,22 +102,21 @@ open class NettyHttpContent(
 	}
 
 	override fun finish() {
-		response.status = HttpResponseStatus(responseCode, responseMessage)
+		response.status = if (responseMessage != null) HttpResponseStatus(responseCode, responseMessage)
+		else HttpResponseStatus.valueOf(responseCode)
 		ctx.write(response)
 	}
 
 	override fun finish(response: ByteArray, offset: Int, size: Int) {
-		val response1 = DefaultFullHttpResponse(
-			HttpVersion.HTTP_1_1,
-			if (responseMessage == null)
-				HttpResponseStatus.valueOf(responseCode)
-			else
-				HttpResponseStatus.valueOf(responseCode, responseMessage),
-			Unpooled.wrappedBuffer(response, offset, size)
-		)
-		finish(response1)
+		finish(Unpooled.wrappedBuffer(response, offset, size))
+	}
 
-		response1.content()
+	override fun finish(buffer: AdvanceByteBuffer) {
+		if (buffer is NettyAdvanceByteBuffer) {
+			finish(buffer.byteBuf)
+		} else {
+			super.finish(buffer)
+		}
 	}
 
 	fun finish(response: ByteBuf) = finish(response, HttpResponseStatus.valueOf(responseCode))
@@ -130,29 +128,41 @@ open class NettyHttpContent(
 	fun finish(response: DefaultFullHttpResponse) {
 		val heads = response.headers()
 
+		addHeaders(heads, mapOf(
+			HttpHeaderNames.CONTENT_TYPE to "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8",
+			HttpHeaderNames.CONTENT_LENGTH to response.content().readableBytes(),
+			HttpHeaderNames.CONNECTION to HttpHeaderValues.KEEP_ALIVE
+		))
+
+		ctx.writeAndFlush(response)
+	}
+
+	fun addHeaders(heads: HttpHeaders, defaultHeaders: Map<CharSequence, Any>) {
 		responseListMap.forEach { (t, u) ->
 			u.forEach {
 				heads.add(t, it)
 			}
 		}
 
-		heads.set(HttpHeaderNames.CONTENT_TYPE, "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8")
-		heads.set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes())
-		heads.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE)
+		defaultHeaders.forEach { (t, u) ->
+			heads.set(t, u)
+		}
 
 		responseMap.forEach { (t, u) ->
 			heads.set(t, u)
 		}
-
-		ctx.writeAndFlush(response)
 	}
 
 	override fun writeChunkedHeader() {
-		response.status = HttpResponseStatus(responseCode, responseMessage)
+		val response = DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
+		response.status = if (responseMessage != null) HttpResponseStatus(responseCode, responseMessage)
+		else HttpResponseStatus.valueOf(responseCode)
 		val heads = response.headers()
-		heads.set(HttpHeaderNames.CONTENT_TYPE, "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8")
-		heads.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE)
-		heads.set(HttpHeaderNames.TRANSFER_ENCODING, "chunked")
+		addHeaders(heads, mapOf(
+			HttpHeaderNames.CONTENT_TYPE to "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8",
+			HttpHeaderNames.CONNECTION to HttpHeaderValues.KEEP_ALIVE,
+			HttpHeaderNames.TRANSFER_ENCODING to "chunked"
+		))
 		ctx.write(response)
 	}
 

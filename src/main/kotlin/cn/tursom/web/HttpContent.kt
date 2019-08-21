@@ -47,6 +47,7 @@ interface HttpContent {
 
 	fun finish() = finish(responseBody.buf, 0, responseBody.count)
 	fun finish(response: ByteArray, offset: Int = 0, size: Int = response.size - offset)
+	fun finish(buffer: AdvanceByteBuffer) = finish(buffer.array, buffer.readOffset, buffer.readAllSize())
 	fun finish(code: Int) = finishHtml(code)
 
 	fun finishHtml(code: Int = responseCode) {
