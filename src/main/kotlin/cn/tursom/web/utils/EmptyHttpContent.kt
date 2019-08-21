@@ -35,9 +35,6 @@ class EmptyHttpContent(
 	override fun finishHtml(code: Int) {}
 	override fun finishText(code: Int) {}
 	override fun finishJson(code: Int) {}
-	override fun finishHtml(response: ByteArray, code: Int) {}
-	override fun finishText(response: ByteArray, code: Int) {}
-	override fun finishJson(response: ByteArray, code: Int) {}
 	override fun writeChunkedHeader() {}
 	override fun addChunked(buffer: AdvanceByteBuffer) {}
 	override fun finishChunked() {}
