@@ -1,5 +1,6 @@
 package cn.tursom.web.netty
 
+import cn.tursom.utils.buf
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.web.AdvanceHttpContent
 import cn.tursom.web.utils.Chunked
@@ -28,18 +29,16 @@ open class NettyHttpContent(
 	val headers: HttpHeaders get() = msg.headers()
 	private val paramMap by lazy { RequestParser.parse(msg) }
 	override val cookieMap by lazy { super.cookieMap }
+	override val body = msg.content()?.let { NettyAdvanceByteBuffer(it) }
 
-	val response get() = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
 	val responseMap = HashMap<String, Any>()
 	val responseListMap = HashMap<String, ArrayList<Any>>()
-	override val body = msg.content()?.let { NettyAdvanceByteBuffer(it) }
 	override val responseBody = ByteArrayOutputStream()
 	override var responseCode: Int = 200
 	override var responseMessage: String? = null
 	override val clientIp get() = ctx.channel().remoteAddress()!!
 	override val method: String get() = httpMethod.name()
 	val chunkedList = ArrayList<AdvanceByteBuffer>()
-
 
 	override fun getHeader(header: String): String? {
 		return headers[header]
@@ -102,13 +101,11 @@ open class NettyHttpContent(
 	}
 
 	override fun finish() {
-		response.status = if (responseMessage != null) HttpResponseStatus(responseCode, responseMessage)
-		else HttpResponseStatus.valueOf(responseCode)
-		ctx.write(response)
+		finish(responseBody.buf, 0, responseBody.size())
 	}
 
-	override fun finish(response: ByteArray, offset: Int, size: Int) {
-		finish(Unpooled.wrappedBuffer(response, offset, size))
+	override fun finish(buffer: ByteArray, offset: Int, size: Int) {
+		finish(Unpooled.wrappedBuffer(buffer, offset, size))
 	}
 
 	override fun finish(buffer: AdvanceByteBuffer) {
@@ -119,15 +116,14 @@ open class NettyHttpContent(
 		}
 	}
 
-	fun finish(response: ByteBuf) = finish(response, HttpResponseStatus.valueOf(responseCode))
-	fun finish(response: ByteBuf, responseCode: HttpResponseStatus) {
-		val response1 = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, responseCode, response)
-		finish(response1)
+	fun finish(buf: ByteBuf) = finish(buf, HttpResponseStatus.valueOf(responseCode))
+	fun finish(buf: ByteBuf, responseCode: HttpResponseStatus) {
+		val response = DefaultFullHttpResponse(HttpVersion.HTTP_1_1, responseCode, buf)
+		finish(response)
 	}
 
 	fun finish(response: DefaultFullHttpResponse) {
 		val heads = response.headers()
-
 		addHeaders(heads, mapOf(
 			HttpHeaderNames.CONTENT_TYPE to "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8",
 			HttpHeaderNames.CONTENT_LENGTH to response.content().readableBytes(),
@@ -137,7 +133,7 @@ open class NettyHttpContent(
 		ctx.writeAndFlush(response)
 	}
 
-	fun addHeaders(heads: HttpHeaders, defaultHeaders: Map<CharSequence, Any>) {
+	fun addHeaders(heads: HttpHeaders, defaultHeaders: Map<out CharSequence, Any>) {
 		responseListMap.forEach { (t, u) ->
 			u.forEach {
 				heads.add(t, it)

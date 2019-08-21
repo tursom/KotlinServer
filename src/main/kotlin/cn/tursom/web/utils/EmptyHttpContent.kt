@@ -4,7 +4,6 @@ import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.web.HttpContent
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.OutputStream
 import java.io.RandomAccessFile
 import java.net.InetSocketAddress
 import java.net.SocketAddress
@@ -31,7 +30,7 @@ class EmptyHttpContent(
 	override fun write(buffer: AdvanceByteBuffer) {}
 	override fun reset() {}
 	override fun finish() {}
-	override fun finish(response: ByteArray, offset: Int, size: Int) {}
+	override fun finish(buffer: ByteArray, offset: Int, size: Int) {}
 	override fun finish(code: Int) {}
 	override fun finishHtml(code: Int) {}
 	override fun finishText(code: Int) {}

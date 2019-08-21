@@ -46,7 +46,7 @@ interface HttpContent {
 	fun reset()
 
 	fun finish() = finish(responseBody.buf, 0, responseBody.count)
-	fun finish(response: ByteArray, offset: Int = 0, size: Int = response.size - offset)
+	fun finish(buffer: ByteArray, offset: Int = 0, size: Int = buffer.size - offset)
 	fun finish(buffer: AdvanceByteBuffer) = finish(buffer.array, buffer.readOffset, buffer.readAllSize())
 	fun finish(code: Int) = finishHtml(code)
 
@@ -153,4 +153,6 @@ interface HttpContent {
 
 	fun finishFile(file: File, chunkSize: Int = 8192)
 	fun finishFile(file: RandomAccessFile, offset: Long = 0, length: Long = file.length() - offset, chunkSize: Int = 8192)
+
+	fun setContextType(type: Any) = setResponseHeader("Content-Type", type)
 }
