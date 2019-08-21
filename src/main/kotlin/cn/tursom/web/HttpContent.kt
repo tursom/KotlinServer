@@ -68,37 +68,37 @@ interface HttpContent {
 		finish()
 	}
 
-	fun finishHtml(code: Int = responseCode, response: ByteArray) {
+	fun finishHtml(response: ByteArray, code: Int = responseCode) {
 		responseCode = code
 		setResponseHeader("content-type", "text/html; charset=UTF-8")
 		finish(response)
 	}
 
-	fun finishText(code: Int = responseCode, response: ByteArray) {
+	fun finishText(response: ByteArray, code: Int = responseCode) {
 		responseCode = code
 		setResponseHeader("content-type", "text/plain; charset=UTF-8")
 		finish(response)
 	}
 
-	fun finishJson(code: Int = responseCode, response: ByteArray) {
+	fun finishJson(response: ByteArray, code: Int = responseCode) {
 		responseCode = code
 		setResponseHeader("content-type", "application/json; charset=UTF-8")
 		finish(response)
 	}
 
-	fun finishHtml(code: Int = responseCode, response: AdvanceByteBuffer) {
+	fun finishHtml(response: AdvanceByteBuffer, code: Int = responseCode) {
 		responseCode = code
 		setResponseHeader("content-type", "text/html; charset=UTF-8")
 		finish(response)
 	}
 
-	fun finishText(code: Int = responseCode, response: AdvanceByteBuffer) {
+	fun finishText(response: AdvanceByteBuffer, code: Int = responseCode) {
 		responseCode = code
 		setResponseHeader("content-type", "text/plain; charset=UTF-8")
 		finish(response)
 	}
 
-	fun finishJson(code: Int = responseCode, response: AdvanceByteBuffer) {
+	fun finishJson(response: AdvanceByteBuffer, code: Int = responseCode) {
 		responseCode = code
 		setResponseHeader("content-type", "application/json; charset=UTF-8")
 		finish(response)
