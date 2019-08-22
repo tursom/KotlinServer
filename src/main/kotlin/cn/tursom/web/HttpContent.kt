@@ -3,6 +3,7 @@ package cn.tursom.web
 import cn.tursom.utils.buf
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.count
+import cn.tursom.utils.urlDecode
 import cn.tursom.web.utils.CacheControl
 import cn.tursom.web.utils.Chunked
 import cn.tursom.web.utils.Cookie
@@ -33,7 +34,7 @@ interface HttpContent {
 	fun getParams(): Map<String, List<String>>
 	fun getParams(param: String): List<String>?
 
-	operator fun get(name: String) = getHeader(name) ?: getParam(name)
+	operator fun get(name: String) = (getHeader(name) ?: getParam(name))?.urlDecode
 
 	fun setResponseHeader(name: String, value: Any)
 	fun addResponseHeader(name: String, value: Any)

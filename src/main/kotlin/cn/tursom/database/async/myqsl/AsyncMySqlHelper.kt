@@ -27,7 +27,7 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 class AsyncMySqlHelper(url: String, user: String, password: String, base: String? = null) : AsyncSqlHelper {
-	
+
 	override val connection = runBlocking {
 		val config = JsonObject()
 		config.put("url", "jdbc:mysql://$url?characterEncoding=utf-8&serverTimezone=UTC")
@@ -44,7 +44,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 			}
 		}
 	}
-	
+
 	@Suppress("MemberVisibilityCanBePrivate")
 	var basename: String? = base
 		set(value) {
@@ -55,17 +55,23 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 				}
 			}
 		}
-	
+
 	override suspend fun doSql(sql: String): Int = suspendCoroutine { cont ->
 		connection.execute(sql) {
 			if (it.succeeded()) {
-				cont.resume(1)
+				connection.commit {
+					if (it.succeeded()) {
+						cont.resume(1)
+					} else {
+						cont.resumeWithException(it.cause())
+					}
+				}
 			} else {
 				cont.resumeWithException(it.cause())
 			}
 		}
 	}
-	
+
 	/*
 	 * 创建表格
 	 * table: 表格名
@@ -74,14 +80,14 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 	override suspend fun createTable(table: String, keys: Iterable<String>) {
 		doSql("CREATE TABLE if not exists `$table` ( ${keys.fieldStr()} ) ENGINE = InnoDB DEFAULT CHARSET=utf8;")
 	}
-	
+
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 */
 	override suspend fun createTable(fields: Class<*>) {
 		createTable(fields.tableName, fields, "InnoDB", "utf8")
 	}
-	
+
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 */
@@ -89,21 +95,21 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 	suspend fun createTable(table: String, keys: Class<*>, engine: String = "InnoDB", charset: String = "utf8") {
 		doSql(createTableStr(table, keys, engine, charset))
 	}
-	
+
 	/**
 	 * 删除表格
 	 */
 	override suspend fun deleteTable(table: String) {
 		doSql("DROP TABLE if exists $table ENGINE = InnoDB DEFAULT CHARSET=utf8;")
 	}
-	
+
 	/**
 	 * 删除表格
 	 */
 	override suspend fun dropTable(table: String) {
 		deleteTable(table)
 	}
-	
+
 	/**
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由AsyncSqlAdapter继承而来
@@ -126,8 +132,8 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		reverse = reverse,
 		maxCount = maxCount
 	)
-	
-	
+
+
 	override suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>,
 		fields: String,
@@ -152,7 +158,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 			}
 		}
 	}
-	
+
 	override suspend fun update(
 		table: String,
 		set: String,
@@ -161,7 +167,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		val sql = "UPDATE $table SET $set${if (where.isNotEmpty()) " WHERE $where" else ""};"
 		return doSql(sql)
 	}
-	
+
 	/**
 	 * 更新数据库数据
 	 * @param value 用来存储数据的bean对象
@@ -177,7 +183,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 			sb.delete(sb.length - 1, sb.length)
 		return update(value.tableName, sb.toString(), where.sqlStr)
 	}
-	
+
 	private suspend fun insert(sql: String, table: Class<*>): Int {
 		return try {
 			doSql(sql)
@@ -190,19 +196,19 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 			}
 		}
 	}
-	
+
 	override suspend fun insert(table: String, fields: String, values: String): Int {
 		val sql = "INSERT INTO $table ($fields) VALUES $values;"
 		return doSql(sql)
 	}
-	
+
 	override suspend fun insert(value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${clazz.valueStr(value) ?: return 0});"
 		return insert(sql, clazz)
 	}
-	
+
 	override suspend fun insert(valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
@@ -216,59 +222,59 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		val sql = "INSERT INTO ${first.tableName} (${first.javaClass.declaredFields.fieldStr()}) VALUES $values;"
 		return insert(sql, clazz)
 	}
-	
+
 	override suspend fun delete(table: String, where: String?): Int {
 		val sql = "DELETE FROM `$table`${if (where != null) " WHERE $where" else ""};"
 		return doSql(sql)
-		
+
 	}
-	
+
 	override suspend fun delete(table: String, where: Clause?) =
 		delete(table, where?.sqlStr)
-	
+
 	override suspend fun close() {
 		connection.close()
 	}
-	
+
 	companion object {
 		init {
 			Class.forName("com.mysql.cj.jdbc.Driver")
 		}
-		
+
 		fun createTableStr(keys: Class<*>, engine: String = "InnoDB", charset: String = "utf8"): String =
 			createTableStr(keys.tableName, keys, engine, charset)
-		
+
 		fun createTableStr(table: String, keys: Class<*>, engine: String = "InnoDB", charset: String = "utf8"): String {
 			val fieldSet = keys.declaredFields
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS `$table`(")
 			val primaryKeySet = ArrayList<String>()
-			
+
 			val foreignKey = keys.getAnnotation(ForeignKey::class.java)?.let {
 				if (it.target.isNotEmpty()) it.target else null
 			}
 			val foreignKeyList = ArrayList<Pair<String, String>>()
-			
+
 			fieldSet.forEach {
 				valueStrBuilder.appendField(it, { it.fieldType }, foreignKeyList) {
 					primaryKeySet.add(fieldName)
 				}
 			}
-			
+
 			if (primaryKeySet.isNotEmpty()) {
 				valueStrBuilder.append("PRIMARY KEY(${primaryKeySet.fieldName}),")
 			}
-			
+
 			if (foreignKey != null && foreignKeyList.isEmpty()) {
 				val (source, target) = foreignKeyList.fieldStr()
 				valueStrBuilder.append("FOREIGN KEY ($source) REFERENCES $foreignKey ($target),")
 			}
 			valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
-			
+
 			valueStrBuilder.append(")ENGINE=$engine DEFAULT CHARSET=$charset;")
 			return valueStrBuilder.toString()
 		}
-		
+
 		private val Field.fieldType: String?
 			get() = getAnnotation(FieldType::class.java)?.name ?: when (type) {
 				java.lang.Byte::class.java -> "TINYINT"
@@ -278,7 +284,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 				java.lang.Long::class.java -> "BIGINT"
 				java.lang.Float::class.java -> "FLOAT"
 				java.lang.Double::class.java -> "DOUBLE"
-				
+
 				Byte::class.java -> "TINYINT"
 				Char::class.java -> "TINYINT"
 				Short::class.java -> "SMALLINT"
@@ -286,7 +292,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 				Long::class.java -> "BIGINT"
 				Float::class.java -> "FLOAT"
 				Double::class.java -> "Double"
-				
+
 				java.lang.String::class.java -> getAnnotation(TextLength::class.java)?.let { "CHAR(${it.length})" }
 					?: "TEXT"
 				else ->

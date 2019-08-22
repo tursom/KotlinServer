@@ -27,16 +27,16 @@ import kotlin.coroutines.suspendCoroutine
 
 class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 	private val path = File(base).absolutePath.simplifyPath()
-	
+
 	override val connection = runBlocking {
 		val config = JsonObject()
 		config.put("url", "jdbc:sqlite:$path")
 		config.put("_driver class", "org.sqlite.JDBC")
 		suspendCoroutine<SQLConnection> { cont ->
-			JDBCClient.createShared(vertx, config).getConnection {
+			JDBCClient.createShared(vertx, config, File(base).absolutePath.replace(".${File.separator}", "")).getConnection {
 				if (!it.failed()) {
 					val conn = it.result()
-					
+
 					// 我们要利用反射强行把我们需要的方法注入进去
 					val connField = conn.javaClass.getDeclaredField("conn")
 					connField.isAccessible = true
@@ -44,7 +44,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 					val innerField = fieldConn.javaClass.getDeclaredField("inner")
 					innerField.isAccessible = true
 					org.sqlite.Function.create(innerField.get(fieldConn) as Connection, "REGEXP", regexp)
-					
+
 					cont.resume(conn)
 				} else {
 					cont.resumeWithException(it.cause())
@@ -52,7 +52,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			}
 		}
 	}
-	
+
 	override suspend fun doSql(sql: String): Int = suspendCoroutine { cont ->
 		connection.execute(sql) {
 			if (it.succeeded()) {
@@ -62,27 +62,27 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			}
 		}
 	}
-	
-	
+
+
 	override suspend fun createTable(table: String, keys: Iterable<String>) {
 		val sql = "CREATE TABLE if not exists $table (${keys.fieldStr()})"
 		doSql(sql)
 	}
-	
+
 	override suspend fun createTable(fields: Class<*>) {
 		val sql = createTableStr(fields)
 		doSql(sql)
 	}
-	
+
 	override suspend fun deleteTable(table: String) {
 		val sql = "DROP TABLE if exists $table"
 		doSql(sql)
 	}
-	
+
 	override suspend fun dropTable(table: String) {
 		deleteTable(table)
 	}
-	
+
 	override suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>,
 		fields: Iterable<String>?,
@@ -92,7 +92,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		maxCount: Int?
 	): AsyncSqlAdapter<T> =
 		select(adapter, fields?.fieldStr() ?: "*", where.sqlStr, order?.fieldName, reverse, maxCount)
-	
+
 	override suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
 	): AsyncSqlAdapter<T> {
@@ -117,7 +117,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			adapter
 		}
 	}
-	
+
 	private suspend fun insert(sql: String, table: Class<*>): Int {
 		return try {
 			doSql(sql)
@@ -130,7 +130,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			}
 		}
 	}
-	
+
 	override suspend fun insert(value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
@@ -139,7 +139,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		val sql = "INSERT INTO ${value.tableName} ($column) VALUES ($valueStr);"
 		return insert(sql, clazz)
 	}
-	
+
 	override suspend fun insert(valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
@@ -153,17 +153,17 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		val sql = "INSERT INTO ${first.tableName} (${clazz.declaredFields.fieldStr()}) VALUES $values;"
 		return insert(sql, clazz)
 	}
-	
+
 	override suspend fun insert(table: String, fields: String, values: String): Int {
 		val sql = "INSERT INTO $table ($fields) VALUES $values;"
 		return doSql(sql)
 	}
-	
+
 	override suspend fun update(table: String, set: String, where: String): Int {
 		val sql = "UPDATE $table SET $set WHERE $where;"
 		return doSql(sql)
 	}
-	
+
 	override suspend fun update(
 		value: Any, where: Clause
 	): Int {
@@ -179,20 +179,20 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		}
 		return update(value.tableName, set.toString(), where.sqlStr)
 	}
-	
+
 	override suspend fun delete(table: String, where: String?): Int {
 		val sql = "DELETE FROM $table${if (where?.isNotEmpty() == true) " WHERE $where" else ""};"
 		return doSql(sql)
 	}
-	
+
 	override suspend fun delete(table: String, where: Clause?): Int {
 		return delete(table, where?.sqlStr)
 	}
-	
+
 	override suspend fun close() {
 		connection.close()
 	}
-	
+
 	companion object {
 		private val Field.fieldType: String?
 			get() = when (type) {
@@ -202,7 +202,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 				java.lang.Long::class.java -> "INTEGER"
 				java.lang.Float::class.java -> "REAL"
 				java.lang.Double::class.java -> "REAL"
-				
+
 				Byte::class.java -> "INTEGER"
 				Char::class.java -> "INTEGER"
 				Short::class.java -> "INTEGER"
@@ -210,16 +210,14 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 				Long::class.java -> "INTEGER"
 				Float::class.java -> "REAL"
 				Double::class.java -> "REAL"
-				
+
 				java.lang.String::class.java -> getAnnotation<TextLength>()?.let { "CHAR(${it.length})" } ?: "TEXT"
-				
+
 				else -> {
-					getAnnotation<FieldType>()?.name ?:
-					type.getAnnotation<FieldType>()?.name ?:
-					type.name.split('.').last()
+					getAnnotation<FieldType>()?.name ?: type.getAnnotation<FieldType>()?.name ?: type.name.split('.').last()
 				}
 			}
-		
+
 		private val regexp = object : org.sqlite.Function() {
 			override fun xFunc() {
 				val regex = Regex(value_text(0) ?: "")
@@ -227,7 +225,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 				result(if (regex.containsMatchIn(value)) 1 else 0)
 			}
 		}
-		
+
 		private fun StringBuilder.appendField(
 			field: Field,
 			foreignKeyList: java.util.AbstractCollection<in Pair<String, String>>
@@ -252,25 +250,25 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			}
 			append(',')
 		}
-		
+
 		fun createTableStr(keys: Class<*>): String {
 			val foreignKey = keys.getAnnotation(ForeignKey::class.java)?.let {
 				if (it.target.isNotEmpty()) it.target else null
 			}
 			val foreignKeyList = ArrayList<Pair<String, String>>()
-			
+
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS ${keys.tableName}(")
 			keys.declaredFields.forEach {
 				valueStrBuilder.appendField(it, foreignKeyList)
 			}
-			
+
 			foreignKey?.let {
 				if (foreignKeyList.isEmpty()) return@let
 				val (source, target) = foreignKeyList.fieldStr()
 				valueStrBuilder.append("FOREIGN KEY ($source) REFERENCES $it ($target),")
 			}
-			
+
 			valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
 			valueStrBuilder.append(");")
 			return valueStrBuilder.toString()
