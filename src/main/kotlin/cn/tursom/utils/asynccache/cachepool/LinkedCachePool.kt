@@ -1,4 +1,6 @@
-package cn.tursom.utils.cache
+package cn.tursom.utils.asynccache.cachepool
+
+import cn.tursom.utils.asynccache.interfaces.CachePool
 
 class LinkedCachePool<T> : CachePool<T> {
 	@Volatile

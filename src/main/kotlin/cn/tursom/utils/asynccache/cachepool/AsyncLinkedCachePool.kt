@@ -1,5 +1,6 @@
-package cn.tursom.utils.cache
+package cn.tursom.utils.asynccache.cachepool
 
+import cn.tursom.utils.asynccache.interfaces.AsyncCachePool
 import cn.tursom.utils.asynclock.AsyncMutexLock
 
 class AsyncLinkedCachePool<T> : AsyncCachePool<T> {

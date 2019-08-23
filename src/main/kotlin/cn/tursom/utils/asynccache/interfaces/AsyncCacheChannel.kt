@@ -1,4 +1,4 @@
-package cn.tursom.utils.cache
+package cn.tursom.utils.asynccache.interfaces
 
 interface AsyncCacheChannel<T> {
 	suspend fun put(cache: T): Boolean

@@ -24,6 +24,8 @@ open class NettyHttpContent(
 	val msg: FullHttpRequest
 ) : AdvanceHttpContent {
 	override val uri: String get() = msg.uri()
+	override val clientIp get() = ctx.channel().remoteAddress()!!
+	override val realIp: String = super.realIp
 	val httpMethod: HttpMethod get() = msg.method()
 	val protocolVersion: HttpVersion get() = msg.protocolVersion()
 	val headers: HttpHeaders get() = msg.headers()
@@ -36,7 +38,6 @@ open class NettyHttpContent(
 	override val responseBody = ByteArrayOutputStream()
 	override var responseCode: Int = 200
 	override var responseMessage: String? = null
-	override val clientIp get() = ctx.channel().remoteAddress()!!
 	override val method: String get() = httpMethod.name()
 	val chunkedList = ArrayList<AdvanceByteBuffer>()
 
@@ -84,8 +85,8 @@ open class NettyHttpContent(
 		responseBody.write(message.toByteArray())
 	}
 
-	override fun write(byte: Int) {
-		responseBody.write(byte)
+	override fun write(byte: Byte) {
+		responseBody.write(byte.toInt())
 	}
 
 	override fun write(bytes: ByteArray, offset: Int, size: Int) {

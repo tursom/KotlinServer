@@ -1,8 +1,11 @@
-package cn.tursom.utils.asynclock
+package cn.tursom.utils.datastruct.async.collections
+
+import cn.tursom.utils.asynclock.AsyncLock
+import cn.tursom.utils.asynclock.AsyncRWLock
 
 class AsyncLockAbstractMap<K, V>(
-	private val lock: AsyncLock,
-	private val map: java.util.AbstractMap<K, V> = HashMap()
+	override val lock: AsyncLock,
+	override val map: java.util.AbstractMap<K, V> = HashMap()
 ) : AsyncLockMap<K, V>(lock, map) {
 
 	constructor(lock: AsyncRWLock) : this(lock, HashMap())

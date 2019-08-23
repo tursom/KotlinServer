@@ -1,5 +1,6 @@
-package cn.tursom.utils.cache
+package cn.tursom.utils.asynccache.cachepool
 
+import cn.tursom.utils.asynccache.interfaces.CachePool
 import cn.tursom.utils.bytebuffer.HeapByteBuffer
 import cn.tursom.utils.datastruct.ArrayBitSet
 import java.nio.ByteBuffer

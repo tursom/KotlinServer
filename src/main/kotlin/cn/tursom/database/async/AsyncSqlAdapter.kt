@@ -1,6 +1,7 @@
 package cn.tursom.database.async
 
 import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.ignored
 import cn.tursom.database.SqlAdapter
 import cn.tursom.database.annotation.NotNull
 import cn.tursom.database.annotation.Constructor
@@ -25,11 +26,12 @@ class AsyncSqlAdapter<T>(
 	val fieldNameMap: Map<String, Field> = run {
 		val map = HashMap<String, Field>()
 		clazz.declaredFields.forEach {
+			if (it.ignored) return@forEach
 			map[it.fieldName] = it
 		}
 		map
 	}
-	
+
 	open fun adapt(result: ResultSet) {
 		val fieldList = ArrayList<FieldData>()
 		result.columnNames.forEachIndexed { index, fieldName ->
@@ -58,18 +60,18 @@ class AsyncSqlAdapter<T>(
 			adaptOnce(it, fieldList)
 		}
 	}
-	
+
 	@Suppress("UNCHECKED_CAST")
 	open fun adaptOnce(result: JsonArray, fieldList: List<FieldData>) {
 		//绕过构造函数获取变量0
 		val bean = unsafe.allocateInstance(clazz) as T
 		fieldList.forEach { (
-			                    index,
-			                    field,
-			                    beanType,
-			                    advanceSetter,
-			                    setter
-		                    ) ->
+													index,
+													field,
+													beanType,
+													advanceSetter,
+													setter
+												) ->
 			try {
 				if (advanceSetter != null) {
 					//如果你有能力直接从ResultSet里面取出数据,那就随君便
@@ -92,7 +94,7 @@ class AsyncSqlAdapter<T>(
 		}
 		add(bean)
 	}
-	
+
 	private fun handleCast(
 		bean: T,
 		field: Field,
@@ -134,7 +136,7 @@ class AsyncSqlAdapter<T>(
 			value
 		}
 	}
-	
+
 	data class FieldData(
 		val index: Int,
 		val field: Field,
@@ -142,7 +144,7 @@ class AsyncSqlAdapter<T>(
 		val advanceSetter: Method?,
 		val setter: Method?
 	)
-	
+
 	companion object {
 		//利用Unsafe绕过构造函数获取变量
 		private val unsafe by lazy {

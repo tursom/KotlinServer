@@ -8,6 +8,7 @@ import cn.tursom.database.SqlUtils.fieldName
 import cn.tursom.database.SqlUtils.valueStr
 import cn.tursom.database.SqlUtils.isSqlField
 import cn.tursom.database.SqlUtils.fieldValue
+import cn.tursom.database.SqlUtils.ignored
 import cn.tursom.database.annotation.FieldType
 import cn.tursom.database.annotation.ForeignKey
 import cn.tursom.database.annotation.Getter
@@ -27,7 +28,7 @@ class MySqlHelper(
 	@Suppress("MemberVisibilityCanBePrivate") val connection: Connection,
 	base: String? = null
 ) : SqlHelper {
-	
+
 	@Suppress("MemberVisibilityCanBePrivate")
 	var basename: String? = null
 		get() = synchronized(this) {
@@ -43,12 +44,12 @@ class MySqlHelper(
 				}
 			}
 		}
-	
+
 	init {
 		connection.autoCommit = false
 		basename = base
 	}
-	
+
 	constructor(url: String, user: String, password: String, base: String? = null)
 		: this(
 		DriverManager.getConnection(
@@ -58,7 +59,7 @@ class MySqlHelper(
 		),
 		base
 	)
-	
+
 	/*
 	 * 创建表格
 	 * table: 表格名
@@ -69,14 +70,14 @@ class MySqlHelper(
 		statement.executeUpdate("CREATE TABLE if not exists `$table` ( ${keys.fieldStr()} ) ENGINE = InnoDB DEFAULT CHARSET=utf8;")
 		connection.commit()
 	}
-	
+
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 */
 	override fun createTable(fields: Class<*>) {
 		createTable(fields.tableName, fields, "InnoDB", "utf8")
 	}
-	
+
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 */
@@ -86,7 +87,7 @@ class MySqlHelper(
 		statement.executeUpdate(createTableStr(table, keys, engine, charset))
 		connection.commit()
 	}
-	
+
 	/**
 	 * 删除表格
 	 */
@@ -95,14 +96,14 @@ class MySqlHelper(
 		statement.executeUpdate("DROP TABLE if exists $table ENGINE = InnoDB DEFAULT CHARSET=utf8;")
 		connection.commit()
 	}
-	
+
 	/**
 	 * 删除表格
 	 */
 	override fun dropTable(table: String) {
 		deleteTable(table)
 	}
-	
+
 	/**
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
@@ -125,8 +126,8 @@ class MySqlHelper(
 		reverse = reverse,
 		maxCount = maxCount
 	)
-	
-	
+
+
 	override fun <T : Any> select(
 		adapter: SqlAdapter<T>,
 		fields: String,
@@ -145,7 +146,7 @@ class MySqlHelper(
 		statement.closeOnCompletion()
 		return adapter
 	}
-	
+
 	override fun update(
 		table: String,
 		set: String,
@@ -160,7 +161,7 @@ class MySqlHelper(
 			statement.closeOnCompletion()
 		}
 	}
-	
+
 	/**
 	 * 更新数据库数据
 	 * @param value 用来存储数据的bean对象
@@ -176,7 +177,7 @@ class MySqlHelper(
 			sb.delete(sb.length - 1, sb.length)
 		return update(value.tableName, sb.toString(), where.sqlStr)
 	}
-	
+
 	private fun insert(connection: Connection, sql: String, table: Class<*>): Int {
 		val statement = connection.createStatement()
 		return try {
@@ -193,7 +194,7 @@ class MySqlHelper(
 			statement.closeOnCompletion()
 		}
 	}
-	
+
 	override fun insert(table: String, fields: String, values: String): Int {
 		val sql = "INSERT INTO $table ($fields) VALUES $values;"
 		val statement = connection.createStatement()
@@ -204,14 +205,14 @@ class MySqlHelper(
 			statement.closeOnCompletion()
 		}
 	}
-	
+
 	override fun insert(value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val sql = "INSERT INTO ${value.tableName} (${fields.fieldStr()}) VALUES (${clazz.valueStr(value) ?: return 0});"
 		return insert(connection, sql, clazz)
 	}
-	
+
 	override fun insert(valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
@@ -225,7 +226,7 @@ class MySqlHelper(
 		val sql = "INSERT INTO ${first.tableName} (${first.javaClass.declaredFields.fieldStr()}) VALUES $values;"
 		return insert(connection, sql, clazz)
 	}
-	
+
 	override fun delete(table: String, where: String?): Int {
 		val sql = "DELETE FROM `$table`${if (where != null) " WHERE $where" else ""};"
 		val statement = connection.createStatement()
@@ -236,59 +237,60 @@ class MySqlHelper(
 			statement.closeOnCompletion()
 		}
 	}
-	
+
 	override fun delete(table: String, where: Clause?) =
 		delete(table, where?.sqlStr)
-	
-	
+
+
 	override fun close() {
 		connection.close()
 	}
-	
+
 	override fun commit() {
 		connection.commit()
 	}
-	
-	
+
+
 	companion object {
 		init {
 			Class.forName("com.mysql.cj.jdbc.Driver")
 		}
-		
+
 		fun createTableStr(keys: Class<*>, engine: String = "InnoDB", charset: String = "utf8"): String =
 			createTableStr(keys.tableName, keys, engine, charset)
-		
+
 		fun createTableStr(table: String, keys: Class<*>, engine: String = "InnoDB", charset: String = "utf8"): String {
 			val fieldSet = keys.declaredFields
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS `$table`(")
 			val primaryKeySet = ArrayList<String>()
-			
+
 			val foreignKey = keys.getAnnotation(ForeignKey::class.java)?.let {
 				if (it.target.isNotEmpty()) it.target else null
 			}
 			val foreignKeyList = ArrayList<Pair<String, String>>()
-			
+
 			fieldSet.forEach {
+				if (it.ignored) return@forEach
 				valueStrBuilder.appendField(it, { it.fieldType }, foreignKeyList) {
 					primaryKeySet.add(fieldName)
 				}
 			}
-			
+
 			if (primaryKeySet.isNotEmpty()) {
 				valueStrBuilder.append("PRIMARY KEY(${primaryKeySet.fieldName}),")
 			}
-			
+
 			if (foreignKey != null && foreignKeyList.isEmpty()) {
 				val (source, target) = foreignKeyList.fieldStr()
 				valueStrBuilder.append("FOREIGN KEY ($source) REFERENCES $foreignKey ($target),")
 			}
 			valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
-			
+
 			valueStrBuilder.append(")ENGINE=$engine DEFAULT CHARSET=$charset;")
 			return valueStrBuilder.toString()
 		}
-		
+
 		private val Field.fieldType: String?
 			get() = getAnnotation(FieldType::class.java)?.name ?: when (type) {
 				java.lang.Byte::class.java -> "TINYINT"
@@ -298,7 +300,7 @@ class MySqlHelper(
 				java.lang.Long::class.java -> "BIGINT"
 				java.lang.Float::class.java -> "FLOAT"
 				java.lang.Double::class.java -> "DOUBLE"
-				
+
 				Byte::class.java -> "TINYINT"
 				Char::class.java -> "TINYINT"
 				Short::class.java -> "SMALLINT"
@@ -306,7 +308,7 @@ class MySqlHelper(
 				Long::class.java -> "BIGINT"
 				Float::class.java -> "FLOAT"
 				Double::class.java -> "Double"
-				
+
 				java.lang.String::class.java -> getAnnotation(TextLength::class.java)?.let { "CHAR(${it.length})" }
 					?: "TEXT"
 				else -> if (type.isSqlField) {

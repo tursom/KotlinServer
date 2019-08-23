@@ -1,23 +1,38 @@
 package cn.tursom.database
 
 import cn.tursom.database.annotation.*
-import cn.tursom.database.clauses.Clause
-import cn.tursom.database.clauses.ClauseMaker
-import jdk.nashorn.internal.objects.NativeArray.forEach
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
-import java.util.AbstractCollection
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.Iterable
+import kotlin.collections.List
+import kotlin.collections.contains
+import kotlin.collections.forEach
+import kotlin.collections.iterator
+import kotlin.collections.last
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaField
 
 object SqlUtils {
+	val Field.ignored get() = getAnnotation(Ignore::class.java) != null
+
+	val Class<*>.dataField: List<Field>
+		get() {
+			val fields = declaredFields
+			val fieldList = ArrayList<Field>()
+			fields.forEach {
+				if (!it.ignored) fieldList.add(it)
+			}
+			return fieldList
+		}
 	val Field.fieldName: String
 		get() = getAnnotation(FieldName::class.java)?.name ?: name
-	
+
 	val KProperty<*>.fieldName: String
 		get() = javaField!!.fieldName
-	
+
 	val Any.fieldValue: String
 		get() = when (this) {
 			is SqlField<*> -> javaClass.getAnnotation(StringField::class.java)?.let {
@@ -26,53 +41,55 @@ object SqlUtils {
 			is String -> sqlStr
 			else -> toString()
 		}
-	
-	val Iterable<String>.fieldName: String? get() {
-		val stringBuffer = StringBuffer()
-		forEach {
-			if (it.isNotEmpty())
-				stringBuffer.append("`$it`,")
+
+	val Iterable<String>.fieldName: String?
+		get() {
+			val stringBuffer = StringBuffer()
+			forEach {
+				if (it.isNotEmpty())
+					stringBuffer.append("`$it`,")
+			}
+			return if (stringBuffer.isNotEmpty()) {
+				stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
+				stringBuffer.toString()
+			} else {
+				null
+			}
 		}
-		return if (stringBuffer.isNotEmpty()) {
-			stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
-			stringBuffer.toString()
-		} else {
-			null
-		}
-	}
-	
+
 	val Class<*>.isSqlField
 		get() = interfaces.contains(SqlField::class.java)
-	
+
 	@JvmStatic
 	val Any.tableName: String
 		get() = javaClass.tableName
-	
+
 	@JvmStatic
 	val Class<*>.tableName: String
 		get() = (getAnnotation<TableName>()?.name ?: name.split('.').last()).toLowerCase()
-	
+
 	@JvmStatic
 	val KClass<*>.tableName: String
 		get() = java.tableName
-	
+
 	@JvmStatic
 	inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T::class.java)
-	
+
 	@JvmStatic
 	inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation(T::class.java)
-	
+
 	@JvmStatic
 	fun Array<out Field>.fieldStr(): String {
 		val fields = StringBuilder()
 		forEach field@{ field ->
+			if (field.ignored) return@field
 			field.isAccessible = true
 			fields.append("${field.fieldName},")
 		}
 		fields.deleteCharAt(fields.length - 1)
 		return fields.toString()
 	}
-	
+
 	@JvmStatic
 	fun Iterable<String>.fieldStr(): String {
 		val stringBuffer = StringBuffer()
@@ -83,7 +100,7 @@ object SqlUtils {
 		stringBuffer.delete(stringBuffer.length - 1, stringBuffer.length)
 		return stringBuffer.toString()
 	}
-	
+
 	@JvmStatic
 	fun Class<*>.valueStr(value: Any): String? {
 		val values = StringBuilder()
@@ -101,12 +118,13 @@ object SqlUtils {
 		}
 		return values.toString()
 	}
-	
+
 	@JvmStatic
 	fun Array<out Field>.valueStr(value: Any): String? {
 		val clazz = value.javaClass
 		val values = StringBuilder()
 		forEach field@{ field ->
+			if (field.ignored) return@field
 			field.isAccessible = true
 			val getter = field.getAnnotation(Getter::class.java)
 			if (getter != null) {
@@ -130,7 +148,7 @@ object SqlUtils {
 		}
 		return values.toString()
 	}
-	
+
 	@JvmStatic
 	fun Iterable<*>.valueStr(sqlFieldMap: Array<out Field>): String? {
 		val values = StringBuilder()
@@ -145,7 +163,7 @@ object SqlUtils {
 		}
 		return values.toString()
 	}
-	
+
 	@JvmStatic
 	fun Iterable<SqlFieldData>.valueStr(value: Iterable<*>): String? {
 		val values = StringBuilder()
@@ -172,7 +190,7 @@ object SqlUtils {
 		}
 		return values.toString()
 	}
-	
+
 	@JvmStatic
 	fun List<Pair<String, String>>.fieldStr(): Pair<String, String> {
 		val first = StringBuilder()
@@ -185,7 +203,7 @@ object SqlUtils {
 		if (second.isNotEmpty()) second.deleteCharAt(second.length - 1)
 		return first.toString() to second.toString()
 	}
-	
+
 	@JvmStatic
 	fun StringBuilder.appendField(
 		field: Field,
@@ -194,6 +212,7 @@ object SqlUtils {
 		autoIncrement: String = "AUTO_INCREMENT",
 		primaryKey: Field.() -> Unit
 	) {
+		if (field.ignored) return
 		val fieldName = field.fieldName
 		append("`$fieldName` ${field.fieldType() ?: return}")
 		field.annotations.forEach annotations@{ annotation ->
@@ -217,7 +236,7 @@ object SqlUtils {
 		}
 		append(',')
 	}
-	
+
 	@JvmStatic
 	val String.sqlStr
 		get() = "'${replace("'", "''")}'"

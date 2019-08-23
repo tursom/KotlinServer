@@ -26,6 +26,10 @@ interface HttpContent {
 	val method: String
 	val responseBody: ByteArrayOutputStream
 	val cookieMap get() = getHeader("Cookie")?.let { decodeCookie(it) }
+	val realIp
+		get() = getHeader("X-Forwarded-For") ?: clientIp.toString().let { str ->
+			str.substring(1, str.indexOf(':').let { if (it < 1) str.length else it - 1 })
+		}
 
 	fun getHeader(header: String): String?
 	fun getHeaders(): List<Map.Entry<String, String>>
@@ -41,7 +45,7 @@ interface HttpContent {
 	operator fun set(name: String, value: Any) = setResponseHeader(name, value)
 
 	fun write(message: String)
-	fun write(byte: Int)
+	fun write(byte: Byte)
 	fun write(bytes: ByteArray, offset: Int = 0, size: Int = 0)
 	fun write(buffer: AdvanceByteBuffer)
 	fun reset()

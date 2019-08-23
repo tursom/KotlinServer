@@ -3,6 +3,7 @@ package cn.tursom.database.sqlite
 import cn.tursom.database.SqlUtils.fieldName
 import cn.tursom.database.SqlUtils.fieldValue
 import cn.tursom.database.SqlUtils.isSqlField
+import cn.tursom.database.SqlUtils.ignored
 import cn.tursom.database.SqlUtils.valueStr
 import cn.tursom.database.SqlUtils.fieldStr
 import cn.tursom.database.SqlUtils.tableName
@@ -32,7 +33,7 @@ open class SQLiteHelper
 (base: String) : SqlHelper {
 	private val connection: Connection
 	private val path = File(base).absolutePath.simplifyPath()
-	
+
 	init {
 		synchronized(connectionMap) {
 			connection = connectionMap[path] ?: {
@@ -46,14 +47,14 @@ open class SQLiteHelper
 			connectionCount[path] = connectionCount[path] ?: 0 + 1
 		}
 	}
-	
+
 	override fun equals(other: Any?): Boolean =
 		if (other is SQLiteHelper) {
 			connection == other.connection
 		} else {
 			false
 		}
-	
+
 	private fun doSql(sql: String): Int {
 		val statement = connection.createStatement()
 		return try {
@@ -63,7 +64,7 @@ open class SQLiteHelper
 			statement.closeOnCompletion()
 		}
 	}
-	
+
 	/**
 	 * 创建表格
 	 * @param table: 表格名
@@ -73,7 +74,7 @@ open class SQLiteHelper
 		val sql = "CREATE TABLE if not exists $table (${keys.fieldStr()})"
 		doSql(sql)
 	}
-	
+
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 * 但是有诸多缺陷，所以不是很建议使用
@@ -82,7 +83,7 @@ open class SQLiteHelper
 		val sql = createTableStr(fields)
 		doSql(sql)
 	}
-	
+
 	/**
 	 * 删除表格
 	 */
@@ -90,14 +91,14 @@ open class SQLiteHelper
 		val sql = "DROP TABLE if exists $table"
 		doSql(sql)
 	}
-	
+
 	/**
 	 * 删除表格
 	 */
 	override fun dropTable(table: String) {
 		deleteTable(table)
 	}
-	
+
 	/**
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
@@ -114,7 +115,7 @@ open class SQLiteHelper
 		maxCount: Int?
 	): SqlAdapter<T> =
 		select(adapter, fields?.fieldStr() ?: "*", where.sqlStr, order?.fieldName, reverse, maxCount)
-	
+
 	override fun <T : Any> select(
 		adapter: SqlAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
 	): SqlAdapter<T> {
@@ -134,7 +135,7 @@ open class SQLiteHelper
 		statement.closeOnCompletion()
 		return adapter
 	}
-	
+
 	private fun insert(connection: Connection, sql: String, table: Class<*>): Int {
 		val statement = connection.createStatement()
 		return try {
@@ -151,7 +152,7 @@ open class SQLiteHelper
 			statement.closeOnCompletion()
 		}
 	}
-	
+
 	override fun insert(value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
@@ -160,12 +161,13 @@ open class SQLiteHelper
 		val sql = "INSERT INTO ${value.tableName} ($column) VALUES ($valueStr);"
 		return insert(connection, sql, clazz)
 	}
-	
+
 	override fun insert(valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
 		val fields = ArrayList<SqlFieldData>()
 		clazz.declaredFields.forEach { field ->
+			if (field.ignored) return@forEach
 			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(field.name) }
 			fields.add(SqlFieldData(field, getter))
 		}
@@ -174,17 +176,17 @@ open class SQLiteHelper
 		val sql = "INSERT INTO ${first.tableName} (${clazz.declaredFields.fieldStr()}) VALUES $values;"
 		return insert(connection, sql, clazz)
 	}
-	
+
 	override fun insert(table: String, fields: String, values: String): Int {
 		val sql = "INSERT INTO $table ($fields) VALUES $values;"
 		return doSql(sql)
 	}
-	
+
 	override fun update(table: String, set: String, where: String): Int {
 		val sql = "UPDATE $table SET $set WHERE $where;"
 		return doSql(sql)
 	}
-	
+
 	override fun update(
 		value: Any, where: Clause
 	): Int {
@@ -200,22 +202,22 @@ open class SQLiteHelper
 		}
 		return update(value.tableName, set.toString(), where.sqlStr)
 	}
-	
+
 	override fun delete(table: String, where: String?): Int {
 		val sql = "DELETE FROM $table${if (where?.isNotEmpty() == true) " WHERE $where" else ""};"
 		return doSql(sql)
 	}
-	
+
 	override fun delete(table: String, where: Clause?): Int {
 		return delete(table, where?.sqlStr)
 	}
-	
+
 	override fun commit() {
 		synchronized(connection) {
 			connection.commit()
 		}
 	}
-	
+
 	override fun close() {
 		synchronized(connectionMap) {
 			connectionCount[path] = connectionCount[path] ?: 1 - 1
@@ -226,22 +228,22 @@ open class SQLiteHelper
 			}
 		}
 	}
-	
+
 	override fun hashCode(): Int {
 		var result = connection.hashCode()
 		result = 31 * result + path.hashCode()
 		return result
 	}
-	
+
 	class CantConnectDataBase(s: String? = null) : SQLException(s)
-	
+
 	companion object {
 		private val connectionMap by lazy {
 			Class.forName("org.sqlite.JDBC")
 			HashMap<String, Connection>()
 		}
 		private var connectionCount = HashMap<String, Int>()
-		
+
 		private val Field.fieldType: String?
 			get() = when (type) {
 				java.lang.Byte::class.java -> "INTEGER"
@@ -250,7 +252,7 @@ open class SQLiteHelper
 				java.lang.Long::class.java -> "INTEGER"
 				java.lang.Float::class.java -> "REAL"
 				java.lang.Double::class.java -> "REAL"
-				
+
 				Byte::class.java -> "INTEGER"
 				Char::class.java -> "INTEGER"
 				Short::class.java -> "INTEGER"
@@ -258,9 +260,9 @@ open class SQLiteHelper
 				Long::class.java -> "INTEGER"
 				Float::class.java -> "REAL"
 				Double::class.java -> "REAL"
-				
+
 				java.lang.String::class.java -> getAnnotation<TextLength>()?.let { "CHAR(${it.length})" } ?: "TEXT"
-				
+
 				else -> {
 					if (type.isSqlField) {
 						type.getAnnotation<FieldType>()?.name ?: type.name.split('.').last()
@@ -269,7 +271,7 @@ open class SQLiteHelper
 					}
 				}
 			}
-		
+
 		private val regexp = object : org.sqlite.Function() {
 			override fun xFunc() {
 				val regex = Regex(value_text(0) ?: "")
@@ -277,7 +279,7 @@ open class SQLiteHelper
 				result(if (regex.containsMatchIn(value)) 1 else 0)
 			}
 		}
-		
+
 		private fun StringBuilder.appendField(
 			field: Field,
 			foreignKeyList: java.util.AbstractCollection<in Pair<String, String>>
@@ -302,25 +304,25 @@ open class SQLiteHelper
 			}
 			append(',')
 		}
-		
+
 		fun createTableStr(keys: Class<*>): String {
 			val foreignKey = keys.getAnnotation(ForeignKey::class.java)?.let {
 				if (it.target.isNotEmpty()) it.target else null
 			}
 			val foreignKeyList = ArrayList<Pair<String, String>>()
-			
+
 			val valueStrBuilder = StringBuilder()
 			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS ${keys.tableName}(")
 			keys.declaredFields.forEach {
 				valueStrBuilder.appendField(it, foreignKeyList)
 			}
-			
+
 			foreignKey?.let {
 				if (foreignKeyList.isEmpty()) return@let
 				val (source, target) = foreignKeyList.fieldStr()
 				valueStrBuilder.append("FOREIGN KEY ($source) REFERENCES $it ($target),")
 			}
-			
+
 			valueStrBuilder.deleteCharAt(valueStrBuilder.length - 1)
 			valueStrBuilder.append(");")
 			return valueStrBuilder.toString()

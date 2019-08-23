@@ -13,6 +13,7 @@ import cn.tursom.database.SqlUtils.getAnnotation
 import cn.tursom.database.SqlUtils.valueStr
 import cn.tursom.database.SqlUtils.fieldName
 import cn.tursom.database.SqlUtils.fieldValue
+import cn.tursom.database.SqlUtils.ignored
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.jdbc.JDBCClient
 import io.vertx.ext.sql.SQLConnection
@@ -145,6 +146,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		val clazz = first.javaClass
 		val fields = ArrayList<SqlFieldData>()
 		clazz.declaredFields.forEach { field ->
+			if (field.ignored) return@forEach
 			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(it.getter) }
 			fields.add(SqlFieldData(field, getter))
 		}
@@ -230,6 +232,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			field: Field,
 			foreignKeyList: java.util.AbstractCollection<in Pair<String, String>>
 		) {
+			if (field.ignored) return
 			val fieldName = field.fieldName
 			append("`$fieldName` ${field.fieldType ?: return}")
 			field.annotations.forEach annotations@{ annotation ->

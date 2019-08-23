@@ -14,6 +14,7 @@ import cn.tursom.database.SqlUtils.fieldStr
 import cn.tursom.database.SqlUtils.tableName
 import cn.tursom.database.SqlUtils.valueStr
 import cn.tursom.database.SqlUtils.fieldValue
+import cn.tursom.database.SqlUtils.ignored
 import cn.tursom.database.SqlUtils.appendField
 import cn.tursom.database.SqlUtils.getAnnotation
 import io.vertx.core.json.JsonObject
@@ -214,6 +215,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		val clazz = first.javaClass
 		val fields = ArrayList<SqlFieldData>()
 		clazz.declaredFields.forEach { field ->
+			if (field.ignored) return@forEach
 			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(it.getter) }
 			fields.add(SqlFieldData(field, getter))
 		}

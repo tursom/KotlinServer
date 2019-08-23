@@ -25,7 +25,7 @@ class EmptyHttpContent(
 	override fun setResponseHeader(name: String, value: Any) {}
 	override fun addResponseHeader(name: String, value: Any) {}
 	override fun write(message: String) {}
-	override fun write(byte: Int) {}
+	override fun write(byte: Byte) {}
 	override fun write(bytes: ByteArray, offset: Int, size: Int) {}
 	override fun write(buffer: AdvanceByteBuffer) {}
 	override fun reset() {}
