@@ -115,6 +115,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			}
 		} catch (e: SQLiteException) {
 			if (e.message != "[SQLITE_ERROR] SQL error or missing database (no such table: ${adapter.clazz.tableName})") throw e
+			createTable(adapter.clazz)
 			adapter
 		}
 	}

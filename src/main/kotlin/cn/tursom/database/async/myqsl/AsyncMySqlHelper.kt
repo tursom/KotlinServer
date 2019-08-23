@@ -189,12 +189,8 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		return try {
 			doSql(sql)
 		} catch (e: SQLSyntaxErrorException) {
-			if (e.message == "Table '$basename.${table.tableName}' doesn't exist") {
-				createTable(table)
-				doSql(sql)
-			} else {
-				throw e
-			}
+			createTable(table)
+			doSql(sql)
 		}
 	}
 
