@@ -27,7 +27,7 @@ open class NettyHttpContent(
 	val httpMethod: HttpMethod get() = msg.method()
 	val protocolVersion: HttpVersion get() = msg.protocolVersion()
 	val headers: HttpHeaders get() = msg.headers()
-	private val paramMap by lazy { RequestParser.parse(msg) }
+	protected val paramMap by lazy { RequestParser.parse(msg) }
 	override val cookieMap by lazy { super.cookieMap }
 	override val body = msg.content()?.let { NettyAdvanceByteBuffer(it) }
 

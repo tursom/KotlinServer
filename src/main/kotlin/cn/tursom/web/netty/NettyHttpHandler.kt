@@ -8,9 +8,9 @@ import io.netty.handler.codec.http.FullHttpRequest
 
 @ChannelHandler.Sharable
 class NettyHttpHandler(
-	private val handler: HttpHandler<NettyHttpContent>
+	private val handler: HttpHandler<NettyHttpContent, NettyExceptionContent>
 ) : SimpleChannelInboundHandler<FullHttpRequest>() {
-	
+
 	override fun channelRead0(ctx: ChannelHandlerContext, msg: FullHttpRequest) {
 		val handlerContext = NettyHttpContent(ctx, msg)
 		try {
@@ -19,14 +19,14 @@ class NettyHttpHandler(
 			handlerContext.write("${e.javaClass}: ${e.message}")
 		}
 	}
-	
+
 	override fun channelReadComplete(ctx: ChannelHandlerContext) {
 		super.channelReadComplete(ctx)
 		ctx.flush()
 	}
-	
-	override fun exceptionCaught(ctx: ChannelHandlerContext?, cause: Throwable?) {
+
+	override fun exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable?) {
 		if (cause != null) handler.exception(NettyExceptionContent(ctx, cause))
-		ctx?.close()
+		ctx.close()
 	}
 }

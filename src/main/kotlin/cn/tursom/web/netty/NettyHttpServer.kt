@@ -1,6 +1,5 @@
 package cn.tursom.web.netty
 
-import cn.tursom.web.ExceptionContent
 import cn.tursom.web.HttpHandler
 import cn.tursom.web.HttpServer
 import io.netty.bootstrap.ServerBootstrap
@@ -17,25 +16,28 @@ import io.netty.handler.stream.ChunkedWriteHandler
 
 class NettyHttpServer(
 	override val port: Int,
-	handler: HttpHandler<NettyHttpContent>,
-	bodySize: Int = 512 * 1024
+	handler: HttpHandler<NettyHttpContent, NettyExceptionContent>,
+	bodySize: Int = 512 * 1024,
+	autoRun: Boolean = false
 ) : HttpServer {
 	constructor(
 		port: Int,
 		bodySize: Int = 512 * 1024,
+		autoRun: Boolean = false,
 		handler: (content: NettyHttpContent) -> Unit
 	) : this(
 		port,
-		object : HttpHandler<NettyHttpContent> {
+		object : HttpHandler<NettyHttpContent, NettyExceptionContent> {
 			override fun handle(content: NettyHttpContent) {
 				handler(content)
 			}
 
-			override fun exception(e: ExceptionContent) {
+			override fun exception(e: NettyExceptionContent) {
 				e.cause.printStackTrace()
 			}
 		},
-		bodySize
+		bodySize,
+		autoRun
 	)
 
 	val httpHandler = NettyHttpHandler(handler)
@@ -43,13 +45,12 @@ class NettyHttpServer(
 	private val b = ServerBootstrap().group(group)
 		.channel(NioServerSocketChannel::class.java)
 		.childHandler(object : ChannelInitializer<SocketChannel>() {
-			@Throws(Exception::class)
 			override fun initChannel(ch: SocketChannel) {
 				ch.pipeline()
 					.addLast("decoder", HttpRequestDecoder())
 					.addLast("encoder", HttpResponseEncoder())
 					.addLast("aggregator", HttpObjectAggregator(bodySize))
-					.addLast("http-chunked", ChunkedWriteHandler()) //目的是支持异步大文件传输（）
+					.addLast("http-chunked", ChunkedWriteHandler())
 					.addLast("handle", httpHandler)
 			}
 		})
@@ -57,6 +58,10 @@ class NettyHttpServer(
 		.option(ChannelOption.SO_REUSEADDR, true)
 		.childOption(ChannelOption.SO_KEEPALIVE, java.lang.Boolean.TRUE)
 	private lateinit var future: ChannelFuture
+
+	init {
+		if (autoRun) run()
+	}
 
 	override fun run() {
 		future = b.bind(port)

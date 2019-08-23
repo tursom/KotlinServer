@@ -35,7 +35,7 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		config.put("user", user)
 		config.put("password", password)
 		suspendCoroutine<SQLConnection> { cont ->
-			JDBCClient.createShared(vertx, config).getConnection {
+			JDBCClient.createShared(vertx, config, "$url@$user").getConnection {
 				if (!it.failed()) {
 					cont.resume(it.result())
 				} else {
