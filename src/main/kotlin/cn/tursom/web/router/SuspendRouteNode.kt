@@ -7,16 +7,15 @@ import cn.tursom.utils.binarySearch
 internal open class SuspendRouteNode<T>(
 	var routeList: List<String>,
 	var index: Int,
-	override var value: T? = null,
-	val maxReadTime: Long
+	override var value: T? = null
 ) : SuspendRouterNode<T> {
 	val route: String = routeList[index]
 	var wildSubRouter: SuspendAnyRouteNode<T>? = null
 
-	private val placeholderRouterListLock = AsyncReadFirstRWLock(maxReadTime)
+	private val placeholderRouterListLock = AsyncReadFirstRWLock()
 	protected open val placeholderRouterList: ArrayList<SuspendPlaceholderRouteNode<T>>? = ArrayList(0)
 
-	private val subRouterMapLock = AsyncReadFirstRWLock(maxReadTime)
+	private val subRouterMapLock = AsyncReadFirstRWLock()
 	val subRouterMap = HashMap<String, SuspendRouteNode<T>>(0)
 
 	override val lastRoute
@@ -68,15 +67,14 @@ internal open class SuspendRouteNode<T>(
 		return when {
 			r.isEmpty() -> return addNode(route, startIndex + 1)
 			r == "*" -> {
-				wildSubRouter = SuspendAnyRouteNode(route, startIndex, null, maxReadTime)
+				wildSubRouter = SuspendAnyRouteNode(route, startIndex, null)
 				1
 			}
 			r[0] == ':' -> {
 				val node: SuspendPlaceholderRouteNode<T> = SuspendPlaceholderRouteNode(
 					route,
 					startIndex,
-					value = value,
-					maxReadTime = maxReadTime
+					value = value
 				)
 				// 必须保证 placeholderRouterList 存在，而且还不能有这个长度的节点
 				if (placeholderRouterListLock.doRead { placeholderRouterList!!.binarySearch { it.size - node.size } } != null) {
@@ -89,7 +87,7 @@ internal open class SuspendRouteNode<T>(
 				node.size
 			}
 			else -> {
-				subRouterMap[r] = SuspendRouteNode(route, startIndex, value, maxReadTime)
+				subRouterMap[r] = SuspendRouteNode(route, startIndex, value)
 				1
 			}
 		}

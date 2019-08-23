@@ -4,8 +4,8 @@ import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 
 @Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
-class SuspendRouter<T>(val maxReadTime: Long = 5) {
-	private val rootNode = SuspendRouteNode<T>(listOf(""), 0, null, maxReadTime)
+class SuspendRouter<T>() {
+	private val rootNode = SuspendRouteNode<T>(listOf(""), 0, null)
 	private val threadPool = Executors.newSingleThreadExecutor()
 
 	@Volatile
@@ -34,7 +34,7 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 				r.isEmpty() -> routeNode
 
 				r == "*" -> routeNode.wildSubRouter ?: run {
-					val node = SuspendAnyRouteNode<T>(routeList, index, null, maxReadTime)
+					val node = SuspendAnyRouteNode<T>(routeList, index, null)
 					routeNode.wildSubRouter = node
 					index = routeList.size - 1
 					node
@@ -51,7 +51,7 @@ class SuspendRouter<T>(val maxReadTime: Long = 5) {
 				}
 
 				else -> routeNode.subRouterMap[r] ?: {
-					val node = SuspendRouteNode<T>(routeList, index, null, maxReadTime)
+					val node = SuspendRouteNode<T>(routeList, index, null)
 					routeNode.subRouterMap[r] = node
 					node
 				}()

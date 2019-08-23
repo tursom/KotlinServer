@@ -14,5 +14,5 @@ val <K : Comparable<K>> AsyncPotableMap<K, Unit>.keySet
 fun <K, V> ReadWriteLockHashMap() = AsyncRWLockAbstractMap<K, V>(AsyncWriteFirstRWLock())
 
 @Suppress("FunctionName")
-fun <K, V> WriteLockHashMap(maxReadTime: Long = 5) =
-	AsyncRWLockAbstractMap<K, V>(AsyncReadFirstRWLock(maxReadTime))
+fun <K, V> WriteLockHashMap() =
+	AsyncRWLockAbstractMap<K, V>(AsyncReadFirstRWLock())

@@ -28,6 +28,17 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 class AsyncMySqlHelper(url: String, user: String, password: String, base: String? = null) : AsyncSqlHelper {
+	override suspend fun replace(value: Any): Int {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+
+	override suspend fun replace(valueList: Iterable<*>): Int {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
+
+	override suspend fun replace(table: String, fields: String, values: String): Int {
+		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+	}
 
 	override val connection = runBlocking {
 		val config = JsonObject()

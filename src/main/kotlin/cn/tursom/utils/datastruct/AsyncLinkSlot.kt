@@ -3,7 +3,7 @@ package cn.tursom.utils.datastruct
 import cn.tursom.utils.asynclock.AsyncReadFirstRWLock
 
 class AsyncLinkSlot<K, V> {
-	private val lock = AsyncReadFirstRWLock(3)
+	private val lock = AsyncReadFirstRWLock()
 	@Volatile
 	private var node: Node<K, V>? = null
 	@Volatile

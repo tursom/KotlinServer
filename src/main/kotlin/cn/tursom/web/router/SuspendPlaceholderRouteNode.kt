@@ -4,9 +4,8 @@ internal class SuspendPlaceholderRouteNode<T>(
 	route: List<String>,
 	private val startIndex: Int = 0,
 	endIndex: Int = startIndex + route.matchLength(startIndex),
-	value: T? = null,
-	maxReadTime: Long
-) : SuspendRouteNode<T>(route, endIndex - 1, value, maxReadTime) {
+	value: T? = null
+) : SuspendRouteNode<T>(route, endIndex - 1, value) {
 	override val placeholderRouterList: ArrayList<SuspendPlaceholderRouteNode<T>>?
 		get() = null
 	

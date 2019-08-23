@@ -42,6 +42,12 @@ interface AsyncSqlHelper {
 	suspend fun insert(valueList: Iterable<*>): Int
 	
 	suspend fun insert(table: String, fields: String, values: String): Int
+
+	suspend fun replace(value: Any): Int
+
+	suspend fun replace(valueList: Iterable<*>): Int
+
+	suspend fun replace(table: String, fields: String, values: String): Int
 	
 	suspend fun update(table: String, set: String, where: String = ""): Int
 	

@@ -162,6 +162,35 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		return doSql(sql)
 	}
 
+	override suspend fun replace(value: Any): Int {
+		val clazz = value.javaClass
+		val fields = clazz.declaredFields
+		val column = fields.fieldStr()
+		val valueStr = fields.valueStr(value) ?: return 0
+		val sql = "REPLACE INTO ${value.tableName} ($column) VALUES ($valueStr);"
+		return insert(sql, clazz)
+	}
+
+	override suspend fun replace(valueList: Iterable<*>): Int {
+		val first = valueList.firstOrNull() ?: return 0
+		val clazz = first.javaClass
+		val fields = ArrayList<SqlFieldData>()
+		clazz.declaredFields.forEach { field ->
+			if (field.ignored) return@forEach
+			val getter = field.getAnnotation(Getter::class.java)?.let { clazz.getDeclaredMethod(it.getter) }
+			fields.add(SqlFieldData(field, getter))
+		}
+		val values = fields.valueStr(valueList) ?: return 0
+		if (values.isEmpty()) return 0
+		val sql = "REPLACE INTO ${first.tableName} (${clazz.declaredFields.fieldStr()}) VALUES $values;"
+		return insert(sql, clazz)
+	}
+
+	override suspend fun replace(table: String, fields: String, values: String): Int {
+		val sql = "REPLACE INTO $table ($fields) VALUES $values;"
+		return doSql(sql)
+	}
+
 	override suspend fun update(table: String, set: String, where: String): Int {
 		val sql = "UPDATE $table SET $set WHERE $where;"
 		return doSql(sql)

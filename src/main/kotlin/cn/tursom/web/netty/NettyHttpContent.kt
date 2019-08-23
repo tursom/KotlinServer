@@ -23,7 +23,13 @@ open class NettyHttpContent(
 	val ctx: ChannelHandlerContext,
 	val msg: FullHttpRequest
 ) : AdvanceHttpContent {
-	override val uri: String get() = msg.uri()
+	override val uri: String by lazy {
+		var uri = msg.uri()
+		while (uri.contains("//")) {
+			uri = uri.replace("//", "/")
+		}
+		uri
+	}
 	override val clientIp get() = ctx.channel().remoteAddress()!!
 	override val realIp: String = super.realIp
 	val httpMethod: HttpMethod get() = msg.method()

@@ -2,16 +2,27 @@ package cn.tursom.utils.asynccache
 
 import cn.tursom.database.async.AsyncSqlAdapter
 import cn.tursom.database.async.AsyncSqlHelper
-import cn.tursom.database.clauses.clause
 import cn.tursom.utils.asynccache.interfaces.AsyncPotableCacheMap
+import cn.tursom.utils.asynclock.AsyncMutexLock
 import cn.tursom.utils.background
+import kotlinx.coroutines.delay
+import java.lang.Exception
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.logging.Level
+import java.util.logging.Logger
 
 @Suppress("CanBeParameter", "MemberVisibilityCanBePrivate", "SpellCheckingInspection")
 class AsyncSqlStringCacheMap(
 	val db: AsyncSqlHelper,
 	val timeout: Long,
-	val prevCacheMap: AsyncPotableCacheMap<String, String> = DefaultAsyncPotableCacheMap(timeout)
+	val updateDelay: Long = 60 * 1000,
+	val prevCacheMap: AsyncPotableCacheMap<String, String> = DefaultAsyncPotableCacheMap(timeout),
+	val logger: Logger? = null
 ) : AsyncPotableCacheMap<String, String> by prevCacheMap {
+	private val updateRunerLock = AtomicBoolean(false)
+	private val updateLock = AsyncMutexLock()
+	private val updateList = ArrayList<StorageData>()
+
 
 	override suspend fun get(key: String): String? {
 		val memCache = prevCacheMap.get(key)
@@ -41,10 +52,23 @@ class AsyncSqlStringCacheMap(
 	}
 
 	suspend fun updateStorage(key: String, value: String) {
-		if (db.select(AsyncSqlAdapter(StorageData::class.java), maxCount = 1).isNotEmpty()) {
-			db.insert(StorageData(key, value))
-		} else {
-			db.update(StorageData(key, value), where = clause { !StorageData::key equal !key })
+		updateLock {
+			updateList.add(StorageData(key, value))
+		}
+		if (updateRunerLock.compareAndSet(false, true)) background {
+			delay(updateDelay)
+			updateLock {
+				try {
+					val updated = db.replace(updateList)
+					logger?.log(Level.INFO, "AsyncSqlStringCacheMap update $updated coloums")
+				} catch (e: Exception) {
+					System.err.println("AsyncSqlStringCacheMap cause an Exception on update database")
+					e.printStackTrace()
+				} finally {
+					updateList.clear()
+				}
+			}
+			updateRunerLock.set(false)
 		}
 	}
 }
