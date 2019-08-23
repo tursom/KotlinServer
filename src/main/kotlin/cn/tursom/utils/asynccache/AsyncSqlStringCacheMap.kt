@@ -1,7 +1,5 @@
 package cn.tursom.utils.asynccache
 
-import cn.tursom.database.annotation.NotNull
-import cn.tursom.database.annotation.PrimaryKey
 import cn.tursom.database.async.AsyncSqlAdapter
 import cn.tursom.database.async.AsyncSqlHelper
 import cn.tursom.database.clauses.clause
@@ -46,16 +44,8 @@ class AsyncSqlStringCacheMap(
 		if (db.select(AsyncSqlAdapter(StorageData::class.java), maxCount = 1).isNotEmpty()) {
 			db.insert(StorageData(key, value))
 		} else {
-			db.update(StorageData(key, value), where = clause { !StorageData::key equal key })
+			db.update(StorageData(key, value), where = clause { !StorageData::key equal !key })
 		}
 	}
-
-	data class StorageData(
-		@PrimaryKey
-		@NotNull
-		val key: String,
-		@NotNull
-		val value: String,
-		val cacheTime: Long = System.currentTimeMillis()
-	)
 }
+
