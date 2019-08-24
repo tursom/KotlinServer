@@ -23,58 +23,58 @@ class AsyncSqlSelector<T : Any>(
 				else -> field = value
 			}
 		}
-	
-	suspend fun fields(selector: suspend FieldSelector.() -> Unit) {
+
+	suspend infix fun fields(selector: suspend FieldSelector.() -> Unit) {
 		fields.selector()
 	}
-	
-	suspend fun where(clause: suspend ClauseMaker.() -> Clause) {
+
+	suspend infix fun where(clause: suspend ClauseMaker.() -> Clause) {
 		where = ClauseMaker.clause().sqlStr
 	}
-	
+
 	suspend fun select() =
 		helper.select(adapter, fields.fieldName ?: "*", where, order, reverse, maxCount)
-	
+
 	infix fun orderBy(field: String) {
 		order = field.sqlStr
 	}
-	
+
 	infix fun orderBy(field: Field) {
 		order = field.fieldName
 	}
-	
+
 	infix fun orderBy(field: KProperty<*>) {
 		order = field.fieldName
 	}
-	
+
 	infix fun KProperty<*>.reverse(reverse: Boolean) {
 		order = fieldName
 		this@AsyncSqlSelector.reverse = reverse
 	}
-	
+
 	infix fun Field.reverse(reverse: Boolean) {
 		order = fieldName
 		this@AsyncSqlSelector.reverse = reverse
 	}
-	
+
 	infix fun reverse(reverse: Boolean) {
 		this.reverse = reverse
 	}
-	
+
 	infix fun limit(maxCount: Int?) {
 		this.maxCount = maxCount
 	}
-	
+
 	infix fun Field.limit(maxCount: Int?) {
 		order = fieldName
 		this@AsyncSqlSelector.maxCount = maxCount
 	}
-	
+
 	infix fun KProperty<*>.limit(maxCount: Int?) {
 		order = fieldName
 		this@AsyncSqlSelector.maxCount = maxCount
 	}
-	
+
 	infix fun Any.limit(maxCount: Int?) {
 		this@AsyncSqlSelector.maxCount = maxCount
 	}

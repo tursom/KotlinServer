@@ -64,11 +64,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		}
 	}
 
-
-	override suspend fun createTable(table: String, keys: Iterable<String>) {
-		val sql = "CREATE TABLE if not exists $table (${keys.fieldStr()})"
-		doSql(sql)
-	}
+	override suspend fun commit() = suspendCoroutine<Unit> { cont -> connection.commit { cont.resume(Unit) } }
 
 	override suspend fun createTable(fields: Class<*>) {
 		val sql = createTableStr(fields)
@@ -86,13 +82,13 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 
 	override suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>,
-		fields: Iterable<String>?,
-		where: Clause,
+		fields: Iterable<String>,
+		where: Clause?,
 		order: Field?,
 		reverse: Boolean,
 		maxCount: Int?
 	): AsyncSqlAdapter<T> =
-		select(adapter, fields?.fieldStr() ?: "*", where.sqlStr, order?.fieldName, reverse, maxCount)
+		select(adapter, fields.fieldStr() ?: "*", where?.sqlStr, order?.fieldName, reverse, maxCount)
 
 	override suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
@@ -121,15 +117,12 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 	}
 
 	private suspend fun insert(sql: String, table: Class<*>): Int {
+		@Suppress("DuplicatedCode")
 		return try {
 			doSql(sql)
 		} catch (e: SQLiteException) {
-			if (e.message == "[SQLITE_ERROR] SQL error or missing database (no such table: ${table.tableName})") {
-				createTable(table)
-				doSql(sql)
-			} else {
-				throw e
-			}
+			createTable(table)
+			doSql(sql)
 		}
 	}
 
@@ -142,6 +135,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		return insert(sql, clazz)
 	}
 
+	@Suppress("DuplicatedCode")
 	override suspend fun insert(valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
@@ -157,11 +151,6 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		return insert(sql, clazz)
 	}
 
-	override suspend fun insert(table: String, fields: String, values: String): Int {
-		val sql = "INSERT INTO $table ($fields) VALUES $values;"
-		return doSql(sql)
-	}
-
 	override suspend fun replace(value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
@@ -171,6 +160,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		return insert(sql, clazz)
 	}
 
+	@Suppress("DuplicatedCode")
 	override suspend fun replace(valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
@@ -186,16 +176,6 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		return insert(sql, clazz)
 	}
 
-	override suspend fun replace(table: String, fields: String, values: String): Int {
-		val sql = "REPLACE INTO $table ($fields) VALUES $values;"
-		return doSql(sql)
-	}
-
-	override suspend fun update(table: String, set: String, where: String): Int {
-		val sql = "UPDATE $table SET $set WHERE $where;"
-		return doSql(sql)
-	}
-
 	override suspend fun update(
 		value: Any, where: Clause
 	): Int {
@@ -209,7 +189,8 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		if (set.isNotEmpty()) {
 			set.delete(set.length - 1, set.length)
 		}
-		return update(value.tableName, set.toString(), where.sqlStr)
+		val sql = "UPDATE ${value.tableName} SET $set WHERE ${where.sqlStr};"
+		return doSql(sql)
 	}
 
 	override suspend fun delete(table: String, where: String?): Int {

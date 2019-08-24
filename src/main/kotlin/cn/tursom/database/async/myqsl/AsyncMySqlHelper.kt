@@ -36,10 +36,6 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
 	}
 
-	override suspend fun replace(table: String, fields: String, values: String): Int {
-		TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-	}
-
 	override val connection = runBlocking {
 		val config = JsonObject()
 		config.put("url", "jdbc:mysql://$url?characterEncoding=utf-8&serverTimezone=UTC")
@@ -71,26 +67,21 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 	override suspend fun doSql(sql: String): Int = suspendCoroutine { cont ->
 		connection.execute(sql) {
 			if (it.succeeded()) {
-				connection.commit {
-					if (it.succeeded()) {
-						cont.resume(1)
-					} else {
-						cont.resumeWithException(it.cause())
-					}
-				}
+				cont.resume(1)
 			} else {
 				cont.resumeWithException(it.cause())
 			}
 		}
 	}
 
-	/*
-	 * 创建表格
-	 * table: 表格名
-	 * keys: 属性列表
-	 */
-	override suspend fun createTable(table: String, keys: Iterable<String>) {
-		doSql("CREATE TABLE if not exists `$table` ( ${keys.fieldStr()} ) ENGINE = InnoDB DEFAULT CHARSET=utf8;")
+	override suspend fun commit() = suspendCoroutine<Unit> { cont ->
+		connection.commit {
+			if (it.succeeded()) {
+				cont.resume(Unit)
+			} else {
+				cont.resumeWithException(it.cause())
+			}
+		}
 	}
 
 	/**
@@ -131,20 +122,28 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 	 */
 	override suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>,
-		fields: Iterable<String>?,
-		where: Clause,
+		fields: Iterable<String>,
+		where: Clause?,
 		order: Field?,
 		reverse: Boolean,
 		maxCount: Int?
-	): AsyncSqlAdapter<T> = select(
-		adapter = adapter,
-		fields = fields?.fieldStr() ?: "*",
-		where = where.sqlStr,
-		order = order?.fieldName,
-		reverse = reverse,
-		maxCount = maxCount
-	)
-
+	): AsyncSqlAdapter<T> {
+		val sql = "SELECT ${fields.fieldStr()} FROM ${adapter.clazz.tableName
+		}${if (where != null) " WHERE ${where.sqlStr}" else ""
+		}${if (order != null) " ORDER BY ${order.fieldName} ${if (reverse) "DESC" else "ASC"}" else ""
+		}${if (maxCount != null) " limit $maxCount" else ""
+		};"
+		return suspendCoroutine { cont ->
+			connection.query(sql) {
+				if (it.succeeded()) {
+					adapter.adapt(it.result())
+					cont.resume(adapter)
+				} else {
+					cont.resumeWithException(it.cause())
+				}
+			}
+		}
+	}
 
 	override suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>,
@@ -171,15 +170,6 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		}
 	}
 
-	override suspend fun update(
-		table: String,
-		set: String,
-		where: String
-	): Int {
-		val sql = "UPDATE $table SET $set${if (where.isNotEmpty()) " WHERE $where" else ""};"
-		return doSql(sql)
-	}
-
 	/**
 	 * 更新数据库数据
 	 * @param value 用来存储数据的bean对象
@@ -193,7 +183,9 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		}
 		if (sb.isNotEmpty())
 			sb.delete(sb.length - 1, sb.length)
-		return update(value.tableName, sb.toString(), where.sqlStr)
+		val whereStr = where.sqlStr
+		val sql = "UPDATE ${value.tableName} SET $sb${if (whereStr.isNotEmpty()) " WHERE ${whereStr}" else ""};"
+		return doSql(sql)
 	}
 
 	private suspend fun insert(sql: String, table: Class<*>): Int {
@@ -203,11 +195,6 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 			createTable(table)
 			doSql(sql)
 		}
-	}
-
-	override suspend fun insert(table: String, fields: String, values: String): Int {
-		val sql = "INSERT INTO $table ($fields) VALUES $values;"
-		return doSql(sql)
 	}
 
 	override suspend fun insert(value: Any): Int {

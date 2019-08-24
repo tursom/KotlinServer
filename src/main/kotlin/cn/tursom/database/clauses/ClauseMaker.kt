@@ -18,11 +18,11 @@ object ClauseMaker {
 //	operator fun Field.unaryPlus() = fieldName
 //	operator fun KProperty<*>.unaryPlus() = fieldName
 	operator fun Any.not() = this.toString()
-	
+
 	operator fun String.not() = this.sqlStr
 	operator fun Field.not() = fieldName
 	operator fun KProperty<*>.not() = fieldName
-	
+
 	infix fun Clause.and(clause: Clause) = AndClause(this, clause)
 	infix operator fun Clause.plus(clause: Clause) = AndClause(this, clause)
 	infix fun String.equal(value: String) = EqualClause(this, value)
@@ -39,14 +39,16 @@ object ClauseMaker {
 	infix fun Clause.or(value: Clause) = OrClause(this, value)
 	infix operator fun Clause.minus(value: Clause) = OrClause(this, value)
 //	infix operator fun Clause.rangeTo(value: Clause) = OrClause(this, value)
-	
+
 	infix fun String.regexp(value: String) = RegexpClause(this, value)
 	infix fun String.regexp(value: Regex) = RegexpClause(this, value)
 	infix fun String.regexp(value: RegexUnit) = RegexpClause(this, value)
 	infix fun String.regexp(value: RegexMaker.() -> RegexUnit) = RegexpClause(this, value)
-	
+
 	@Suppress("UNUSED_EXPRESSION")
 	fun make(maker: ClauseMaker.() -> Clause) = maker()
+
+	inline operator fun invoke(maker: ClauseMaker.() -> Clause) = this.maker().sqlStr
 }
 
 fun clause(maker: ClauseMaker.() -> Clause) = ClauseMaker.maker()

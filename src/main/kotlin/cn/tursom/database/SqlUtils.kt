@@ -16,7 +16,10 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaField
 
 object SqlUtils {
+	inline operator fun <T> invoke(action: SqlUtils.() -> T): T = this.action()
+
 	val Field.ignored get() = getAnnotation(Ignore::class.java) != null
+	val Field.constructor get() = getAnnotation(Constructor::class.java)?.constructor
 
 	val Class<*>.dataField: List<Field>
 		get() {
@@ -60,25 +63,20 @@ object SqlUtils {
 	val Class<*>.isSqlField
 		get() = interfaces.contains(SqlField::class.java)
 
-	@JvmStatic
 	val Any.tableName: String
 		get() = javaClass.tableName
 
-	@JvmStatic
 	val Class<*>.tableName: String
 		get() = (getAnnotation<TableName>()?.name ?: name.split('.').last()).toLowerCase()
 
-	@JvmStatic
+
 	val KClass<*>.tableName: String
 		get() = java.tableName
 
-	@JvmStatic
 	inline fun <reified T : Annotation> Field.getAnnotation(): T? = getAnnotation(T::class.java)
 
-	@JvmStatic
 	inline fun <reified T : Annotation> Class<*>.getAnnotation(): T? = getAnnotation(T::class.java)
 
-	@JvmStatic
 	fun Array<out Field>.fieldStr(): String {
 		val fields = StringBuilder()
 		forEach field@{ field ->
@@ -90,7 +88,6 @@ object SqlUtils {
 		return fields.toString()
 	}
 
-	@JvmStatic
 	fun Iterable<String>.fieldStr(): String {
 		val stringBuffer = StringBuffer()
 		forEach {
@@ -101,7 +98,6 @@ object SqlUtils {
 		return stringBuffer.toString()
 	}
 
-	@JvmStatic
 	fun Class<*>.valueStr(value: Any): String? {
 		val values = StringBuilder()
 		declaredFields.forEach field@{ field ->
@@ -119,7 +115,6 @@ object SqlUtils {
 		return values.toString()
 	}
 
-	@JvmStatic
 	fun Array<out Field>.valueStr(value: Any): String? {
 		val clazz = value.javaClass
 		val values = StringBuilder()
@@ -149,7 +144,6 @@ object SqlUtils {
 		return values.toString()
 	}
 
-	@JvmStatic
 	fun Iterable<*>.valueStr(sqlFieldMap: Array<out Field>): String? {
 		val values = StringBuilder()
 		forEach { value ->
@@ -164,7 +158,6 @@ object SqlUtils {
 		return values.toString()
 	}
 
-	@JvmStatic
 	fun Iterable<SqlFieldData>.valueStr(value: Iterable<*>): String? {
 		val values = StringBuilder()
 		forEach field@{ (field, _) ->
@@ -191,7 +184,6 @@ object SqlUtils {
 		return values.toString()
 	}
 
-	@JvmStatic
 	fun List<Pair<String, String>>.fieldStr(): Pair<String, String> {
 		val first = StringBuilder()
 		val second = StringBuilder()
@@ -204,7 +196,6 @@ object SqlUtils {
 		return first.toString() to second.toString()
 	}
 
-	@JvmStatic
 	fun StringBuilder.appendField(
 		field: Field,
 		fieldType: Field.() -> String?,
@@ -237,7 +228,6 @@ object SqlUtils {
 		append(',')
 	}
 
-	@JvmStatic
 	val String.sqlStr
 		get() = "'${replace("'", "''")}'"
 }
