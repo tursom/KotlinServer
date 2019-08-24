@@ -68,9 +68,18 @@ interface AsyncSqlHelper {
 	}
 
 	suspend fun <T : Any> select(
-		clazz: Class<T>,
-		fields: String,
+		adapter: AsyncSqlAdapter<T>,
 		where: Clause,
+		fields: String = "*",
+		order: Field? = null,
+		reverse: Boolean = false,
+		maxCount: Int? = null
+	): AsyncSqlAdapter<T> = select(adapter, fields, where.sqlStr, order?.fieldName, reverse, maxCount)
+
+	suspend fun <T : Any> select(
+		clazz: Class<T>,
+		where: Clause,
+		fields: String = "*",
 		order: Field? = null,
 		reverse: Boolean = false,
 		maxCount: Int? = null
