@@ -1,14 +1,15 @@
-package cn.tursom.utils.asynccache
+package cn.tursom.utils.cache
 
-import cn.tursom.utils.asynccache.interfaces.AsyncPotableCacheMap
+import cn.tursom.utils.cache.interfaces.AsyncPotableCacheMap
 import cn.tursom.utils.datastruct.async.ReadWriteLockHashMap
 import cn.tursom.utils.datastruct.async.interfaces.AsyncCollection
 import cn.tursom.utils.datastruct.async.interfaces.AsyncPotableMap
 import cn.tursom.utils.datastruct.async.interfaces.AsyncSet
+import java.lang.ref.SoftReference
 
-open class DefaultAsyncPotableCacheMap<K, V>(
+class AsyncSoftCacheMap<K, V>(
 	val timeout: Long,
-	private val valueMap: AsyncPotableMap<K, Pair<Long, V>> = ReadWriteLockHashMap()
+	private val valueMap: AsyncPotableMap<K, SoftReference<Pair<Long, V>>> = ReadWriteLockHashMap()
 ) : AsyncPotableCacheMap<K, V> {
 	override val size: Int
 		get() = valueMap.size
@@ -20,43 +21,42 @@ open class DefaultAsyncPotableCacheMap<K, V>(
 	override suspend fun containsValue(value: V): Boolean = !valueMap.forEach { it.value != value }
 	override suspend fun isEmpty(): Boolean = valueMap.isEmpty()
 
-	override suspend fun get(key: K): V? {
-		val value = getCache(key) ?: return null
-		return value
-	}
+	override suspend fun get(key: K): V? = getCache(key)
 
 	override suspend fun get(key: K, constructor: suspend () -> V): V {
-		val value = get(key) ?: run {
+		return get(key) ?: run {
 			val newValue = constructor()
 			addCache(key, newValue)
 			newValue
 		}
-		return value
 	}
 
 	override suspend fun set(key: K, value: V): V? {
-		valueMap.set(key, System.currentTimeMillis() to value)
+		valueMap.set(key, SoftReference(System.currentTimeMillis() to value))
 		return value
 	}
 
 	override suspend fun putAll(from: Map<out K, V>) {
 		from.forEach { (k, v) ->
-			valueMap.set(k, System.currentTimeMillis() to v)
+			valueMap.set(k, SoftReference(System.currentTimeMillis() to v))
 		}
 	}
 
-	override suspend fun remove(key: K): V? = valueMap.remove(key)?.second
+	override suspend fun remove(key: K): V? = valueMap.remove(key)?.get()?.second
 
 	override suspend fun clear() {
 		valueMap.clear()
 	}
 
 	override suspend fun forEach(action: suspend (Map.Entry<K, V>) -> Boolean): Boolean {
-		return valueMap.forEach { action(Entry(it.key, it.value.second)) }
+		return valueMap.forEach {
+			@Suppress("LABEL_NAME_CLASH")
+			action(Entry(it.key, it.value.get()?.second ?: return@forEach true))
+		}
 	}
 
 	private suspend fun getCache(key: K): V? {
-		val cache = valueMap.get(key) ?: return null
+		val cache = valueMap.get(key)?.get() ?: return null
 		if (cache.first.isTimeOut()) {
 			delCache(key)
 			return null
@@ -69,10 +69,10 @@ open class DefaultAsyncPotableCacheMap<K, V>(
 	}
 
 	private suspend fun addCache(key: K, value: V) {
-		valueMap.set(key, System.currentTimeMillis() to value)
+		valueMap.set(key, SoftReference(System.currentTimeMillis() to value))
 	}
 
-	private fun Long.isTimeOut() = timeout != 0L && System.currentTimeMillis() - this > timeout
+	private fun Long?.isTimeOut() = this != null && timeout != 0L && System.currentTimeMillis() - this > timeout
 
 	data class Entry<K, V>(override val key: K, override val value: V) : Map.Entry<K, V>
 
@@ -86,7 +86,7 @@ open class DefaultAsyncPotableCacheMap<K, V>(
 		override suspend fun containsAll(elements: AsyncCollection<Map.Entry<K, V>>): Boolean = containsAll(elements)
 
 		override suspend fun forEach(action: suspend (Map.Entry<K, V>) -> Boolean): Boolean =
-			this@DefaultAsyncPotableCacheMap.forEach(action)
+			this@AsyncSoftCacheMap.forEach(action)
 	}
 
 	inner class Values : AsyncCollection<V> {
@@ -99,7 +99,10 @@ open class DefaultAsyncPotableCacheMap<K, V>(
 		}
 
 		override suspend fun forEach(action: suspend (V) -> Boolean): Boolean {
-			return valueMap.forEach { action(it.value.second) }
+			return valueMap.forEach {
+				@Suppress("LABEL_NAME_CLASH")
+				action(it.value.get()?.second ?: return@forEach true)
+			}
 		}
 	}
 }

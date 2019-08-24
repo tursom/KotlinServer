@@ -1,4 +1,4 @@
-package cn.tursom.utils.asynccache
+package cn.tursom.utils.cache
 
 import cn.tursom.database.annotation.NotNull
 import cn.tursom.database.annotation.PrimaryKey

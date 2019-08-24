@@ -1,7 +1,6 @@
-package cn.tursom.utils.asynccache.cachepool
+package cn.tursom.utils.cache.cachepool
 
-import cn.tursom.utils.asynccache.cachepool.AsyncMemoryPool
-import cn.tursom.utils.asynccache.interfaces.AsyncCacheChannel
+import cn.tursom.utils.cache.interfaces.AsyncCacheChannel
 import kotlinx.coroutines.channels.Channel
 import java.nio.ByteBuffer
 

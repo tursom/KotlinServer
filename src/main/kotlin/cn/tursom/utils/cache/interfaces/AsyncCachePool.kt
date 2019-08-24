@@ -1,4 +1,4 @@
-package cn.tursom.utils.asynccache.interfaces
+package cn.tursom.utils.cache.interfaces
 
 interface AsyncCachePool<T> {
 	suspend fun put(cache: T): Boolean

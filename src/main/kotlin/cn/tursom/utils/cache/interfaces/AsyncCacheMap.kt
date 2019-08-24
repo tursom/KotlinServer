@@ -1,4 +1,4 @@
-package cn.tursom.utils.asynccache.interfaces
+package cn.tursom.utils.cache.interfaces
 
 import cn.tursom.utils.datastruct.async.interfaces.AsyncMap
 

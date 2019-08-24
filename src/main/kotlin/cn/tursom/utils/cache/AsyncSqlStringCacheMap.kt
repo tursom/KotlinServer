@@ -1,8 +1,8 @@
-package cn.tursom.utils.asynccache
+package cn.tursom.utils.cache
 
 import cn.tursom.database.async.AsyncSqlAdapter
 import cn.tursom.database.async.AsyncSqlHelper
-import cn.tursom.utils.asynccache.interfaces.AsyncPotableCacheMap
+import cn.tursom.utils.cache.interfaces.AsyncPotableCacheMap
 import cn.tursom.utils.asynclock.AsyncMutexLock
 import cn.tursom.utils.background
 import kotlinx.coroutines.delay
