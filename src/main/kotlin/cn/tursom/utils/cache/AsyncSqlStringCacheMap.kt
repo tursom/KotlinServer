@@ -15,6 +15,7 @@ import java.util.logging.Logger
 class AsyncSqlStringCacheMap(
 	val db: AsyncSqlHelper,
 	val timeout: Long,
+	val table: String,
 	val updateDelay: Long = 60 * 1000,
 	val prevCacheMap: AsyncPotableCacheMap<String, String> = DefaultAsyncPotableCacheMap(timeout),
 	val logger: Logger? = null

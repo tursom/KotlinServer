@@ -22,8 +22,13 @@ class AsyncFile(val path: Path) {
 
 	private var existsCache = false
 
-	val exists get() = Files.exists(path)
-	val size get() = if (existsCache && exists) Files.size(path) else 0
+	val exists: Boolean
+		get() {
+			val exists = Files.exists(path)
+			existsCache = exists
+			return exists
+		}
+	val size get() = if (existsCache || exists) Files.size(path) else 0
 
 	val writeChannel: AsynchronousFileChannel by lazy { AsynchronousFileChannel.open(path, StandardOpenOption.WRITE) }
 	val readChannel: AsynchronousFileChannel by lazy { AsynchronousFileChannel.open(path, StandardOpenOption.READ) }
@@ -64,7 +69,7 @@ class AsyncFile(val path: Path) {
 
 	suspend fun read(buffer: AdvanceByteBuffer, position: Long = 0): Int {
 		return buffer.writeNioBuffer {
-			read(buffer.nioBuffer, position)
+			read(it, position)
 		}
 	}
 

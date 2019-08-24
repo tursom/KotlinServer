@@ -170,7 +170,7 @@ inline fun <T> AdvanceByteBuffer.readNioBuffer(action: (nioBuffer: ByteBuffer) -
 	return try {
 		action(buffer)
 	} finally {
-		resumeWriteMode(nioBuffer.position() - position)
+		resumeWriteMode(buffer.position() - position)
 	}
 }
 
@@ -181,7 +181,7 @@ inline fun <T> AdvanceByteBuffer.writeNioBuffer(action: (nioBuffer: ByteBuffer) 
 	return try {
 		action(buffer)
 	} finally {
-		writePosition = position + (nioBuffer.position() - bufferPosition)
+		writePosition = position + (buffer.position() - bufferPosition)
 	}
 }
 

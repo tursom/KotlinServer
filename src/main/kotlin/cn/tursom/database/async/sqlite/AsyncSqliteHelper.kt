@@ -151,17 +151,17 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		return insert(sql, clazz)
 	}
 
-	override suspend fun replace(value: Any): Int {
+	override suspend fun replace(table: String,value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val column = fields.fieldStr()
 		val valueStr = fields.valueStr(value) ?: return 0
-		val sql = "REPLACE INTO ${value.tableName} ($column) VALUES ($valueStr);"
+		val sql = "REPLACE INTO $table ($column) VALUES ($valueStr);"
 		return insert(sql, clazz)
 	}
 
 	@Suppress("DuplicatedCode")
-	override suspend fun replace(valueList: Iterable<*>): Int {
+	override suspend fun replace(table: String,valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
 		val fields = ArrayList<SqlFieldData>()
@@ -172,7 +172,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		}
 		val values = fields.valueStr(valueList) ?: return 0
 		if (values.isEmpty()) return 0
-		val sql = "REPLACE INTO ${first.tableName} (${clazz.declaredFields.fieldStr()}) VALUES $values;"
+		val sql = "REPLACE INTO $table (${clazz.declaredFields.fieldStr()}) VALUES $values;"
 		return insert(sql, clazz)
 	}
 

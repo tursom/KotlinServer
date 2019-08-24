@@ -5,6 +5,8 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 
 class ByteArrayAdvanceByteBuffer(override val array: ByteArray, val offset: Int = 0, override val size: Int = array.size - offset) : AdvanceByteBuffer {
+	constructor(size: Int) : this(ByteArray(size), 0, size)
+
 	override val nioBuffer: ByteBuffer
 		get() = if (readMode) readByteBuffer
 		else writeByteBuffer

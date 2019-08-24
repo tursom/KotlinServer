@@ -41,9 +41,9 @@ interface AsyncSqlHelper {
 
 	suspend fun insert(valueList: Iterable<*>): Int
 
-	suspend fun replace(value: Any): Int
+	suspend fun replace(table: String, value: Any): Int
 
-	suspend fun replace(valueList: Iterable<*>): Int
+	suspend fun replace(table: String, valueList: Iterable<*>): Int
 
 	suspend fun update(table: String, set: String, where: String? = null): Int
 
@@ -57,6 +57,12 @@ interface AsyncSqlHelper {
 
 	suspend fun close()
 
+
+	suspend fun replace(value: Any): Int = replace(value.javaClass.tableName, value)
+
+	suspend fun replace(valueList: Iterable<*>): Int {
+		return replace((valueList.first() ?: return 0).tableName, valueList)
+	}
 
 	suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>,
