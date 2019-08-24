@@ -1,5 +1,6 @@
 package cn.tursom.database.async
 
+import cn.tursom.database.SqlUtils.fieldName
 import cn.tursom.database.clauses.Clause
 import cn.tursom.database.clauses.ClauseMaker
 import cn.tursom.database.SqlUtils.tableName
@@ -65,6 +66,15 @@ interface AsyncSqlHelper {
 		selector.maker()
 		return selector.select()
 	}
+
+	suspend fun <T : Any> select(
+		clazz: Class<T>,
+		fields: String,
+		where: Clause,
+		order: Field? = null,
+		reverse: Boolean = false,
+		maxCount: Int? = null
+	): AsyncSqlAdapter<T> = select(AsyncSqlAdapter(clazz), fields, where.sqlStr, order?.fieldName, reverse, maxCount)
 
 	suspend fun <T : Any> select(
 		clazz: Class<T>,
