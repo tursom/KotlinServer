@@ -88,7 +88,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		reverse: Boolean,
 		maxCount: Int?
 	): AsyncSqlAdapter<T> =
-		select(adapter, fields.fieldStr() ?: "*", where?.sqlStr, order?.fieldName, reverse, maxCount)
+		select(adapter, fields.fieldStr(), where?.sqlStr, order?.fieldName, reverse, maxCount)
 
 	override suspend fun <T : Any> select(
 		adapter: AsyncSqlAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
@@ -190,6 +190,11 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			set.delete(set.length - 1, set.length)
 		}
 		val sql = "UPDATE ${value.tableName} SET $set WHERE ${where.sqlStr};"
+		return doSql(sql)
+	}
+
+	override suspend fun update(table: String, set: String, where: String?): Int {
+		val sql = "UPDATE $table SET $set${if (where != null && where.isNotEmpty()) " WHERE $where" else ""};"
 		return doSql(sql)
 	}
 

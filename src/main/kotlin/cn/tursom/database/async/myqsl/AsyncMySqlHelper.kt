@@ -188,6 +188,11 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		return doSql(sql)
 	}
 
+	override suspend fun update(table: String, set: String, where: String?): Int {
+		val sql = "UPDATE $table SET $set${if (where != null && where.isNotEmpty()) " WHERE $where" else ""};"
+		return doSql(sql)
+	}
+
 	private suspend fun insert(sql: String, table: Class<*>): Int {
 		return try {
 			doSql(sql)
