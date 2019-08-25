@@ -2,12 +2,9 @@ package cn.tursom.utils.cache
 
 import cn.tursom.database.async.AsyncSqlAdapter
 import cn.tursom.database.async.AsyncSqlHelper
-import cn.tursom.utils.cache.interfaces.AsyncPotableCacheMap
-import cn.tursom.utils.asynclock.AsyncMutexLock
+import cn.tursom.database.clauses.clause
 import cn.tursom.utils.background
-import kotlinx.coroutines.delay
-import java.lang.Exception
-import java.util.concurrent.atomic.AtomicBoolean
+import cn.tursom.utils.cache.interfaces.AsyncPotableCacheMap
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -20,21 +17,18 @@ class AsyncSqlStringCacheMap(
 	val prevCacheMap: AsyncPotableCacheMap<String, String> = DefaultAsyncPotableCacheMap(timeout),
 	val logger: Logger? = null
 ) : AsyncPotableCacheMap<String, String> by prevCacheMap {
-	private val updateRunerLock = AtomicBoolean(false)
-	private val updateLock = AsyncMutexLock()
-	private val updateList = ArrayList<StorageData>()
-
 
 	override suspend fun get(key: String): String? {
-		val memCache = prevCacheMap.get(key)
-		return if (memCache != null) memCache
-		else {
-			val storage = db.select(AsyncSqlAdapter(StorageData::class.java), maxCount = 1, table = table)
+		return prevCacheMap.get(key) ?: try {
+			val storage = db.select(AsyncSqlAdapter(StorageData::class.java), where = clause { !StorageData::key equal !key }, maxCount = 1, table = table)
 			if (storage.isNotEmpty() && storage[0].cacheTime + timeout > System.currentTimeMillis()) {
 				val value = storage[0].value
 				set(key, value)
 				value
 			} else null
+		} catch (e: Exception) {
+			e.printStackTrace()
+			null
 		}
 	}
 
@@ -50,28 +44,17 @@ class AsyncSqlStringCacheMap(
 
 	override suspend fun set(key: String, value: String): String? {
 		prevCacheMap.set(key, value)
-		updateStorage(key, value)
+		background { updateStorage(key, value) }
 		return value
 	}
 
 	suspend fun updateStorage(key: String, value: String) {
-		updateLock {
-			updateList.add(StorageData(key, value))
-		}
-		if (updateRunerLock.compareAndSet(false, true)) background {
-			delay(updateDelay)
-			updateLock {
-				try {
-					val updated = db.replace(table, updateList)
-					logger?.log(Level.INFO, "AsyncSqlStringCacheMap update $updated coloums")
-				} catch (e: Exception) {
-					System.err.println("AsyncSqlStringCacheMap cause an Exception on update database")
-					e.printStackTrace()
-				} finally {
-					updateList.clear()
-				}
-			}
-			updateRunerLock.set(false)
+		try {
+			val updated = db.replace(table, StorageData(key, value))
+			logger?.log(Level.INFO, "AsyncSqlStringCacheMap update $updated coloums: $key")
+		} catch (e: Exception) {
+			System.err.println("AsyncSqlStringCacheMap cause an Exception on update database")
+			e.printStackTrace()
 		}
 	}
 }
