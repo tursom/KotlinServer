@@ -39,7 +39,9 @@ class AsyncSqlStringCacheMap(
 	}
 
 	override suspend fun get(key: String, constructor: suspend () -> String): String {
-		return prevCacheMap.get(key) {
+		val memCache = get(key)
+		return if (memCache != null) memCache
+		else {
 			val newValue = constructor()
 			background { updateStorage(key, newValue) }
 			newValue
@@ -60,7 +62,7 @@ class AsyncSqlStringCacheMap(
 			delay(updateDelay)
 			updateLock {
 				try {
-					val updated = db.replace(updateList)
+					val updated = db.replace(table, updateList)
 					logger?.log(Level.INFO, "AsyncSqlStringCacheMap update $updated coloums")
 				} catch (e: Exception) {
 					System.err.println("AsyncSqlStringCacheMap cause an Exception on update database")

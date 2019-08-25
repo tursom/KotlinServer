@@ -66,9 +66,13 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 
 	override suspend fun commit() = suspendCoroutine<Unit> { cont -> connection.commit { cont.resume(Unit) } }
 
-	override suspend fun createTable(fields: Class<*>) {
-		val sql = createTableStr(fields)
+	suspend fun createTable(fields: Class<*>, table: String) {
+		val sql = createTableStr(fields, table)
 		doSql(sql)
+	}
+
+	override suspend fun createTable(fields: Class<*>) {
+		createTable(fields, fields.tableName)
 	}
 
 	override suspend fun deleteTable(table: String) {
@@ -116,12 +120,12 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		}
 	}
 
-	private suspend fun insert(sql: String, table: Class<*>): Int {
+	private suspend fun insert(sql: String, table: Class<*>, tableName: String): Int {
 		@Suppress("DuplicatedCode")
 		return try {
 			doSql(sql)
-		} catch (e: SQLiteException) {
-			createTable(table)
+		} catch (e: Throwable) {
+			createTable(table, tableName)
 			doSql(sql)
 		}
 	}
@@ -132,7 +136,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		val column = fields.fieldStr()
 		val valueStr = fields.valueStr(value) ?: return 0
 		val sql = "INSERT INTO ${value.tableName} ($column) VALUES ($valueStr);"
-		return insert(sql, clazz)
+		return insert(sql, clazz, clazz.tableName)
 	}
 
 	@Suppress("DuplicatedCode")
@@ -148,20 +152,20 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		val values = fields.valueStr(valueList) ?: return 0
 		if (values.isEmpty()) return 0
 		val sql = "INSERT INTO ${first.tableName} (${clazz.declaredFields.fieldStr()}) VALUES $values;"
-		return insert(sql, clazz)
+		return insert(sql, clazz, clazz.tableName)
 	}
 
-	override suspend fun replace(table: String,value: Any): Int {
+	override suspend fun replace(table: String, value: Any): Int {
 		val clazz = value.javaClass
 		val fields = clazz.declaredFields
 		val column = fields.fieldStr()
 		val valueStr = fields.valueStr(value) ?: return 0
 		val sql = "REPLACE INTO $table ($column) VALUES ($valueStr);"
-		return insert(sql, clazz)
+		return insert(sql, clazz, table)
 	}
 
 	@Suppress("DuplicatedCode")
-	override suspend fun replace(table: String,valueList: Iterable<*>): Int {
+	override suspend fun replace(table: String, valueList: Iterable<*>): Int {
 		val first = valueList.firstOrNull() ?: return 0
 		val clazz = first.javaClass
 		val fields = ArrayList<SqlFieldData>()
@@ -173,7 +177,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		val values = fields.valueStr(valueList) ?: return 0
 		if (values.isEmpty()) return 0
 		val sql = "REPLACE INTO $table (${clazz.declaredFields.fieldStr()}) VALUES $values;"
-		return insert(sql, clazz)
+		return insert(sql, clazz, table)
 	}
 
 	override suspend fun update(
@@ -270,14 +274,14 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 			append(',')
 		}
 
-		fun createTableStr(keys: Class<*>): String {
+		fun createTableStr(keys: Class<*>, table: String): String {
 			val foreignKey = keys.getAnnotation(ForeignKey::class.java)?.let {
 				if (it.target.isNotEmpty()) it.target else null
 			}
 			val foreignKeyList = ArrayList<Pair<String, String>>()
 
 			val valueStrBuilder = StringBuilder()
-			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS ${keys.tableName}(")
+			valueStrBuilder.append("CREATE TABLE IF NOT EXISTS $table(")
 			keys.declaredFields.forEach {
 				valueStrBuilder.appendField(it, foreignKeyList)
 			}
