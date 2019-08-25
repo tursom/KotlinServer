@@ -126,9 +126,10 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		where: Clause?,
 		order: Field?,
 		reverse: Boolean,
-		maxCount: Int?
+		maxCount: Int?,
+		table: String
 	): AsyncSqlAdapter<T> {
-		val sql = "SELECT ${fields.fieldStr()} FROM ${adapter.clazz.tableName
+		val sql = "SELECT ${fields.fieldStr()} FROM ${table
 		}${if (where != null) " WHERE ${where.sqlStr}" else ""
 		}${if (order != null) " ORDER BY ${order.fieldName} ${if (reverse) "DESC" else "ASC"}" else ""
 		}${if (maxCount != null) " limit $maxCount" else ""
@@ -151,7 +152,8 @@ class AsyncMySqlHelper(url: String, user: String, password: String, base: String
 		where: String?,
 		order: String?,
 		reverse: Boolean,
-		maxCount: Int?
+		maxCount: Int?,
+		table: String
 	): AsyncSqlAdapter<T> {
 		val sql = "SELECT $fields FROM ${adapter.clazz.tableName
 		}${if (where != null) " WHERE $where" else ""

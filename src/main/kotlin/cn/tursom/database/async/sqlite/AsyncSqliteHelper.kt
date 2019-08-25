@@ -90,14 +90,21 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 		where: Clause?,
 		order: Field?,
 		reverse: Boolean,
-		maxCount: Int?
+		maxCount: Int?,
+		table: String
 	): AsyncSqlAdapter<T> =
 		select(adapter, fields.fieldStr(), where?.sqlStr, order?.fieldName, reverse, maxCount)
 
 	override suspend fun <T : Any> select(
-		adapter: AsyncSqlAdapter<T>, fields: String, where: String?, order: String?, reverse: Boolean, maxCount: Int?
+		adapter: AsyncSqlAdapter<T>,
+		fields: String,
+		where: String?,
+		order: String?,
+		reverse: Boolean,
+		maxCount: Int?,
+		table: String
 	): AsyncSqlAdapter<T> {
-		val sql = "SELECT $fields FROM ${adapter.clazz.tableName
+		val sql = "SELECT $fields FROM ${table
 		}${if (where != null) " WHERE $where" else ""
 		}${if (order != null) " ORDER BY $order ${if (reverse) "DESC" else "ASC"}" else ""
 		}${if (maxCount != null) " limit $maxCount" else ""

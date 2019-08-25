@@ -29,7 +29,7 @@ class AsyncSqlStringCacheMap(
 		val memCache = prevCacheMap.get(key)
 		return if (memCache != null) memCache
 		else {
-			val storage = db.select(AsyncSqlAdapter(StorageData::class.java), maxCount = 1)
+			val storage = db.select(AsyncSqlAdapter(StorageData::class.java), maxCount = 1, table = table)
 			if (storage.isNotEmpty() && storage[0].cacheTime + timeout > System.currentTimeMillis()) {
 				val value = storage[0].value
 				set(key, value)
@@ -43,7 +43,7 @@ class AsyncSqlStringCacheMap(
 		return if (memCache != null) memCache
 		else {
 			val newValue = constructor()
-			background { updateStorage(key, newValue) }
+			this.set(key, newValue)
 			newValue
 		}
 	}

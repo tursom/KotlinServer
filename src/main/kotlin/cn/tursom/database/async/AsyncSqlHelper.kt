@@ -25,7 +25,8 @@ interface AsyncSqlHelper {
 		where: String? = null,
 		order: String? = null,
 		reverse: Boolean = false,
-		maxCount: Int? = null
+		maxCount: Int? = null,
+		table: String = adapter.clazz.tableName
 	): AsyncSqlAdapter<T>
 
 	suspend fun <T : Any> select(
@@ -34,7 +35,8 @@ interface AsyncSqlHelper {
 		where: Clause? = null,
 		order: Field? = null,
 		reverse: Boolean = false,
-		maxCount: Int? = null
+		maxCount: Int? = null,
+		table: String = adapter.clazz.tableName
 	): AsyncSqlAdapter<T>
 
 	suspend fun insert(value: Any): Int
@@ -79,8 +81,9 @@ interface AsyncSqlHelper {
 		fields: String = "*",
 		order: Field? = null,
 		reverse: Boolean = false,
-		maxCount: Int? = null
-	): AsyncSqlAdapter<T> = select(adapter, fields, where.sqlStr, order?.fieldName, reverse, maxCount)
+		maxCount: Int? = null,
+		table: String = adapter.clazz.tableName
+	): AsyncSqlAdapter<T> = select(adapter, fields, where.sqlStr, order?.fieldName, reverse, maxCount, table)
 
 	suspend fun <T : Any> select(
 		clazz: Class<T>,
@@ -88,8 +91,9 @@ interface AsyncSqlHelper {
 		fields: String = "*",
 		order: Field? = null,
 		reverse: Boolean = false,
-		maxCount: Int? = null
-	): AsyncSqlAdapter<T> = select(AsyncSqlAdapter(clazz), fields, where.sqlStr, order?.fieldName, reverse, maxCount)
+		maxCount: Int? = null,
+		table: String = clazz.tableName
+	): AsyncSqlAdapter<T> = select(AsyncSqlAdapter(clazz), fields, where.sqlStr, order?.fieldName, reverse, maxCount, table)
 
 	suspend fun <T : Any> select(
 		clazz: Class<T>,
@@ -97,8 +101,9 @@ interface AsyncSqlHelper {
 		where: Clause,
 		order: Field? = null,
 		reverse: Boolean = false,
-		maxCount: Int? = null
-	): AsyncSqlAdapter<T> = select(AsyncSqlAdapter(clazz), fields, where, order, reverse, maxCount)
+		maxCount: Int? = null,
+		table: String = clazz.tableName
+	): AsyncSqlAdapter<T> = select(AsyncSqlAdapter(clazz), fields, where, order, reverse, maxCount, table)
 
 	suspend fun delete(
 		clazz: Class<*>,
