@@ -1,14 +1,14 @@
-package cn.tursom.utils.cache.cachepool
+package cn.tursom.utils.pool
 
-import cn.tursom.utils.cache.interfaces.AsyncCachePool
+import cn.tursom.utils.asynclock.AsyncLock
 import cn.tursom.utils.asynclock.AsyncMutexLock
 import cn.tursom.utils.datastruct.ArrayBitSet
 
-class AsyncArrayCachePool<T> : AsyncCachePool<T> {
+class AsyncArrayPool<T>(private val lock: AsyncLock = AsyncMutexLock()) : AsyncPool<T> {
 	private val bitSet = ArrayBitSet(64)
 	private var poll = Array<Any?>(bitSet.size.toInt()) { null }
-	private val lock = AsyncMutexLock()
-	
+
+
 	override suspend fun put(cache: T): Boolean {
 		val index = lock {
 			val index = getDown()
@@ -18,7 +18,7 @@ class AsyncArrayCachePool<T> : AsyncCachePool<T> {
 		poll[index] = cache
 		return true
 	}
-	
+
 	override suspend fun get(): T? {
 		return lock {
 			val index = bitSet.firstUp()
@@ -31,7 +31,7 @@ class AsyncArrayCachePool<T> : AsyncCachePool<T> {
 			}
 		}
 	}
-	
+
 	private fun getDown(): Long {
 		val index = bitSet.firstDown()
 		return if (index < 0) {
@@ -41,7 +41,7 @@ class AsyncArrayCachePool<T> : AsyncCachePool<T> {
 			index
 		}
 	}
-	
+
 	private fun resize() {
 		bitSet.resize(bitSet.size * 2)
 	}

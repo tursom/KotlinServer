@@ -1,8 +1,6 @@
-package cn.tursom.utils.cache.cachepool
+package cn.tursom.utils.pool
 
-import cn.tursom.utils.cache.interfaces.CachePool
-
-class LinkedCachePool<T> : CachePool<T> {
+class LinkedPool<T> : Pool<T> {
 	@Volatile
 	private var rootNode: Node<T>? = null
 	

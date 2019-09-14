@@ -48,6 +48,8 @@ open class SQLiteHelper
 		}
 	}
 
+	override val closed: Boolean get() = connection.isClosed
+
 	override fun equals(other: Any?): Boolean =
 		if (other is SQLiteHelper) {
 			connection == other.connection

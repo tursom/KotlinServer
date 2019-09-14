@@ -1,9 +1,8 @@
-package cn.tursom.utils.cache.cachepool
+package cn.tursom.utils.pool
 
-import cn.tursom.utils.cache.interfaces.AsyncCachePool
 import cn.tursom.utils.asynclock.AsyncMutexLock
 
-class AsyncLinkedCachePool<T> : AsyncCachePool<T> {
+class AsyncLinkedCachePool<T> : AsyncPool<T> {
 	@Volatile
 	private var rootNode: Node<T>? = null
 	private val lock = AsyncMutexLock()

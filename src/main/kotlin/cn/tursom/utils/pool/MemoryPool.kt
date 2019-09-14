@@ -1,22 +1,19 @@
-package cn.tursom.utils.cache.cachepool
+package cn.tursom.utils.pool
 
-import cn.tursom.utils.cache.interfaces.AsyncCachePool
 import cn.tursom.utils.bytebuffer.HeapByteBuffer
-import cn.tursom.utils.asynclock.AsyncMutexLock
 import cn.tursom.utils.datastruct.ArrayBitSet
 import java.nio.ByteBuffer
 
-@Suppress("MemberVisibilityCanBePrivate")
-class AsyncMemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) : AsyncCachePool<ByteBuffer> {
+@Suppress("CanBeParameter", "MemberVisibilityCanBePrivate")
+class MemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) : Pool<ByteBuffer> {
 	private val memoryPool = ByteArray(blockSize * blockCount)
 	private val bitSet = ArrayBitSet(blockCount.toLong())
-	private val lock = AsyncMutexLock()
 	
-	override suspend fun put(cache: ByteBuffer): Boolean {
+	override fun put(cache: ByteBuffer): Boolean {
 		if (cache.array() !== memoryPool) return false
 		
 		val index = (cache.arrayOffset() / blockSize).toLong()
-		lock {
+		synchronized(bitSet) {
 			bitSet.down(index)
 		}
 		
@@ -24,8 +21,8 @@ class AsyncMemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) : Asy
 		return true
 	}
 	
-	override suspend fun get(): ByteBuffer? {
-		val index = lock {
+	override fun get(): ByteBuffer? {
+		val index = synchronized(bitSet) {
 			val index = bitSet.firstDown()
 			if (index >= 0) bitSet.up(index)
 			index

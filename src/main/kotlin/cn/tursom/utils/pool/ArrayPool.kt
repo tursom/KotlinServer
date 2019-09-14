@@ -1,9 +1,8 @@
-package cn.tursom.utils.cache.cachepool
+package cn.tursom.utils.pool
 
-import cn.tursom.utils.cache.interfaces.CachePool
 import cn.tursom.utils.datastruct.ArrayBitSet
 
-class ArrayCachePool<T> : CachePool<T> {
+class ArrayPool<T> : Pool<T> {
 	private val bitSet = ArrayBitSet(64)
 	private var poll = Array<Any?>(bitSet.size.toInt()) { null }
 

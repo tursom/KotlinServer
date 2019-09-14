@@ -1,9 +1,11 @@
-package cn.tursom.utils.cache.cachepool
+package cn.tursom.utils.pool
 
-import cn.tursom.utils.cache.interfaces.AsyncCachePool
 import cn.tursom.utils.asynclock.AsyncMutexLock
 
-class AsyncCachedLinkedCachePool<T> : AsyncCachePool<T> {
+/**
+ * 这个缓冲池不会释放自己持有的节点资源，防止频繁分配对象导致性能下降
+ */
+class AsyncCachedLinkedPool<T> : AsyncPool<T> {
 	@Volatile
 	private var rootNode: Node<T>? = null
 	@Volatile

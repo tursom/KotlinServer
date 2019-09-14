@@ -1,12 +1,12 @@
-package cn.tursom.utils.cache.interfaces
+package cn.tursom.utils.pool
 
-interface CachePool<T> {
+interface Pool<T> {
 	fun put(cache: T): Boolean
 	fun get(): T?
 	
 	class NoCacheException : Exception()
 	
-	fun <T> CachePool<T>.forceGet(): T {
+	fun <T> Pool<T>.forceGet(): T {
 		return get() ?: throw NoCacheException()
 	}
 }

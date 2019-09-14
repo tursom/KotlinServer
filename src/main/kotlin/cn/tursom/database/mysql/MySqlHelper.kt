@@ -28,6 +28,7 @@ class MySqlHelper(
 	@Suppress("MemberVisibilityCanBePrivate") val connection: Connection,
 	base: String? = null
 ) : SqlHelper {
+	override val closed: Boolean get() = connection.isClosed
 
 	@Suppress("MemberVisibilityCanBePrivate")
 	var basename: String? = null

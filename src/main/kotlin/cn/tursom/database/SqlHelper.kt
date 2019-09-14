@@ -12,29 +12,31 @@ import java.lang.reflect.Field
  */
 
 interface SqlHelper : Closeable {
+	val closed: Boolean
+
 	/**
 	 * 创建表格
 	 * @param table: 表格名
 	 * @param keys: 属性列表
 	 */
 	fun createTable(table: String, keys: Iterable<String>)
-	
+
 	/**
 	 * 根据提供的class对象自动化创建表格
 	 * 但是有诸多缺陷，所以不是很建议使用
 	 */
 	fun createTable(fields: Class<*>)
-	
+
 	/**
 	 * 删除表格
 	 */
 	fun deleteTable(table: String)
-	
+
 	/**
 	 * 删除表格
 	 */
 	fun dropTable(table: String)
-	
+
 	/**
 	 * 查询
 	 * @param adapter 用于保存查询结果的数据类，由SQLAdapter继承而来
@@ -50,7 +52,7 @@ interface SqlHelper : Closeable {
 		reverse: Boolean = false,
 		maxCount: Int? = null
 	): SqlAdapter<T>
-	
+
 	/**
 	 * 用于支持灵活查询
 	 */
@@ -62,25 +64,25 @@ interface SqlHelper : Closeable {
 		reverse: Boolean = false,
 		maxCount: Int? = null
 	): SqlAdapter<T>
-	
+
 	/**
 	 * 插入
 	 * @param value 值
 	 */
 	fun insert(value: Any): Int
-	
+
 	fun insert(valueList: Iterable<*>): Int
-	
+
 	fun insert(table: String, fields: String, values: String): Int
-	
+
 	fun update(table: String, set: String, where: String = ""): Int
-	
+
 	fun update(value: Any, where: Clause): Int
-	
+
 	fun delete(table: String, where: String? = null): Int
-	
+
 	fun delete(table: String, where: Clause?): Int
-	
+
 	fun commit()
 }
 
