@@ -1,11 +1,12 @@
 package cn.tursom.utils.datastruct.async.collections
 
+import cn.tursom.utils.asynclock.AsyncWriteFirstRWLock
 import cn.tursom.utils.datastruct.SetMap
 import cn.tursom.utils.datastruct.async.interfaces.AsyncCollection
 import cn.tursom.utils.datastruct.async.interfaces.AsyncPotableMap
 import cn.tursom.utils.datastruct.async.interfaces.AsyncPotableSet
 
-open class AsyncMapSet<K>(private val map: AsyncPotableMap<K, Unit>) : AsyncPotableSet<K> {
+open class AsyncMapSet<K>(private val map: AsyncPotableMap<K, Unit> = AsyncRWLockAbstractMap(AsyncWriteFirstRWLock())) : AsyncPotableSet<K> {
 	override val size: Int get() = map.size
 
 	override suspend fun isEmpty(): Boolean {
@@ -28,6 +29,10 @@ open class AsyncMapSet<K>(private val map: AsyncPotableMap<K, Unit>) : AsyncPota
 	override suspend fun put(key: K): AsyncPotableSet<K> {
 		map.set(key, Unit)
 		return this
+	}
+
+	override suspend fun putIfAbsent(key: K): Boolean {
+		return map.putIfAbsent(key, Unit)
 	}
 
 	override suspend fun putAll(from: Set<K>): AsyncPotableSet<K> {

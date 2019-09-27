@@ -40,6 +40,16 @@ class AsyncArrayMap<K : Comparable<K>, V> : AsyncPotableMap<K, V> {
 		return lock { map.set(key, value) }
 	}
 
+	override suspend fun putIfAbsent(key: K, value: V): Boolean {
+		return lock {
+			if (containsKey(key)) false
+			else {
+				map[key] = value
+				true
+			}
+		}
+	}
+
 	override suspend fun putAll(from: Map<out K, V>) {
 		return lock { map.putAll(from) }
 	}

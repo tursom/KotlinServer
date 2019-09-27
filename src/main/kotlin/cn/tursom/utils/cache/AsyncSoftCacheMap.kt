@@ -36,6 +36,10 @@ class AsyncSoftCacheMap<K, V>(
 		return value
 	}
 
+	override suspend fun putIfAbsent(key: K, value: V): Boolean {
+		return valueMap.putIfAbsent(key, SoftReference(System.currentTimeMillis() to value))
+	}
+
 	override suspend fun putAll(from: Map<out K, V>) {
 		from.forEach { (k, v) ->
 			valueMap.set(k, SoftReference(System.currentTimeMillis() to v))

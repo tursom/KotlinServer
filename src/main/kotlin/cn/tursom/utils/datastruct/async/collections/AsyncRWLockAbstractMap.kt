@@ -12,10 +12,9 @@ class AsyncRWLockAbstractMap<K, V>(
 	constructor(lock: AsyncRWLock) : this(lock, HashMap())
 
 	override suspend fun set(key: K, value: V): V? {
-		lock.doWrite {
-			map[key] = value
+		return lock.doWrite {
+			map.put(key, value)
 		}
-		return value
 	}
 
 	override suspend fun remove(key: K): V? {
@@ -24,6 +23,16 @@ class AsyncRWLockAbstractMap<K, V>(
 
 	override suspend fun clear() {
 		lock { map.clear() }
+	}
+
+	override suspend fun putIfAbsent(key: K, value: V): Boolean {
+		return lock {
+			if (map.containsKey(key)) false
+			else {
+				map[key] = value
+				true
+			}
+		}
 	}
 
 	override suspend fun putAll(from: Map<out K, V>) {
