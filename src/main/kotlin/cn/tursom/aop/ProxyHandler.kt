@@ -36,16 +36,16 @@ class ProxyHandler(private val target: Any, private val aspect: Aspect) : Invoca
 				ProxyHandler(bean, aspect)
 			)
 		}
-	}
 
-	fun getTopBean(target: Any): Any {
-		var bean = target
-		while (Proxy.isProxyClass(bean.javaClass)) {
-			val handler = Proxy.getInvocationHandler(bean)
-			if (handler is ProxyHandler)
-				bean = handler.target
-			else break
+		fun getTopBean(target: Any): Any {
+			var bean = target
+			while (Proxy.isProxyClass(bean.javaClass)) {
+				val handler = Proxy.getInvocationHandler(bean)
+				if (handler is ProxyHandler)
+					bean = handler.target
+				else break
+			}
+			return bean
 		}
-		return bean
 	}
 }
