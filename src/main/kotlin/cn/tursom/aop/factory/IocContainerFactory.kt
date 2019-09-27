@@ -10,6 +10,7 @@ import cn.tursom.utils.xml.Xml
 import org.dom4j.Element
 import java.io.File
 
+@Suppress("MemberVisibilityCanBePrivate")
 object IocContainerFactory {
 	/**
 	 * example:
@@ -52,7 +53,7 @@ object IocContainerFactory {
 		return iocContainer
 	}
 
-	private fun getXmlPointCuts(root: Element): List<Pointcut> {
+	fun getXmlPointCuts(root: Element): List<Pointcut> {
 		val pointcuts = ArrayList<Pointcut>()
 		root.elements("RegexPointcut").forEach {
 			if (it !is Element) return@forEach
@@ -69,7 +70,7 @@ object IocContainerFactory {
 		return pointcuts
 	}
 
-	private fun getXmlAdvices(root: Element, classLoader: ClassLoader): List<Advice> {
+	fun getXmlAdvices(root: Element, classLoader: ClassLoader): List<Advice> {
 		val advices = ArrayList<Advice>()
 		root.elements("advice").forEach {
 			if (it !is Element) return@forEach
@@ -80,7 +81,7 @@ object IocContainerFactory {
 		return advices
 	}
 
-	private fun getXmlBean(root: Element, classLoader: ClassLoader, iocContainer: IocContainer): Any {
+	fun getXmlBean(root: Element, classLoader: ClassLoader, iocContainer: IocContainer): Any {
 		val clazz = classLoader.loadClass(root.attribute("class").value)
 		val bean = clazz.newInstance()
 		root.elements()?.forEach subForEach@{ sub ->
