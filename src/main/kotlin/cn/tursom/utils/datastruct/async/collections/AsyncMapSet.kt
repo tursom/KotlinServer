@@ -5,7 +5,7 @@ import cn.tursom.utils.datastruct.async.interfaces.AsyncCollection
 import cn.tursom.utils.datastruct.async.interfaces.AsyncPotableMap
 import cn.tursom.utils.datastruct.async.interfaces.AsyncPotableSet
 
-class AsyncMapSet<K : Comparable<K>>(private val map: AsyncPotableMap<K, Unit> = AsyncArrayMap()) : AsyncPotableSet<K> {
+open class AsyncMapSet<K>(private val map: AsyncPotableMap<K, Unit>) : AsyncPotableSet<K> {
 	override val size: Int get() = map.size
 
 	override suspend fun isEmpty(): Boolean {
