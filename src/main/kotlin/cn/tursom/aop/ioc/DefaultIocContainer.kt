@@ -2,6 +2,7 @@ package cn.tursom.aop.ioc
 
 import cn.tursom.aop.aspect.Aspect
 import cn.tursom.aop.ProxyHandler
+import java.lang.reflect.Proxy
 
 class DefaultIocContainer : IocContainer {
 	private val benDefinitionMap = HashMap<String, Class<*>>()
@@ -54,9 +55,12 @@ class DefaultIocContainer : IocContainer {
 		}
 	}
 
+
 	private fun getTopBean(bean: Any): Any {
-		return if (bean is ProxyHandler) {
-			bean.getTopBean()
+		return if (Proxy.isProxyClass(bean.javaClass)) {
+			val handler = Proxy.getInvocationHandler(bean)
+			if (handler is ProxyHandler) handler.getTopBean()
+			else bean
 		} else {
 			bean
 		}

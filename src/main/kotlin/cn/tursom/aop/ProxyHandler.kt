@@ -7,10 +7,14 @@ import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 class ProxyHandler(private val target: Any, private val aspect: Aspect) : InvocationHandler {
+
 	fun getTopBean(): Any {
 		var bean = target
-		while (bean is ProxyHandler) {
-			bean = bean.target
+		while (Proxy.isProxyClass(bean.javaClass)) {
+			val handler = Proxy.getInvocationHandler(bean)
+			if (handler is ProxyHandler)
+				bean = handler.target
+			else break
 		}
 		return bean
 	}
