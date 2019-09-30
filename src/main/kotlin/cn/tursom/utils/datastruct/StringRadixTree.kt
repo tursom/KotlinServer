@@ -12,15 +12,20 @@ class StringRadixTree<T> {
 		var prev: Node<T> = root
 		while (node != null) {
 			var nodeLocation = 0
-			while (nodeLocation < node.length) {
-				if (node[nodeLocation] != context.get) {
+			while (nodeLocation < node.length && !context.end) {
+				if (node[nodeLocation] != context.peek) {
 					insert(node, nodeLocation, context, value)
 					return
 				}
+				context.add
 				nodeLocation++
 			}
 			if (context.end) {
-				node.value = value
+				if (nodeLocation == node.length) {
+					node.value = value
+				} else {
+					branchNode(node, nodeLocation, context, value)
+				}
 				return
 			}
 			prev = node
@@ -29,15 +34,37 @@ class StringRadixTree<T> {
 		insert(prev, prev.length, context, value)
 	}
 
-	private fun insert(node: Node<T>, nodeLocation: Int, context: Context, value: T) {
-		if (node.value == null && node.subNodes.isEmpty()) {
+	private fun branchNode(node: Node<T>, nodeLocation: Int, context: Context, value: T) {
+		val subNode = Node(node.str.substring(nodeLocation, node.str.length), node.value)
+		subNode.subNodes = node.subNodes
+		node.subNodes = ArrayMap(2)
+		node.subNodes[node[nodeLocation]] = subNode
+		node.str = node.str.substring(0, nodeLocation)
+		if (context.end) {
 			node.value = value
-			node.str = context.remains
-			return
+		} else {
+			node.value = null
+			node.subNodes[context.peek] = Node(context.remains, value)
 		}
-		node.subNodes[node[nodeLocation]] = Node(node.str.substring(nodeLocation, node.str.length), node.value)
-		node.value = null
-		node.subNodes[context.peek] = Node(context.remains, value)
+	}
+
+	private fun insert(node: Node<T>, nodeLocation: Int, context: Context, value: T) {
+		if (node.value == null) {
+			if (node.subNodes.isEmpty()) {
+				node.value = value
+				node.str = context.remains
+				return
+			} else {
+				if (node.str.isEmpty()) {
+					node.subNodes[context.peek] = Node(context.remains, value)
+					return
+				} else if (node.str == context.remains) {
+					node.value = value
+					return
+				}
+			}
+		}
+		branchNode(node, nodeLocation, context, value)
 	}
 
 	operator fun get(route: String): T? {
@@ -59,7 +86,9 @@ class StringRadixTree<T> {
 	private fun toString(node: Node<T>, stringBuilder: StringBuilder, indentation: String) {
 		if (indentation.isEmpty()) {
 			stringBuilder.append("\"${node.str.replace("\"", "\"\"")}\": ${node.value}\n")
-			toString(node, stringBuilder, " ")
+			node.subNodes.forEach { subNode ->
+				toString(subNode.value, stringBuilder, " ")
+			}
 		} else {
 			stringBuilder.append("$indentation|- \"${node.str.replace("\"", "\"\"")}\": ${node.value}\n")
 			node.subNodes.forEach { subNode ->
@@ -75,13 +104,12 @@ class StringRadixTree<T> {
 		return stringBuilder.toString()
 	}
 
-	class Node<T>(var str: String = "", var value: T? = null) {
+	data class Node<T>(var str: String = "", var value: T? = null, var subNodes: ArrayMap<Char, Node<T>> = ArrayMap(0)) {
 		val length get() = str.length
-		val subNodes = ArrayMap<Char, Node<T>>(0)
 		operator fun get(index: Int) = str[index]
 	}
 
-	class Context(val route: String, var location: Int = 0) {
+	data class Context(val route: String, var location: Int = 0) {
 		val peek get() = route[location]
 		val get get() = route[location++]
 		val add get() = location++
@@ -92,11 +120,4 @@ class StringRadixTree<T> {
 			location = 0
 		}
 	}
-}
-
-fun main() {
-	val radixTree = StringRadixTree<Int>()
-	radixTree["123"] = 1
-	radixTree["567"] = 2
-	println(radixTree)
 }

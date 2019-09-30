@@ -103,7 +103,7 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 
 	private fun search(key: K): Int {
 		if (end == 0) return -1
-		return arr.binarySearch(key, 0, end - 1)
+		return arr.binarySearch(key, 0, end)
 	}
 
 	class Node<K : Comparable<K>, V>(
@@ -149,7 +149,7 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 
 		override fun hasNext(): Boolean {
 			@Suppress("ControlFlowWithEmptyBody")
-			while (index <= map.end && ++index < map.arr.size && map.arr[index] == null);
+			while (++index < map.arr.size && index < map.end && map.arr[index] == null);
 			index--
 			return index < map.end
 		}
