@@ -1,14 +1,18 @@
-package cn.tursom.web.router
+package cn.tursom.web.router.impl
 
 import cn.tursom.utils.binarySearch
-
+import cn.tursom.web.router.*
+import cn.tursom.web.router.impl.node.AnyColonNode
+import cn.tursom.web.router.impl.node.ColonNode
+import cn.tursom.web.router.impl.node.IColonNode
+import cn.tursom.web.router.impl.node.PlaceholderColonNode
 
 @Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
-class Router<T> {
-	private val rootNode = RouteNode<T>(listOf(""), 0)
-	val root: RouterNode<T> = rootNode
-	
-	fun addSubRoute(route: String, value: T?, onDestroy: ((oldValue: T) -> Unit)? = null) {
+class ColonRouter<T> : IRouter<T> {
+	private val rootNode = ColonNode<T>(listOf(""), 0)
+	val root: IColonNode<T> = rootNode
+
+	override fun addSubRoute(route: String, value: T?, onDestroy: ((oldValue: T) -> Unit)?) {
 		val routeList = route.split('?')[0].split('/').filter { it.isNotEmpty() }
 		var routeNode = rootNode
 		var r: String
@@ -17,17 +21,17 @@ class Router<T> {
 			r = routeList[index]
 			routeNode = when {
 				r.isEmpty() -> routeNode
-				
+
 				r == "*" -> routeNode.wildSubRouter ?: {
-					val node = AnyRouteNode<T>(routeList, index)
+					val node = AnyColonNode<T>(routeList, index)
 					routeNode.wildSubRouter = node
 					index = routeList.size - 1
 					node
 				}()
-				
+
 				r[0] == ':' -> run {
 					val node = synchronized(routeNode.placeholderRouterList!!) {
-						val matchLength = PlaceholderRouteNode.matchLength(routeList, index)
+						val matchLength = PlaceholderColonNode.matchLength(routeList, index)
 						routeNode.placeholderRouterList!!.binarySearch { it.size - matchLength } ?: {
 							routeNode.addNode(routeList, index, null)
 							routeNode.placeholderRouterList!!.binarySearch { it.size - matchLength }!!
@@ -36,10 +40,10 @@ class Router<T> {
 					index += node.size - 1
 					node
 				}
-				
+
 				else -> synchronized(routeNode.subRouterMap) {
 					routeNode.subRouterMap[r] ?: {
-						val node = RouteNode<T>(routeList, index)
+						val node = ColonNode<T>(routeList, index)
 						routeNode.subRouterMap[r] = node
 						node
 					}()
@@ -53,23 +57,17 @@ class Router<T> {
 		routeNode.routeList = routeList
 		routeNode.index = index - 1
 	}
-	
-	fun delRoute(route: String) {
+
+	override fun delRoute(route: String) {
 		this[route] = null
 	}
-	
-	operator fun set(
-		route: String,
-		onDestroy: ((oldValue: T) -> Unit)? = null,
-		value: T?
-	) = addSubRoute(route, value, onDestroy)
-	
-	operator fun get(route: String): Pair<T?, List<Pair<String, String>>> {
+
+	override operator fun get(route: String): Pair<T?, List<Pair<String, String>>> {
 		val list = ArrayList<Pair<String, String>>()
 		return rootNode[route.split('?')[0].split('/').filter { it.isNotEmpty() }, list]?.value to list
 	}
-	
-	private fun toString(node: RouteNode<T>, stringBuilder: StringBuilder, indentation: String) {
+
+	private fun toString(node: ColonNode<T>, stringBuilder: StringBuilder, indentation: String) {
 		if (
 			node.value == null &&
 			node.subRouterMap.isEmpty() &&
@@ -78,17 +76,17 @@ class Router<T> {
 		) {
 			return
 		}
-		
+
 		if (indentation.isNotEmpty()) {
 			stringBuilder.append(indentation)
 			stringBuilder.append("- ")
 		}
 		stringBuilder.append("${node.singleRoute}${if (node.value != null) "    ${node.value}" else ""}\n")
-		
-		if (node is AnyRouteNode) return
-		
+
+		if (node is AnyColonNode) return
+
 		val subIndentation = if (indentation.isEmpty()) "|" else "$indentation  |"
-		
+
 		node.subRouterMap.forEach { (_, u) ->
 			toString(u, stringBuilder, subIndentation)
 		}
@@ -98,7 +96,7 @@ class Router<T> {
 		toString(node.wildSubRouter ?: return, stringBuilder, subIndentation)
 		return
 	}
-	
+
 	override fun toString(): String {
 		val stringBuilder = StringBuilder()
 		toString(rootNode, stringBuilder, "")

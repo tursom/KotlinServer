@@ -1,8 +1,8 @@
 package cn.tursom.utils.datastruct
 
-class ArrayMap<K : Comparable<K>, V> : Map<K, V> {
+class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 	@Volatile
-	private var arr: Array<Node<K, V>?> = Array(4) { null }
+	private var arr: Array<Node<K, V>?> = Array(initialCapacity) { null }
 	@Volatile
 	private var end = 0
 
@@ -87,7 +87,7 @@ class ArrayMap<K : Comparable<K>, V> : Map<K, V> {
 
 	private fun resize() {
 		val oldArr = arr
-		arr = Array(arr.size * 2) { null }
+		arr = Array(if (arr.isNotEmpty()) arr.size * 2 else 1) { null }
 		oldArr.forEachIndexed { i, v ->
 			arr[i] = v
 		}
@@ -95,7 +95,7 @@ class ArrayMap<K : Comparable<K>, V> : Map<K, V> {
 
 	private fun insert(key: K, value: V, index: Int): V? {
 		if (end == arr.size) resize()
-		for (i in end - 2 downTo index) arr[i + 1] = arr[i]
+		for (i in end - 1 downTo index) arr[i + 1] = arr[i]
 		arr[index] = Node(key, value)
 		end++
 		return value
@@ -107,8 +107,8 @@ class ArrayMap<K : Comparable<K>, V> : Map<K, V> {
 	}
 
 	class Node<K : Comparable<K>, V>(
-			override val key: K,
-			@Volatile override var value: V
+		override val key: K,
+		@Volatile override var value: V
 	) : Comparable<K>, Map.Entry<K, V> {
 		override fun compareTo(other: K): Int {
 			return key.compareTo(other)
@@ -148,7 +148,8 @@ class ArrayMap<K : Comparable<K>, V> : Map<K, V> {
 		private var index = 0
 
 		override fun hasNext(): Boolean {
-			while (index <= map.end && map.arr[index++] == null);
+			@Suppress("ControlFlowWithEmptyBody")
+			while (index <= map.end && ++index < map.arr.size && map.arr[index] == null);
 			index--
 			return index < map.end
 		}

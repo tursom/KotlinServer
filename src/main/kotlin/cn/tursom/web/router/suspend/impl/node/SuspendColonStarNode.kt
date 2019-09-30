@@ -1,22 +1,23 @@
-package cn.tursom.web.router
+package cn.tursom.web.router.suspend.impl.node
 
 import cn.tursom.utils.asynclock.AsyncReadFirstRWLock
 import cn.tursom.utils.binarySearch
+import cn.tursom.web.router.suspend.SuspendColonStarNode
 
 @Suppress("MemberVisibilityCanBePrivate")
-internal open class SuspendRouteNode<T>(
+internal open class SuspendColonStarNode<T>(
 	var routeList: List<String>,
 	var index: Int,
 	override var value: T? = null
-) : SuspendRouterNode<T> {
+) : SuspendColonStarNode<T> {
 	val route: String = routeList[index]
-	var wildSubRouter: SuspendAnyRouteNode<T>? = null
+	var wildSubRouter: SuspendAnyColonStarNode<T>? = null
 
 	private val placeholderRouterListLock = AsyncReadFirstRWLock()
-	protected open val placeholderRouterList: ArrayList<SuspendPlaceholderRouteNode<T>>? = ArrayList(0)
+	protected open val placeholderRouterList: ArrayList<SuspendPlaceholderColonStarNode<T>>? = ArrayList(0)
 
 	private val subRouterMapLock = AsyncReadFirstRWLock()
-	val subRouterMap = HashMap<String, SuspendRouteNode<T>>(0)
+	val subRouterMap = HashMap<String, cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>>(0)
 
 	override val lastRoute
 		get() = "/$route"
@@ -39,7 +40,7 @@ internal open class SuspendRouteNode<T>(
 			placeholderRouterListEmpty &&
 			wildSubRouter == null
 
-	override suspend fun forEach(action: suspend (node: SuspendRouterNode<T>) -> Unit) {
+	override suspend fun forEach(action: suspend (node: SuspendColonStarNode<T>) -> Unit) {
 		placeholderRouterListLock.doRead {
 			placeholderRouterList?.forEach { action(it) }
 		}
@@ -49,11 +50,11 @@ internal open class SuspendRouteNode<T>(
 		wildSubRouter?.let { action(it) }
 	}
 
-	suspend fun forEachPlaceholderRouter(block: suspend (SuspendPlaceholderRouteNode<T>) -> Unit) {
+	suspend fun forEachPlaceholderRouter(block: suspend (SuspendPlaceholderColonStarNode<T>) -> Unit) {
 		placeholderRouterListLock.doRead { placeholderRouterList?.forEach { block(it) } }
 	}
 
-	suspend fun getPlaceholderRouter(length: Int): SuspendPlaceholderRouteNode<T>? {
+	suspend fun getPlaceholderRouter(length: Int): SuspendPlaceholderColonStarNode<T>? {
 		return placeholderRouterListLock.doRead { placeholderRouterList!!.binarySearch { it.size - length } }
 	}
 
@@ -67,11 +68,11 @@ internal open class SuspendRouteNode<T>(
 		return when {
 			r.isEmpty() -> return addNode(route, startIndex + 1)
 			r == "*" -> {
-				wildSubRouter = SuspendAnyRouteNode(route, startIndex, null)
+				wildSubRouter = SuspendAnyColonStarNode(route, startIndex, null)
 				1
 			}
 			r[0] == ':' -> {
-				val node: SuspendPlaceholderRouteNode<T> = SuspendPlaceholderRouteNode(
+				val node: SuspendPlaceholderColonStarNode<T> = SuspendPlaceholderColonStarNode(
 					route,
 					startIndex,
 					value = value
@@ -87,13 +88,13 @@ internal open class SuspendRouteNode<T>(
 				node.size
 			}
 			else -> {
-				subRouterMap[r] = SuspendRouteNode(route, startIndex, value)
+				subRouterMap[r] = SuspendColonStarNode(route, startIndex, value)
 				1
 			}
 		}
 	}
 
-	operator fun get(route: List<String>, startIndex: Int = 0): Pair<SuspendRouteNode<T>?, Int> {
+	operator fun get(route: List<String>, startIndex: Int = 0): Pair<cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>?, Int> {
 		val r = route[startIndex]
 		if (r.isEmpty()) return this to 1
 
@@ -116,7 +117,7 @@ internal open class SuspendRouteNode<T>(
 		return wildSubRouter to 1
 	}
 
-	fun getRoute(route: List<String>, startIndex: Int = 0): SuspendRouteNode<T>? {
+	fun getRoute(route: List<String>, startIndex: Int = 0): cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>? {
 		var index = startIndex
 		var routeNode = this
 		while (index < route.size) {
@@ -131,7 +132,7 @@ internal open class SuspendRouteNode<T>(
 		route: List<String>,
 		startIndex: Int = 0,
 		routeList: java.util.AbstractList<Pair<String, String>>
-	): Pair<SuspendRouteNode<T>?, Int> {
+	): Pair<cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>?, Int> {
 		val r = route[startIndex]
 		if (r.isEmpty()) {
 			return this to 1
@@ -198,7 +199,7 @@ internal open class SuspendRouteNode<T>(
 		route: List<String>,
 		startIndex: Int = 0,
 		routeList: java.util.AbstractList<Pair<String, String>>
-	): SuspendRouteNode<T>? {
+	): cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>? {
 		var index = startIndex
 		var routeNode = this
 		while (index < route.size) {

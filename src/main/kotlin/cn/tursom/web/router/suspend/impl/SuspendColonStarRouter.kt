@@ -1,11 +1,13 @@
-package cn.tursom.web.router
+package cn.tursom.web.router.suspend.impl
 
+import cn.tursom.web.router.suspend.impl.node.SuspendAnyColonStarNode
+import cn.tursom.web.router.suspend.impl.node.SuspendPlaceholderColonStarNode
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 
 @Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
-class SuspendRouter<T>() {
-	private val rootNode = SuspendRouteNode<T>(listOf(""), 0, null)
+class SuspendColonStarRouter<T> {
+	private val rootNode = cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>(listOf(""), 0, null)
 	private val threadPool = Executors.newSingleThreadExecutor()
 
 	@Volatile
@@ -17,7 +19,7 @@ class SuspendRouter<T>() {
 	@Volatile
 	private var strBufTime: Long = 0
 
-	val root: SuspendRouterNode<T> = rootNode
+	val root: cn.tursom.web.router.suspend.SuspendColonStarNode<T> = rootNode
 
 	private suspend fun setSubRoute(
 		route: String,
@@ -34,14 +36,14 @@ class SuspendRouter<T>() {
 				r.isEmpty() -> routeNode
 
 				r == "*" -> routeNode.wildSubRouter ?: run {
-					val node = SuspendAnyRouteNode<T>(routeList, index, null)
+					val node = SuspendAnyColonStarNode<T>(routeList, index, null)
 					routeNode.wildSubRouter = node
 					index = routeList.size - 1
 					node
 				}
 
 				r[0] == ':' -> {
-					val matchLength = SuspendPlaceholderRouteNode.matchLength(routeList, index)
+					val matchLength = SuspendPlaceholderColonStarNode.matchLength(routeList, index)
 					val node = routeNode.getPlaceholderRouter(matchLength) ?: suspend {
 						routeNode.addNode(routeList, index, null)
 						routeNode.getPlaceholderRouter(matchLength)!!
@@ -51,7 +53,7 @@ class SuspendRouter<T>() {
 				}
 
 				else -> routeNode.subRouterMap[r] ?: {
-					val node = SuspendRouteNode<T>(routeList, index, null)
+					val node = cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>(routeList, index, null)
 					routeNode.subRouterMap[r] = node
 					node
 				}()
@@ -92,7 +94,7 @@ class SuspendRouter<T>() {
 		)?.value to list
 	}
 
-	private suspend fun toString(node: SuspendRouteNode<T>, stringBuilder: StringBuilder, indentation: String) {
+	private suspend fun toString(node: cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>, stringBuilder: StringBuilder, indentation: String) {
 		if (
 			node.value == null &&
 			node.subRouterMap.isEmpty() &&
@@ -108,7 +110,7 @@ class SuspendRouter<T>() {
 		}
 		stringBuilder.append("${node.lastRoute}${if (node.value != null) "    ${node.value}" else ""}\n")
 
-		if (node is SuspendAnyRouteNode) return
+		if (node is SuspendAnyColonStarNode) return
 
 		val subIndentation = if (indentation.isEmpty()) "|" else "$indentation  |"
 

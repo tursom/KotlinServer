@@ -1,22 +1,22 @@
-package cn.tursom.web.router
+package cn.tursom.web.router.impl.node
 
 import cn.tursom.utils.binarySearch
 
 @Suppress("MemberVisibilityCanBePrivate")
-open class RouteNode<T>(
+open class ColonNode<T>(
 	var routeList: List<String>,
 	var index: Int,
 	override var value: T? = null
-) : RouterNode<T> {
+) : IColonNode<T> {
 	val route: String = routeList[index]
-	var wildSubRouter: AnyRouteNode<T>? = null
-	open val placeholderRouterList: ArrayList<PlaceholderRouteNode<T>>? = ArrayList(0)
-	val subRouterMap = HashMap<String, RouteNode<T>>(0)
+	var wildSubRouter: AnyColonNode<T>? = null
+	open val placeholderRouterList: ArrayList<PlaceholderColonNode<T>>? = ArrayList(0)
+	val subRouterMap = HashMap<String, ColonNode<T>>(0)
 	
 	open val singleRoute
 		get() = "/$route"
 	
-	override fun forEach(action: (node: RouterNode<T>) -> Unit) {
+	override fun forEach(action: (node: IColonNode<T>) -> Unit) {
 		placeholderRouterList?.forEach(action)
 		subRouterMap.forEach { (_, u) -> action(u) }
 		wildSubRouter?.let(action)
@@ -32,11 +32,11 @@ open class RouteNode<T>(
 		return when {
 			r.isEmpty() -> return addNode(route, startIndex + 1)
 			r == "*" -> {
-				wildSubRouter = AnyRouteNode(route, startIndex)
+				wildSubRouter = AnyColonNode(route, startIndex)
 				1
 			}
 			r[0] == ':' -> {
-				val node: PlaceholderRouteNode<T> = PlaceholderRouteNode(route, startIndex, value = value)
+				val node: PlaceholderColonNode<T> = PlaceholderColonNode(route, startIndex, value = value)
 				// 必须保证 placeholderRouterList 存在，而且还不能有这个长度的节点
 				if (synchronized(placeholderRouterList!!) {
 						placeholderRouterList!!.binarySearch { it.size - node.size }
@@ -50,13 +50,13 @@ open class RouteNode<T>(
 				node.size
 			}
 			else -> synchronized(subRouterMap) {
-				subRouterMap[r] = RouteNode(route, startIndex, value)
+				subRouterMap[r] = ColonNode(route, startIndex, value)
 				1
 			}
 		}
 	}
 	
-	operator fun get(route: List<String>, startIndex: Int = 0): Pair<RouteNode<T>?, Int> {
+	operator fun get(route: List<String>, startIndex: Int = 0): Pair<ColonNode<T>?, Int> {
 		val r = route[startIndex]
 		if (r.isEmpty()) return this to 1
 		
@@ -81,7 +81,7 @@ open class RouteNode<T>(
 		return wildSubRouter to 1
 	}
 	
-	fun getRoute(route: List<String>, startIndex: Int = 0): RouteNode<T>? {
+	fun getRoute(route: List<String>, startIndex: Int = 0): ColonNode<T>? {
 		var index = startIndex
 		var routeNode = this
 		while (index < route.size) {
@@ -96,7 +96,7 @@ open class RouteNode<T>(
 		route: List<String>,
 		startIndex: Int = 0,
 		routeList: java.util.AbstractList<Pair<String, String>>
-	): Pair<RouteNode<T>?, Int> {
+	): Pair<ColonNode<T>?, Int> {
 		val r = route[startIndex]
 		if (r.isEmpty()) {
 			return this to 1
@@ -159,10 +159,10 @@ open class RouteNode<T>(
 		route: List<String>,
 		startIndex: Int = 0,
 		routeList: java.util.AbstractList<Pair<String, String>>
-	): RouteNode<T>? {
+	): ColonNode<T>? {
 		var index = startIndex
 		var routeNode = this
-		while (routeNode !is AnyRouteNode && index < route.size) {
+		while (routeNode !is AnyColonNode && index < route.size) {
 			val (node, size) = routeNode[route, index, routeList]
 			routeNode = node ?: return null
 			index += size

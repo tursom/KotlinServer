@@ -1,23 +1,17 @@
-package cn.tursom.web.router
+package cn.tursom.web.router.impl.node
 
-internal class SuspendPlaceholderRouteNode<T>(
+class PlaceholderColonNode<T>(
 	route: List<String>,
 	private val startIndex: Int = 0,
 	endIndex: Int = startIndex + route.matchLength(startIndex),
 	value: T? = null
-) : SuspendRouteNode<T>(route, endIndex - 1, value) {
-	override val placeholderRouterList: ArrayList<SuspendPlaceholderRouteNode<T>>?
+) : ColonNode<T>(route, endIndex - 1, value) {
+	override val placeholderRouterList: ArrayList<PlaceholderColonNode<T>>?
 		get() = null
 	
 	val size: Int = route.matchLength(startIndex, endIndex)
 	
-	override fun match(
-		route: List<String>,
-		startIndex: Int
-	): Pair<Boolean, Int> =
-		(size == route.matchLength(startIndex)) to size
-	
-	override val lastRoute: String
+	override val singleRoute: String
 		get() {
 			val sb = StringBuilder()
 			for (i in startIndex..index) {
@@ -26,6 +20,12 @@ internal class SuspendPlaceholderRouteNode<T>(
 			}
 			return sb.toString()
 		}
+	
+	override fun match(
+		route: List<String>,
+		startIndex: Int
+	): Pair<Boolean, Int> =
+		(size == route.matchLength(startIndex)) to size
 	
 	companion object {
 		@JvmStatic
