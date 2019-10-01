@@ -3,6 +3,7 @@ package cn.tursom.socket.server.nio
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.server.ISocketServer
 import java.net.InetSocketAddress
+import java.nio.channels.ClosedSelectorException
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
@@ -22,46 +23,52 @@ class ProtocolNioServer(val port: Int, private val protocol: INioProtocol) : ISo
 		val selector = Selector.open()
 		selectorList.add(selector)
 		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
-		while (true) {
-			if (selector.select(TIMEOUT) == 0) continue
+		try {
+			while (true) {
+				if (selector.select(TIMEOUT) == 0) continue
 
-			val keyIter = selector.selectedKeys().iterator()
-			while (keyIter.hasNext()) {
-				val key = keyIter.next()
-				try {
-					when {
-						key.isAcceptable -> {
-							val serverChannel = key.channel() as ServerSocketChannel
-							val channel = serverChannel.accept()
-							channel.configureBlocking(false)
-							key.interestOps(0)
-							val socketKey = channel.register(selector, 0)
-							protocol.handleAccept(socketKey)
-						}
-						key.isReadable -> {
-							protocol.handleRead(key)
-						}
-						key.isValid && key.isWritable -> {
-							protocol.handleWrite(key)
-						}
-					}
-				} catch (e: Throwable) {
+				val keyIter = selector.selectedKeys().iterator()
+				while (keyIter.hasNext()) {
+					val key = keyIter.next()
 					try {
-						protocol.exceptionCause(key, e)
-					} catch (e1: Throwable) {
-						e.printStackTrace()
-						e1.printStackTrace()
+						when {
+							key.isAcceptable -> {
+								val serverChannel = key.channel() as ServerSocketChannel
+								val channel = serverChannel.accept()
+								channel.configureBlocking(false)
+								key.interestOps(0)
+								val socketKey = channel.register(selector, 0)
+								protocol.handleAccept(socketKey)
+							}
+							key.isReadable -> {
+								protocol.handleRead(key)
+							}
+							key.isValid && key.isWritable -> {
+								protocol.handleWrite(key)
+							}
+						}
+					} catch (e: Throwable) {
+						try {
+							protocol.exceptionCause(key, e)
+						} catch (e1: Throwable) {
+							e.printStackTrace()
+							e1.printStackTrace()
+						}
+					} finally {
+						keyIter.remove()
 					}
-				} finally {
-					keyIter.remove()
 				}
 			}
+		} catch (e: ClosedSelectorException) {
 		}
 	}
 
 	override fun close() {
 		listenChannel.close()
-		selectorList.forEach { selector -> selector.close() }
+		selectorList.forEach { selector ->
+			selector.close()
+			selector.wakeup()
+		}
 	}
 
 	companion object {

@@ -20,6 +20,7 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey) : IAsyncNioSocket {
 		key.interestOps(SelectionKey.OP_READ)
 		return suspendCoroutine {
 			key.attach(Context(buffer, it))
+			key.selector().wakeup()
 		}
 	}
 
@@ -27,7 +28,13 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey) : IAsyncNioSocket {
 		key.interestOps(SelectionKey.OP_WRITE)
 		return suspendCoroutine {
 			key.attach(Context(buffer, it))
+			key.selector().wakeup()
 		}
+	}
+
+	override fun close() {
+		channel.close()
+		key.cancel()
 	}
 
 	data class Context(val buffer: ByteBuffer, val cont: Continuation<Int>)
