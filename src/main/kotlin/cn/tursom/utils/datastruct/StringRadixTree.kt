@@ -232,6 +232,7 @@ class StringRadixTree<T> {
 		}
 	}
 
+
 	/**
 	 * 路径匹配时需要的环境
 	 */
@@ -249,8 +250,8 @@ class StringRadixTree<T> {
 //	//listOf("1" to 1, "2" to 2, "11" to 11, "12" to 12, "21" to 21, "22" to 22).forEach { (k, v) ->
 //	//	tree[k] = v
 //	//}
-//	val list = listOf("romane", "romanus", "romulus", "rubens", "ruber", "rubicon", "rubicundus", "海星", "大屁股裂了", "尼玛死", "是乌拉啊我死了", "是薄荷啊我死了",
-//		"是村正，呕 ")
+//	val list = listOf("romane", "romanus", "romulus", "rubens", "ruber", "rubicon", "rubicundus", "海星", "大屁股裂了",
+//		"尼玛死", "是乌拉啊我死了", "是薄荷啊我死了", "是村正，呕 ", "是村正，呕 ")
 //	list.forEachIndexed { index, s ->
 //		tree[s] = index + 1
 //		println(tree)
