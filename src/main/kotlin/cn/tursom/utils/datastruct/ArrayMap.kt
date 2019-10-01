@@ -1,31 +1,52 @@
 package cn.tursom.utils.datastruct
 
+@Suppress("MemberVisibilityCanBePrivate")
 class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 	@Volatile
 	private var arr: Array<Node<K, V>?> = Array(initialCapacity) { null }
 	@Volatile
 	private var end = 0
 
-	override val size: Int
-		get() = end
+	override val size: Int get() = end
 	override val entries: Set<Map.Entry<K, V>> = EntrySet(this)
 	override val keys: Set<K> = KeySet(this)
 	override val values: Collection<V> = ValueCollection(this)
 
+	/**
+	 * 清空整个表
+	 */
 	fun clear() {
 		end = 0
 	}
 
+	/**
+	 * @param key 查找的键
+	 * @return 键所在的下标
+	 * @return < 0 如果键不存在, -${return} - 1 为如果插入应插入的下标
+	 */
+	fun search(key: K): Int {
+		if (end == 0) return -1
+		return arr.binarySearch(key, 0, end)
+	}
+
+	/**
+	 * @return prev value
+	 */
 	operator fun set(key: K, value: V): V? {
+		// 首先查找得到目标所在的下标
 		val index = search(key)
+		var prev: V? = null
 		if (index < 0) {
+			// 下标小于零表示不存在，直接插入数据
 			insert(key, value, -index - 1)
 		} else {
 			val node = arr[index]
-			if (node != null) node.value = value
-			else arr[index] = Node(key, value)
+			if (node != null) {
+				prev = node.value
+				node.value = value
+			} else arr[index] = Node(key, value)
 		}
-		return value
+		return prev
 	}
 
 	infix fun putAll(from: Map<out K, V>) {
@@ -45,9 +66,10 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 		val index = search(key)
 		if (index >= 0) {
 			val oldNode = arr[index]
-			for (i in index until end) {
+			for (i in index until end - 1) {
 				arr[i] = arr[i + 1]
 			}
+			end--
 			return oldNode?.value
 		}
 		return null
@@ -66,6 +88,11 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 
 	override infix operator fun get(key: K): V? {
 		val index = search(key)
+		return if (index < 0) null
+		else arr[index]?.value
+	}
+
+	infix fun getFromIndex(index: Int): V? {
 		return if (index < 0) null
 		else arr[index]?.value
 	}
@@ -99,11 +126,6 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 		arr[index] = Node(key, value)
 		end++
 		return value
-	}
-
-	private fun search(key: K): Int {
-		if (end == 0) return -1
-		return arr.binarySearch(key, 0, end)
 	}
 
 	class Node<K : Comparable<K>, V>(

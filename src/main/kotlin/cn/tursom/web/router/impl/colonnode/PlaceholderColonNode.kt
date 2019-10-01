@@ -1,4 +1,4 @@
-package cn.tursom.web.router.impl.node
+package cn.tursom.web.router.impl.colonnode
 
 class PlaceholderColonNode<T>(
 	route: List<String>,

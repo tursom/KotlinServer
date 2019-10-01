@@ -1,4 +1,4 @@
-package cn.tursom.web.router.impl.node
+package cn.tursom.web.router.impl.colonnode
 
 import cn.tursom.utils.binarySearch
 

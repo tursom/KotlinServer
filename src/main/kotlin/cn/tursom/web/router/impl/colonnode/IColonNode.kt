@@ -1,4 +1,4 @@
-package cn.tursom.web.router.impl.node
+package cn.tursom.web.router.impl.colonnode
 
 interface IColonNode<T> {
 	val value: T?

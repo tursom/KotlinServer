@@ -2,11 +2,18 @@ package cn.tursom.web.router.impl
 
 import cn.tursom.utils.binarySearch
 import cn.tursom.web.router.*
-import cn.tursom.web.router.impl.node.AnyColonNode
-import cn.tursom.web.router.impl.node.ColonNode
-import cn.tursom.web.router.impl.node.IColonNode
-import cn.tursom.web.router.impl.node.PlaceholderColonNode
+import cn.tursom.web.router.impl.colonnode.AnyColonNode
+import cn.tursom.web.router.impl.colonnode.ColonNode
+import cn.tursom.web.router.impl.colonnode.IColonNode
+import cn.tursom.web.router.impl.colonnode.PlaceholderColonNode
 
+/**
+ * 支持以冒号“:”开头的匹配
+ * 例：
+ * 		/route/:aaa
+ * 		/route/aaa/:bbb
+ * 		/route/aaa/:bbb/ccc
+ */
 @Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
 class ColonRouter<T> : IRouter<T> {
 	private val rootNode = ColonNode<T>(listOf(""), 0)
