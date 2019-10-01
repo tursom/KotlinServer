@@ -1,5 +1,6 @@
 package cn.tursom.web.router.suspend.impl
 
+import cn.tursom.web.router.suspend.ISuspendRouter
 import cn.tursom.web.router.suspend.impl.node.ISuspendColonStarNode
 import cn.tursom.web.router.suspend.impl.node.SuspendAnyColonStarNode
 import cn.tursom.web.router.suspend.impl.node.SuspendPlaceholderColonStarNode
@@ -7,7 +8,7 @@ import kotlinx.coroutines.runBlocking
 import java.util.concurrent.Executors
 
 @Suppress("unused", "unused", "MemberVisibilityCanBePrivate", "UNUSED_PARAMETER")
-class SuspendColonStarRouter<T> {
+class SuspendColonStarRouter<T> : ISuspendRouter<T> {
 	private val rootNode = cn.tursom.web.router.suspend.impl.node.SuspendColonStarNode<T>(listOf(""), 0, null)
 	private val threadPool = Executors.newSingleThreadExecutor()
 
@@ -22,10 +23,10 @@ class SuspendColonStarRouter<T> {
 
 	val root: ISuspendColonStarNode<T> = rootNode
 
-	private suspend fun setSubRoute(
+	override suspend fun setSubRoute(
 		route: String,
 		value: T?,
-		onDestroy: ((oldValue: T) -> Unit)? = null
+		onDestroy: ((oldValue: T) -> Unit)?
 	) {
 		val routeList = route.split('?')[0].split('/').filter { it.isNotEmpty() }
 		var routeNode = rootNode
@@ -69,7 +70,7 @@ class SuspendColonStarRouter<T> {
 		_lastChangeTime = System.currentTimeMillis()
 	}
 
-	suspend fun delRoute(route: String, onDestroy: ((oldValue: T) -> Unit)? = null) {
+	override suspend fun delRoute(route: String, onDestroy: ((oldValue: T) -> Unit)?) {
 		this.set(route, null, onDestroy)
 	}
 
@@ -79,13 +80,7 @@ class SuspendColonStarRouter<T> {
 		onDestroy: ((oldValue: T) -> Unit)? = null
 	) = setSubRoute(route, value, onDestroy)
 
-	suspend fun set(
-		route: String,
-		onDestroy: ((oldValue: T) -> Unit)? = null,
-		value: T?
-	) = setSubRoute(route, value, onDestroy)
-
-	suspend fun get(route: String): Pair<T?, List<Pair<String, String>>> {
+	override suspend fun get(route: String): Pair<T?, List<Pair<String, String>>> {
 		val list = ArrayList<Pair<String, String>>()
 		val endIndex = route.indexOf('?')
 		return rootNode.get(
