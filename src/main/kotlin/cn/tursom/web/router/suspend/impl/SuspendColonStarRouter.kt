@@ -1,5 +1,6 @@
 package cn.tursom.web.router.suspend.impl
 
+import cn.tursom.web.router.suspend.impl.node.ISuspendColonStarNode
 import cn.tursom.web.router.suspend.impl.node.SuspendAnyColonStarNode
 import cn.tursom.web.router.suspend.impl.node.SuspendPlaceholderColonStarNode
 import kotlinx.coroutines.runBlocking
@@ -19,7 +20,7 @@ class SuspendColonStarRouter<T> {
 	@Volatile
 	private var strBufTime: Long = 0
 
-	val root: cn.tursom.web.router.suspend.SuspendColonStarNode<T> = rootNode
+	val root: ISuspendColonStarNode<T> = rootNode
 
 	private suspend fun setSubRoute(
 		route: String,

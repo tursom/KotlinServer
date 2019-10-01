@@ -2,14 +2,13 @@ package cn.tursom.web.router.suspend.impl.node
 
 import cn.tursom.utils.asynclock.AsyncReadFirstRWLock
 import cn.tursom.utils.binarySearch
-import cn.tursom.web.router.suspend.SuspendColonStarNode
 
 @Suppress("MemberVisibilityCanBePrivate")
 internal open class SuspendColonStarNode<T>(
 	var routeList: List<String>,
 	var index: Int,
 	override var value: T? = null
-) : SuspendColonStarNode<T> {
+) : ISuspendColonStarNode<T> {
 	val route: String = routeList[index]
 	var wildSubRouter: SuspendAnyColonStarNode<T>? = null
 
@@ -40,7 +39,7 @@ internal open class SuspendColonStarNode<T>(
 			placeholderRouterListEmpty &&
 			wildSubRouter == null
 
-	override suspend fun forEach(action: suspend (node: SuspendColonStarNode<T>) -> Unit) {
+	override suspend fun forEach(action: suspend (node: ISuspendColonStarNode<T>) -> Unit) {
 		placeholderRouterListLock.doRead {
 			placeholderRouterList?.forEach { action(it) }
 		}
