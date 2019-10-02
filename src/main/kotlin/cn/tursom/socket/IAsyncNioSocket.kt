@@ -44,31 +44,25 @@ interface IAsyncNioSocket : AsyncSocket {
 		return readSize
 	}
 
-	override suspend fun read(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) withTimeout(timeout) {
-		try {
-			read(buffer)
-		} catch (e: TimeoutCancellationException) {
-			waitMode()
-			throw e
-		}
+	override suspend fun read(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) try {
+		withTimeout(timeout) { read(buffer) }
+	} catch (e: TimeoutCancellationException) {
+		waitMode()
+		throw e
 	} else read(buffer)
 
-	override suspend fun write(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) withTimeout(timeout) {
-		try {
-			write(buffer)
-		} catch (e: TimeoutCancellationException) {
-			waitMode()
-			throw e
-		}
+	override suspend fun write(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) try {
+		withTimeout(timeout) { write(buffer) }
+	} catch (e: TimeoutCancellationException) {
+		waitMode()
+		throw e
 	} else write(buffer)
 
-	suspend fun recv(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) withTimeout(timeout) {
-		try {
-			recv(buffer)
-		} catch (e: TimeoutCancellationException) {
-			waitMode()
-			throw e
-		}
+	suspend fun recv(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) try {
+		withTimeout(timeout) { recv(buffer) }
+	} catch (e: TimeoutCancellationException) {
+		waitMode()
+		throw e
 	} else recv(buffer)
 
 	suspend fun read(buffer: AdvanceByteBuffer, timeout: Long = 0): Int {
