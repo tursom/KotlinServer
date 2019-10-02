@@ -1,37 +1,33 @@
 package cn.tursom.socket.client
 
 import cn.tursom.socket.ProtocolAsyncNioSocket
+import cn.tursom.socket.niothread.ThreadPoolNioThread
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.SocketChannel
-import java.util.concurrent.Executors
 
 object ProtocolAsyncNioClient {
 	private const val TIMEOUT = 3000L
 	private val selector: Selector = Selector.open()
 	private val protocol = ProtocolAsyncNioSocket.nioSocketProtocol
-	private val threadPool = Executors.newSingleThreadExecutor {
-		val thread = Thread(it)
-		thread.isDaemon = true
-		thread
-	}
+	private val nioThread = ThreadPoolNioThread()
 
 	@Suppress("DuplicatedCode")
 	fun getConnection(host: String, port: Int): ProtocolAsyncNioSocket {
 		val channel = SocketChannel.open()
 		channel.connect(InetSocketAddress(host, port))
 		channel.configureBlocking(false)
-		val f = threadPool.submit<SelectionKey> {
+		val f = nioThread.submit<SelectionKey> {
 			channel.register(selector, 0)
 		}
 		selector.wakeup()
 		val key: SelectionKey = f.get()
-		return ProtocolAsyncNioSocket(key)
+		return ProtocolAsyncNioSocket(key, nioThread)
 	}
 
 	init {
-		threadPool.execute(object : Runnable {
+		nioThread.execute(object : Runnable {
 			override fun run() {
 				if (selector.select(TIMEOUT) != 0) {
 					val keyIter = synchronized(selector) { selector.selectedKeys() }.iterator()
@@ -39,19 +35,22 @@ object ProtocolAsyncNioClient {
 						val key = keyIter.next()
 						try {
 							when {
+								!key.isValid -> {
+									System.err.println("$key is not valid")
+								}
 								key.isReadable -> {
-									protocol.handleRead(key)
+									protocol.handleRead(key, nioThread)
 								}
-								key.isValid && key.isWritable -> {
-									protocol.handleWrite(key)
+								key.isWritable -> {
+									protocol.handleWrite(key, nioThread)
 								}
-								key.isAcceptable -> {
-									protocol.handleAccept(key)
+								key.isConnectable -> {
+									protocol.handleAccept(key, nioThread)
 								}
 							}
 						} catch (e: Throwable) {
 							try {
-								protocol.exceptionCause(key, e)
+								protocol.exceptionCause(key, nioThread, e)
 							} catch (e1: Throwable) {
 								e.printStackTrace()
 								e1.printStackTrace()
@@ -61,7 +60,7 @@ object ProtocolAsyncNioClient {
 						}
 					}
 				}
-				threadPool.execute(this)
+				nioThread.execute(this)
 			}
 		})
 	}

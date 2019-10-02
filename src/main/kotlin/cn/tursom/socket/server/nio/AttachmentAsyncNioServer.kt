@@ -2,6 +2,7 @@ package cn.tursom.socket.server.nio
 
 import cn.tursom.socket.AttachmentAsyncNioSocket
 import cn.tursom.socket.INioProtocol
+import cn.tursom.socket.niothread.INioThread
 import cn.tursom.socket.server.ISocketServer
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -9,9 +10,9 @@ import java.nio.channels.SelectionKey
 
 class AttachmentAsyncNioServer(val port: Int, val handler: suspend AttachmentAsyncNioSocket.() -> Unit)
 	: ISocketServer by AttachmentNioServer(port, object : INioProtocol by AttachmentAsyncNioSocket.nioSocketProtocol {
-	override fun handleAccept(key: SelectionKey) {
+	override fun handleAccept(key: SelectionKey, nioThread: INioThread) {
 		GlobalScope.launch {
-			val socket = AttachmentAsyncNioSocket(key)
+			val socket = AttachmentAsyncNioSocket(key, nioThread)
 			socket.handler()
 			try {
 				@Suppress("BlockingMethodInNonBlockingContext")

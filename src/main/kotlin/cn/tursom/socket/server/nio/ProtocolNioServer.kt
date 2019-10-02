@@ -1,9 +1,10 @@
 package cn.tursom.socket.server.nio
 
 import cn.tursom.socket.INioProtocol
+import cn.tursom.socket.niothread.INioThread
+import cn.tursom.socket.niothread.ThreadPoolNioThread
 import cn.tursom.socket.server.ISocketServer
 import java.net.InetSocketAddress
-import java.nio.channels.ClosedSelectorException
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
@@ -20,47 +21,11 @@ class ProtocolNioServer(val port: Int, private val protocol: INioProtocol) : ISo
 	}
 
 	override fun run() {
+		val nioThread = ThreadPoolNioThread()
 		val selector = Selector.open()
 		selectorList.add(selector)
 		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
-		try {
-			while (true) {
-				if (selector.select(TIMEOUT) == 0) continue
-
-				val keyIter = selector.selectedKeys().iterator()
-				while (keyIter.hasNext()) {
-					val key = keyIter.next()
-					try {
-						when {
-							key.isAcceptable -> {
-								val serverChannel = key.channel() as ServerSocketChannel
-								val channel = serverChannel.accept()
-								channel.configureBlocking(false)
-								key.interestOps(0)
-								val socketKey = channel.register(selector, 0)
-								protocol.handleAccept(socketKey)
-							}
-							key.isReadable -> {
-								protocol.handleRead(key)
-							}
-							key.isValid && key.isWritable -> {
-								protocol.handleWrite(key)
-							}
-						}
-					} catch (e: Throwable) {
-						try {
-							protocol.exceptionCause(key, e)
-						} catch (e1: Throwable) {
-							e.printStackTrace()
-							e1.printStackTrace()
-						}
-					} finally {
-						keyIter.remove()
-					}
-				}
-			}
-		} catch (e: ClosedSelectorException) {
-		}
+		nioThread.execute(Handler(selector, protocol, nioThread))
 	}
 
 	override fun close() {
@@ -68,6 +33,48 @@ class ProtocolNioServer(val port: Int, private val protocol: INioProtocol) : ISo
 		selectorList.forEach { selector ->
 			selector.close()
 			selector.wakeup()
+		}
+	}
+
+	@Suppress("MemberVisibilityCanBePrivate")
+	class Handler(val selector: Selector, val protocol: INioProtocol, val nioThread: INioThread) : Runnable {
+		override fun run() {
+			if (selector.isOpen) {
+				if (selector.select(TIMEOUT) != 0) {
+					val keyIter = selector.selectedKeys().iterator()
+					while (keyIter.hasNext()) {
+						val key = keyIter.next()
+						keyIter.remove()
+						try {
+							when {
+								!key.isValid -> {
+								}
+								key.isAcceptable -> {
+									val serverChannel = key.channel() as ServerSocketChannel
+									val channel = serverChannel.accept()
+									channel.configureBlocking(false)
+									val socketKey = channel.register(selector, 0)
+									protocol.handleAccept(socketKey, nioThread)
+								}
+								key.isReadable -> {
+									protocol.handleRead(key, nioThread)
+								}
+								key.isWritable -> {
+									protocol.handleWrite(key, nioThread)
+								}
+							}
+						} catch (e: Throwable) {
+							try {
+								protocol.exceptionCause(key, nioThread, e)
+							} catch (e1: Throwable) {
+								e.printStackTrace()
+								e1.printStackTrace()
+							}
+						}
+					}
+				}
+				nioThread.execute(this)
+			}
 		}
 	}
 
