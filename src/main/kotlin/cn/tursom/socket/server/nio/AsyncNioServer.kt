@@ -15,8 +15,9 @@ import java.nio.channels.SelectionKey
  */
 class AsyncNioServer(
 	val port: Int,
+	backlog: Int = 50,
 	val handler: suspend AsyncNioSocket.() -> Unit
-) : ISocketServer by ProtocolNioServer(port, object : INioProtocol by AsyncNioSocket.nioSocketProtocol {
+) : ISocketServer by NioServer(port, object : INioProtocol by AsyncNioSocket.nioSocketProtocol {
 	override fun handleConnect(key: SelectionKey, nioThread: INioThread) {
 		GlobalScope.launch {
 			val socket = AsyncNioSocket(key, nioThread)
@@ -34,14 +35,15 @@ class AsyncNioServer(
 			}
 		}
 	}
-}) {
+}, backlog) {
 	/**
 	 * 次要构造方法，为使用Spring的同学们准备的
 	 */
 	constructor(
 		port: Int,
+		backlog: Int = 50,
 		handler: Handler
-	) : this(port, {
+	) : this(port, backlog, {
 		handler.handle(this)
 	})
 

@@ -12,9 +12,10 @@ import java.util.concurrent.ConcurrentLinkedDeque
 /**
  * 工作在单线程上的 Nio 服务器。
  */
-class ProtocolNioServer(
+class NioServer(
 	val port: Int,
 	private val protocol: INioProtocol,
+	backLog: Int = 50,
 	val nioThreadGenerator: (threadName: String, workLoop: (thread: INioThread) -> Unit) -> INioThread = { name, workLoop ->
 		WorkerLoopNioThread(name, workLoop = workLoop)
 	}
@@ -23,7 +24,7 @@ class ProtocolNioServer(
 	private val threadList = ConcurrentLinkedDeque<INioThread>()
 
 	init {
-		listenChannel.socket().bind(InetSocketAddress(port))
+		listenChannel.socket().bind(InetSocketAddress(port), backLog)
 		listenChannel.configureBlocking(false)
 	}
 

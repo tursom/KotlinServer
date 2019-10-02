@@ -11,6 +11,7 @@ import java.nio.channels.SelectionKey
 
 class AsyncAttachmentNioServer(
 	val port: Int,
+	backlog: Int = 50,
 	nioThreadGenerator: (threadName: String, workLoop: (thread: INioThread) -> Unit) -> INioThread = { name, workLoop ->
 		ThreadPoolNioThread(name, workLoop = workLoop)
 	},
@@ -29,14 +30,15 @@ class AsyncAttachmentNioServer(
 			}
 		}
 	}
-}, nioThreadGenerator) {
+}, backlog, nioThreadGenerator) {
 	/**
 	 * 次要构造方法，为使用Spring的同学们准备的
 	 */
 	constructor(
 		port: Int,
+		backlog: Int,
 		handler: Handler
-	) : this(port, handler = {
+	) : this(port, backlog, handler = {
 		handler.handle(this)
 	})
 

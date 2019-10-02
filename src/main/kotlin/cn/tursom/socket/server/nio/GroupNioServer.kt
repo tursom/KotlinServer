@@ -20,6 +20,7 @@ class GroupNioServer(
 	val port: Int,
 	val threads: Int = Runtime.getRuntime().availableProcessors(),
 	private val protocol: INioProtocol,
+	backlog: Int = 50,
 	val nioThreadGenerator: (
 		threadName: String,
 		threads: Int,
@@ -33,14 +34,14 @@ class GroupNioServer(
 	private val workerGroupList = LinkedBlockingDeque<IWorkerGroup>()
 
 	init {
-		listenChannel.socket().bind(InetSocketAddress(port))
+		listenChannel.socket().bind(InetSocketAddress(port), backlog)
 		listenChannel.configureBlocking(false)
 	}
 
 	override fun run() {
 		val workerGroup = nioThreadGenerator(
 			"nioWorkerGroup", threads,
-			ProtocolNioServer.LoopHandler(protocol)::handle
+			NioServer.LoopHandler(protocol)::handle
 		)
 		workerGroupList.add(workerGroup)
 

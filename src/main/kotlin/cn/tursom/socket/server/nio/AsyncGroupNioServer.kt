@@ -1,7 +1,7 @@
 package cn.tursom.socket.server.nio
 
-import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.AsyncNioSocket
+import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.niothread.INioThread
 import cn.tursom.socket.server.ISocketServer
 import kotlinx.coroutines.GlobalScope
@@ -16,6 +16,7 @@ import java.nio.channels.SelectionKey
 class AsyncGroupNioServer(
 	val port: Int,
 	val threads: Int = Runtime.getRuntime().availableProcessors(),
+	backlog: Int = 50,
 	val handler: suspend AsyncNioSocket.() -> Unit
 ) : ISocketServer by GroupNioServer(port, threads, object : INioProtocol by AsyncNioSocket.nioSocketProtocol {
 	override fun handleConnect(key: SelectionKey, nioThread: INioThread) {
@@ -35,4 +36,4 @@ class AsyncGroupNioServer(
 			}
 		}
 	}
-})
+}, backlog)

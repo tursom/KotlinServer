@@ -2,10 +2,13 @@ package cn.tursom.socket.client
 
 import cn.tursom.socket.AsyncNioSocket
 import cn.tursom.socket.niothread.WorkerLoopNioThread
+import cn.tursom.utils.timer.TimerTask
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
+import java.util.concurrent.TimeoutException
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 object AsyncNioClient {
@@ -60,19 +63,48 @@ object AsyncNioClient {
 
 	@Suppress("DuplicatedCode")
 	suspend fun getSuspendConnection(host: String, port: Int): AsyncNioSocket {
-		val selector = nioThread.selector
 		val key: SelectionKey = suspendCoroutine { cont ->
-			nioThread.submit {
+			try {
+				nioThread.submit {
+					val channel = SocketChannel.open()
+					channel.connect(InetSocketAddress(host, port))
+					channel.configureBlocking(false)
+					nioThread.register(channel, 0) { key ->
+						cont.resume(key)
+					}
+				}
+			} catch (e: Exception) {
+				cont.resumeWithException(e)
+			}
+		}
+		return AsyncNioSocket(key, nioThread)
+	}
+
+	@Suppress("DuplicatedCode")
+	suspend fun getSuspendConnection(host: String, port: Int, timeout: Long): AsyncNioSocket {
+		if (timeout <= 0) return getSuspendConnection(host, port)
+
+		val selector = nioThread.selector
+
+		var timeoutTask: TimerTask? = null
+		val key: SelectionKey = suspendCoroutine { cont ->
+			try {
 				val channel = SocketChannel.open()
 				channel.connect(InetSocketAddress(host, port))
 				channel.configureBlocking(false)
 				channel.register(selector, 0)
+				timeoutTask = AsyncNioSocket.timer.exec(timeout) {
+					channel.close()
+					cont.resumeWithException(TimeoutException())
+				}
 				nioThread.register(channel, 0) { key ->
 					cont.resume(key)
 				}
+			} catch (e: Exception) {
+				cont.resumeWithException(e)
 			}
-			selector.wakeup()
 		}
+		timeoutTask?.cancel()
 		return AsyncNioSocket(key, nioThread)
 	}
 }

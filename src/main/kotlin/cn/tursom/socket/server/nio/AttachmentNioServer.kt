@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentLinkedDeque
 class AttachmentNioServer(
 	val port: Int,
 	var protocol: INioProtocol,
+	backlog: Int = 50,
 	val nioThreadGenerator: (threadName: String, workLoop: (thread: INioThread) -> Unit) -> INioThread = { name, workLoop ->
 		ThreadPoolNioThread(name, workLoop = workLoop)
 	}
@@ -23,7 +24,7 @@ class AttachmentNioServer(
 	private val selectorList = ConcurrentLinkedDeque<Selector>()
 
 	init {
-		listenChannel.socket().bind(InetSocketAddress(port))
+		listenChannel.socket().bind(InetSocketAddress(port), backlog)
 		listenChannel.configureBlocking(false)
 	}
 
