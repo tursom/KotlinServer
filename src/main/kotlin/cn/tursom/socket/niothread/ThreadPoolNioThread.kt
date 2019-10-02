@@ -6,11 +6,12 @@ import java.nio.channels.Selector
 import java.util.concurrent.*
 
 @Suppress("MemberVisibilityCanBePrivate")
-class SingleThreadNioThread(
+class ThreadPoolNioThread(
 	val threadName: String = "",
-	override val selector: Selector = Selector.open()
+	override val selector: Selector = Selector.open(),
+	override val workLoop: (thread: INioThread) -> Unit
 ) : INioThread {
-	lateinit var workerThread: Thread
+	override lateinit var thread: Thread
 	//val threadPool: ExecutorService = Executors.newSingleThreadExecutor {
 	//	val thread = Thread(it)
 	//	workerThread = thread
@@ -23,11 +24,20 @@ class SingleThreadNioThread(
 		LinkedBlockingQueue<Runnable>(),
 		ThreadFactory {
 			val thread = Thread(it)
-			workerThread = thread
+			this.thread = thread
 			thread.isDaemon = true
 			thread.name = threadName
 			thread
 		})
+
+	init {
+		threadPool.execute(object : Runnable {
+			override fun run() {
+				workLoop(this@ThreadPoolNioThread)
+				if (!threadPool.isShutdown) threadPool.execute(this)
+			}
+		})
+	}
 
 	override var closed: Boolean = false
 
@@ -36,7 +46,7 @@ class SingleThreadNioThread(
 	}
 
 	override fun register(channel: SelectableChannel, onComplete: (key: SelectionKey) -> Unit) {
-		if (Thread.currentThread() == workerThread) {
+		if (Thread.currentThread() == thread) {
 			onComplete(channel.register(selector, 0))
 		} else {
 			threadPool.execute { register(channel, onComplete) }

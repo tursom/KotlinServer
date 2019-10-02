@@ -1,6 +1,6 @@
 package cn.tursom.socket
 
-import cn.tursom.socket.AsyncSocket.Companion.defaultTimeout
+import cn.tursom.socket.AsyncAioSocket.Companion.defaultTimeout
 import cn.tursom.utils.buf
 import cn.tursom.utils.bytebuffer.NioAdvanceByteBuffer
 import cn.tursom.utils.count
@@ -15,24 +15,23 @@ import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.InterruptedByTimeoutException
-import java.util.concurrent.TimeUnit
 
-class AsyncCachedSocket(socketChannel: AsynchronousSocketChannel, readBuffer: ByteBuffer, val writeBuffer: ByteBuffer) : AsyncSocket(socketChannel) {
+class AsyncCachedAioSocket(socketChannel: AsynchronousSocketChannel, readBuffer: ByteBuffer, val writeBuffer: ByteBuffer) : AsyncAioSocket(socketChannel) {
 	val readBuffer = NioAdvanceByteBuffer(readBuffer)
 	
 	constructor(socketChannel: AsynchronousSocketChannel) : this(socketChannel, ByteBuffer.allocate(1024), ByteBuffer.allocate(8))
 	
-	suspend fun write(timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
-		return write(writeBuffer, timeout, timeUnit)
+	suspend fun write(timeout: Long = 0L): Int {
+		return write(writeBuffer, timeout)
 	}
 	
-	suspend fun read(timeout: Long = 0L, timeUnit: TimeUnit = TimeUnit.MILLISECONDS): Int {
-		return read(readBuffer.buffer, timeout, timeUnit)
+	suspend fun read(timeout: Long = 0L): Int {
+		return read(readBuffer.buffer, timeout)
 	}
 }
 
 
-suspend inline fun AsyncCachedSocket.recv(
+suspend inline fun AsyncCachedAioSocket.recv(
 	outputStream: OutputStream,
 	readTimeout: Long = 100L,
 	firstTimeout: Long = defaultTimeout
@@ -51,7 +50,7 @@ suspend inline fun AsyncCachedSocket.recv(
 	}
 }
 
-suspend inline fun AsyncCachedSocket.recv(
+suspend inline fun AsyncCachedAioSocket.recv(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = defaultTimeout
 ): ByteArray {
@@ -60,7 +59,7 @@ suspend inline fun AsyncCachedSocket.recv(
 	return byteStream.toByteArray()
 }
 
-suspend inline fun AsyncCachedSocket.recvStr(
+suspend inline fun AsyncCachedAioSocket.recvStr(
 	charset: String = "utf-8",
 	readTimeout: Long = 100L,
 	firstTimeout: Long = defaultTimeout
@@ -70,7 +69,7 @@ suspend inline fun AsyncCachedSocket.recvStr(
 	return byteStream.toString(charset)
 }
 
-suspend inline fun AsyncCachedSocket.recvChar(
+suspend inline fun AsyncCachedAioSocket.recvChar(
 	readTimeout: Long = 100L
 ): Char {
 	readBuffer.requireAvailableSize(2)
@@ -78,7 +77,7 @@ suspend inline fun AsyncCachedSocket.recvChar(
 	return readBuffer.getChar()
 }
 
-suspend inline fun AsyncCachedSocket.recvShort(
+suspend inline fun AsyncCachedAioSocket.recvShort(
 	readTimeout: Long = 100L
 ): Short {
 	readBuffer.requireAvailableSize(2)
@@ -86,7 +85,7 @@ suspend inline fun AsyncCachedSocket.recvShort(
 	return readBuffer.getShort()
 }
 
-suspend inline fun AsyncCachedSocket.recvInt(
+suspend inline fun AsyncCachedAioSocket.recvInt(
 	readTimeout: Long = 100L
 ): Int {
 	readBuffer.requireAvailableSize(4)
@@ -94,7 +93,7 @@ suspend inline fun AsyncCachedSocket.recvInt(
 	return readBuffer.getInt()
 }
 
-suspend inline fun AsyncCachedSocket.recvLong(
+suspend inline fun AsyncCachedAioSocket.recvLong(
 	readTimeout: Long = 100L
 ): Long {
 	readBuffer.requireAvailableSize(8)
@@ -102,7 +101,7 @@ suspend inline fun AsyncCachedSocket.recvLong(
 	return readBuffer.getLong()
 }
 
-suspend inline fun AsyncCachedSocket.recvFloat(
+suspend inline fun AsyncCachedAioSocket.recvFloat(
 	readTimeout: Long = 100L
 ): Float {
 	readBuffer.requireAvailableSize(4)
@@ -110,7 +109,7 @@ suspend inline fun AsyncCachedSocket.recvFloat(
 	return readBuffer.getFloat()
 }
 
-suspend inline fun AsyncCachedSocket.recvDouble(
+suspend inline fun AsyncCachedAioSocket.recvDouble(
 	readTimeout: Long = 100L
 ): Double {
 	readBuffer.requireAvailableSize(8)
@@ -119,7 +118,7 @@ suspend inline fun AsyncCachedSocket.recvDouble(
 }
 
 @Suppress("UNCHECKED_CAST")
-suspend inline fun <T> AsyncCachedSocket.unSerializeObject(
+suspend inline fun <T> AsyncCachedAioSocket.unSerializeObject(
 	readTimeout: Long = 100L,
 	firstTimeout: Long = defaultTimeout
 ): T? {
@@ -128,21 +127,21 @@ suspend inline fun <T> AsyncCachedSocket.unSerializeObject(
 	return unSerialize(byteArrayOutputStream.buf, 0, byteArrayOutputStream.count) as T?
 }
 
-suspend inline fun AsyncCachedSocket.send(message: Int) {
+suspend inline fun AsyncCachedAioSocket.send(message: Int) {
 	writeBuffer.clear()
 	writeBuffer.array().put(message, writeBuffer.arrayOffset())
 	writeBuffer.limit(4)
 	write()
 }
 
-suspend inline fun AsyncCachedSocket.send(message: Long) {
+suspend inline fun AsyncCachedAioSocket.send(message: Long) {
 	writeBuffer.clear()
 	writeBuffer.array().put(message, writeBuffer.arrayOffset())
 	writeBuffer.limit(8)
 	write()
 }
 
-inline fun <T> AsyncCachedSocket.use(crossinline block: suspend AsyncCachedSocket.() -> T): T {
+inline fun <T> AsyncCachedAioSocket.use(crossinline block: suspend AsyncCachedAioSocket.() -> T): T {
 	var exception: Throwable? = null
 	try {
 		return runBlocking { block() }
@@ -161,7 +160,7 @@ inline fun <T> AsyncCachedSocket.use(crossinline block: suspend AsyncCachedSocke
 	}
 }
 
-inline infix fun AsyncCachedSocket.useCachedNonBlock(crossinline block: suspend AsyncCachedSocket.() -> Unit) =
+inline infix fun AsyncCachedAioSocket.useCachedNonBlock(crossinline block: suspend AsyncCachedAioSocket.() -> Unit) =
 	GlobalScope.launch {
 		try {
 			block()
@@ -175,8 +174,8 @@ inline infix fun AsyncCachedSocket.useCachedNonBlock(crossinline block: suspend 
 	}
 
 
-suspend inline infix operator fun <T> AsyncCachedSocket.invoke(
-	@Suppress("REDUNDANT_INLINE_SUSPEND_FUNCTION_TYPE") block: suspend AsyncCachedSocket.() -> T
+suspend inline infix operator fun <T> AsyncCachedAioSocket.invoke(
+	@Suppress("REDUNDANT_INLINE_SUSPEND_FUNCTION_TYPE") block: suspend AsyncCachedAioSocket.() -> T
 ): T {
 	var exception: Throwable? = null
 	try {

@@ -3,7 +3,7 @@ package cn.tursom.socket.server.nio
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.NioAttachment
 import cn.tursom.socket.niothread.INioThread
-import cn.tursom.socket.niothread.SingleThreadNioThread
+import cn.tursom.socket.niothread.ThreadPoolNioThread
 import cn.tursom.socket.server.ISocketServer
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
@@ -11,10 +11,13 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.util.concurrent.ConcurrentLinkedDeque
 
+@Suppress("MemberVisibilityCanBePrivate")
 class AttachmentNioServer(
 	val port: Int,
 	var protocol: INioProtocol,
-	val nioThread: Class<*> = SingleThreadNioThread::class.java
+	val nioThreadGenerator: (threadName: String, workLoop: (thread: INioThread) -> Unit) -> INioThread = { name, workLoop ->
+		ThreadPoolNioThread(name, workLoop = workLoop)
+	}
 ) : ISocketServer {
 	private val listenChannel = ServerSocketChannel.open()
 	private val selectorList = ConcurrentLinkedDeque<Selector>()
@@ -25,25 +28,8 @@ class AttachmentNioServer(
 	}
 
 	override fun run() {
-		val nioThread: INioThread = nioThread.newInstance() as INioThread
-		val selector = Selector.open()
-		selectorList.add(selector)
-		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
-		nioThread.execute(Handler(selector, protocol, nioThread))
-	}
-
-	override fun close() {
-		listenChannel.close()
-		selectorList.forEach { selector ->
-			selector.close()
-			selector.wakeup()
-		}
-	}
-
-
-	@Suppress("MemberVisibilityCanBePrivate")
-	class Handler(val selector: Selector, val protocol: INioProtocol, val nioThread: INioThread) : Runnable {
-		override fun run() {
+		val nioThread: INioThread = nioThreadGenerator("nio worker") { nioThread ->
+			val selector = nioThread.selector
 			if (selector.isOpen) {
 				if (selector.select(TIMEOUT) != 0) {
 					val keyIter = selector.selectedKeys().iterator()
@@ -80,8 +66,19 @@ class AttachmentNioServer(
 						}
 					}
 				}
-				nioThread.execute(this)
 			}
+		}
+		val selector = Selector.open()
+		selectorList.add(selector)
+		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
+		nioThread.wakeup()
+	}
+
+	override fun close() {
+		listenChannel.close()
+		selectorList.forEach { selector ->
+			selector.close()
+			selector.wakeup()
 		}
 	}
 

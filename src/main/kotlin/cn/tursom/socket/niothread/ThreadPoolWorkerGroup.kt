@@ -9,14 +9,7 @@ class ThreadPoolWorkerGroup(
 	val worker: (thread: INioThread) -> Unit
 ) : IWorkerGroup {
 	val workerGroup = Array(poolSize) {
-		val nioThread = SingleThreadNioThread("$groupName-$it")
-		nioThread.execute(object : Runnable {
-			override fun run() {
-				worker(nioThread)
-				if (!nioThread.closed) nioThread.execute(this)
-			}
-		})
-		nioThread
+		ThreadPoolNioThread("$groupName-$it", workLoop = worker)
 	}
 	var registered = 0
 	override fun register(channel: SelectableChannel, onComplete: (key: SelectionContext) -> Unit) {

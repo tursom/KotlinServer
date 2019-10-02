@@ -1,7 +1,7 @@
 package cn.tursom.socket.client
 
-import cn.tursom.socket.AsyncCachedSocket
-import cn.tursom.socket.AsyncSocket
+import cn.tursom.socket.AsyncCachedAioSocket
+import cn.tursom.socket.AsyncAioSocket
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.net.InetSocketAddress
@@ -28,27 +28,27 @@ object AsyncClient {
 		}
 	}
 	
-	suspend fun connect(host: String, port: Int): AsyncSocket {
+	suspend fun connect(host: String, port: Int): AsyncAioSocket {
 		@Suppress("BlockingMethodInNonBlockingContext")
 		return connect(AsynchronousSocketChannel.open()!!, host, port)
 	}
 	
-	suspend fun connect(socketChannel: AsynchronousSocketChannel, host: String, port: Int): AsyncSocket {
+	suspend fun connect(socketChannel: AsynchronousSocketChannel, host: String, port: Int): AsyncAioSocket {
 		suspendCoroutine<Void?> { cont ->
 			socketChannel.connect(InetSocketAddress(host, port) as SocketAddress, cont, handler)
 		}
-		return AsyncSocket(socketChannel)
+		return AsyncAioSocket(socketChannel)
 	}
 	
-	suspend fun connectCached(host: String, port: Int): AsyncSocket {
+	suspend fun connectCached(host: String, port: Int): AsyncAioSocket {
 		@Suppress("BlockingMethodInNonBlockingContext")
 		return connectCached(AsynchronousSocketChannel.open()!!, host, port)
 	}
 	
-	suspend fun connectCached(socketChannel: AsynchronousSocketChannel, host: String, port: Int): AsyncSocket {
+	suspend fun connectCached(socketChannel: AsynchronousSocketChannel, host: String, port: Int): AsyncAioSocket {
 		suspendCoroutine<Void?> { cont ->
 			socketChannel.connect(InetSocketAddress(host, port) as SocketAddress, cont, handler)
 		}
-		return AsyncCachedSocket(socketChannel)
+		return AsyncCachedAioSocket(socketChannel)
 	}
 }

@@ -2,11 +2,10 @@ package cn.tursom.socket.server.nio
 
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.niothread.INioThread
-import cn.tursom.socket.niothread.SingleThreadNioThread
+import cn.tursom.socket.niothread.ThreadPoolNioThread
 import cn.tursom.socket.server.ISocketServer
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
-import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.util.concurrent.ConcurrentLinkedDeque
 
@@ -16,10 +15,12 @@ import java.util.concurrent.ConcurrentLinkedDeque
 class ProtocolNioServer(
 	val port: Int,
 	private val protocol: INioProtocol,
-	val nioThreadGenerator: (threadName: String) -> INioThread = { name -> SingleThreadNioThread(name) }
+	val nioThreadGenerator: (threadName: String, workLoop: (thread: INioThread) -> Unit) -> INioThread = { name, workLoop ->
+		ThreadPoolNioThread(name, workLoop = workLoop)
+	}
 ) : ISocketServer {
 	private val listenChannel = ServerSocketChannel.open()
-	private val selectorList = ConcurrentLinkedDeque<Selector>()
+	private val threadList = ConcurrentLinkedDeque<INioThread>()
 
 	init {
 		listenChannel.socket().bind(InetSocketAddress(port))
@@ -27,27 +28,8 @@ class ProtocolNioServer(
 	}
 
 	override fun run() {
-		val nioThread = nioThreadGenerator("nio worker")
-		val selector = nioThread.selector
-
-		selectorList.add(selector)
-		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
-
-		nioThread.execute(AcceptHandler(protocol, nioThread))
-	}
-
-	override fun close() {
-		listenChannel.close()
-		selectorList.forEach { selector ->
-			selector.close()
-			selector.wakeup()
-		}
-	}
-
-	@Suppress("MemberVisibilityCanBePrivate")
-	class AcceptHandler(val protocol: INioProtocol, val nioThread: INioThread) : Runnable {
-		val selector = nioThread.selector
-		override fun run() {
+		val nioThread = nioThreadGenerator("nio worker") { nioThread ->
+			val selector = nioThread.selector
 			if (selector.isOpen) {
 				if (selector.select(TIMEOUT) != 0) {
 					val keyIter = selector.selectedKeys().iterator()
@@ -60,8 +42,9 @@ class ProtocolNioServer(
 									val serverChannel = key.channel() as ServerSocketChannel
 									val channel = serverChannel.accept() ?: return@whileBlock
 									channel.configureBlocking(false)
-									nioThread.register(channel){
-										protocol.handleAccept(it, nioThread)}
+									nioThread.register(channel) {
+										protocol.handleAccept(it, nioThread)
+									}
 								}
 								key.isReadable -> {
 									protocol.handleRead(key, nioThread)
@@ -82,8 +65,19 @@ class ProtocolNioServer(
 						}
 					}
 				}
-				nioThread.execute(this)
 			}
+		}
+		val selector = nioThread.selector
+
+		threadList.add(nioThread)
+		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
+		nioThread.wakeup()
+	}
+
+	override fun close() {
+		listenChannel.close()
+		threadList.forEach {
+			it.close()
 		}
 	}
 

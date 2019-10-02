@@ -1,6 +1,6 @@
 package cn.tursom.socket.server.async
 
-import cn.tursom.socket.AsyncCachedSocket
+import cn.tursom.socket.AsyncCachedAioSocket
 import cn.tursom.socket.useCachedNonBlock
 import java.io.Closeable
 import java.net.InetSocketAddress
@@ -12,7 +12,7 @@ import java.nio.channels.CompletionHandler
 class AsyncCachedSocketServer(
 	port: Int,
 	host: String = "0.0.0.0",
-	private val handler: suspend AsyncCachedSocket.() -> Unit
+	private val handler: suspend AsyncCachedAioSocket.() -> Unit
 ) : Runnable, Closeable {
 	private val server = AsynchronousServerSocketChannel
 		.open()
@@ -27,7 +27,7 @@ class AsyncCachedSocketServer(
 				} catch (e: Throwable) {
 					e.printStackTrace()
 				}
-				AsyncCachedSocket(result ?: return) useCachedNonBlock {
+				AsyncCachedAioSocket(result ?: return) useCachedNonBlock {
 					handler()
 				}
 			}

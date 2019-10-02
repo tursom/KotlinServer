@@ -6,13 +6,12 @@ import cn.tursom.utils.bytebuffer.readNioBuffer
 import cn.tursom.utils.bytebuffer.writeNioBuffer
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import java.io.Closeable
 import java.net.SocketException
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
 
-interface IAsyncNioSocket : Closeable {
+interface IAsyncNioSocket : AsyncSocket {
 	val channel: SocketChannel
 	val key: SelectionKey
 	val nioThread: INioThread
@@ -42,7 +41,7 @@ interface IAsyncNioSocket : Closeable {
 		return readSize
 	}
 
-	suspend fun read(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) withTimeout(timeout) {
+	override suspend fun read(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) withTimeout(timeout) {
 		try {
 			read(buffer)
 		} catch (e: TimeoutCancellationException) {
@@ -51,7 +50,7 @@ interface IAsyncNioSocket : Closeable {
 		}
 	} else read(buffer)
 
-	suspend fun write(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) withTimeout(timeout) {
+	override suspend fun write(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) withTimeout(timeout) {
 		try {
 			write(buffer)
 		} catch (e: TimeoutCancellationException) {

@@ -3,7 +3,7 @@ package cn.tursom.socket.server.nio
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.niothread.INioThread
 import cn.tursom.socket.niothread.IWorkerGroup
-import cn.tursom.socket.niothread.SingleThreadNioThread
+import cn.tursom.socket.niothread.ThreadPoolNioThread
 import cn.tursom.socket.niothread.ThreadPoolWorkerGroup
 import cn.tursom.socket.server.ISocketServer
 import java.net.InetSocketAddress
@@ -12,6 +12,9 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.util.concurrent.LinkedBlockingDeque
 
+/**
+ * 拥有一个连接线程和多个工作线程的 nio 服务器
+ */
 @Suppress("MemberVisibilityCanBePrivate")
 class ProtocolGroupNioServer(
 	val port: Int,
@@ -71,21 +74,8 @@ class ProtocolGroupNioServer(
 		}
 		workerGroupList.add(workerGroup)
 
-		val nioThread = SingleThreadNioThread("nioAccepter")
-		listenThreads.add(nioThread)
-		listenChannel.register(nioThread.selector, SelectionKey.OP_ACCEPT)
-		nioThread.execute(AcceptHandler(protocol, nioThread, workerGroup))
-	}
-
-	override fun close() {
-		listenChannel.close()
-		listenThreads.forEach { it.close() }
-		workerGroupList.forEach { it.close() }
-	}
-
-	class AcceptHandler(val protocol: INioProtocol, val nioThread: INioThread, val nioGroup: IWorkerGroup) : Runnable {
-		val selector = nioThread.selector
-		override fun run() {
+		val nioThread = ThreadPoolNioThread("nioAccepter") { nioThread ->
+			val selector = nioThread.selector
 			if (selector.isOpen) {
 				forEachKey(selector) { key ->
 					try {
@@ -94,7 +84,7 @@ class ProtocolGroupNioServer(
 								val serverChannel = key.channel() as ServerSocketChannel
 								val channel = serverChannel.accept() ?: return@forEachKey
 								channel.configureBlocking(false)
-								nioGroup.register(channel) { (key, thread) ->
+								workerGroup.register(channel) { (key, thread) ->
 									protocol.handleAccept(key, thread)
 								}
 							}
@@ -113,6 +103,15 @@ class ProtocolGroupNioServer(
 				}
 			}
 		}
+		listenThreads.add(nioThread)
+		listenChannel.register(nioThread.selector, SelectionKey.OP_ACCEPT)
+		nioThread.wakeup()
+	}
+
+	override fun close() {
+		listenChannel.close()
+		listenThreads.forEach { it.close() }
+		workerGroupList.forEach { it.close() }
 	}
 
 	companion object {

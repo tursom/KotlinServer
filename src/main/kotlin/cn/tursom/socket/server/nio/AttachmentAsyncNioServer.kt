@@ -3,7 +3,7 @@ package cn.tursom.socket.server.nio
 import cn.tursom.socket.AttachmentAsyncNioSocket
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.niothread.INioThread
-import cn.tursom.socket.niothread.SingleThreadNioThread
+import cn.tursom.socket.niothread.ThreadPoolNioThread
 import cn.tursom.socket.server.ISocketServer
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -11,7 +11,9 @@ import java.nio.channels.SelectionKey
 
 class AttachmentAsyncNioServer(
 	val port: Int,
-	val nioThread: Class<*> = SingleThreadNioThread::class.java,
+	nioThreadGenerator: (threadName: String, workLoop: (thread: INioThread) -> Unit) -> INioThread = { name, workLoop ->
+		ThreadPoolNioThread(name, workLoop = workLoop)
+	},
 	val handler: suspend AttachmentAsyncNioSocket.() -> Unit)
 	: ISocketServer by AttachmentNioServer(port, object : INioProtocol by AttachmentAsyncNioSocket.nioSocketProtocol {
 	override fun handleAccept(key: SelectionKey, nioThread: INioThread) {
@@ -27,15 +29,14 @@ class AttachmentAsyncNioServer(
 			}
 		}
 	}
-}, nioThread) {
+}, nioThreadGenerator) {
 	/**
 	 * 次要构造方法，为使用Spring的同学们准备的
 	 */
 	constructor(
 		port: Int,
-		nioThread: Class<*> = SingleThreadNioThread::class.java,
 		handler: Handler
-	) : this(port, nioThread, {
+	) : this(port, handler = {
 		handler.handle(this)
 	})
 

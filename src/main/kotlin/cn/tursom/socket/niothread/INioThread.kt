@@ -12,16 +12,30 @@ import java.util.concurrent.Callable
 interface INioThread : Closeable {
 	val selector: Selector
 	val closed: Boolean
+	val workLoop: (thread: INioThread) -> Unit
+	val thread: Thread
 
-	fun wakeup()
-	fun register(channel: SelectableChannel, onComplete: (key: SelectionKey) -> Unit)
+	fun wakeup() {
+		selector.wakeup()
+	}
+
+	fun register(channel: SelectableChannel, onComplete: (key: SelectionKey) -> Unit) {
+		if (Thread.currentThread() == thread) {
+			channel.register(selector, 0)
+		} else {
+			execute { channel.register(selector, 0) }
+			wakeup()
+		}
+	}
 
 	fun execute(command: Runnable)
 	fun execute(command: () -> Unit) {
 		execute(Runnable { command() })
 	}
 
-	fun <T> call(task: Callable<T>): T
+	fun <T> call(task: Callable<T>): T {
+		return submit(task).get()
+	}
 	fun <T> call(task: () -> T): T {
 		return call(Callable<T> { task() })
 	}
