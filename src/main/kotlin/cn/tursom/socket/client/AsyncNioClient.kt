@@ -8,7 +8,7 @@ import java.nio.channels.SocketChannel
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-object ProtocolAsyncNioClient {
+object AsyncNioClient {
 	private const val TIMEOUT = 3000L
 	private val protocol = AsyncNioSocket.nioSocketProtocol
 	private val nioThread = WorkerLoopNioThread { nioThread ->
