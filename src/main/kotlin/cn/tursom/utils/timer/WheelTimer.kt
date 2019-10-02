@@ -95,6 +95,6 @@ class WheelTimer(
 	}
 
 	companion object {
-		val timer = WheelTimer()
+		val timer = WheelTimer(100, 1024)
 	}
 }
