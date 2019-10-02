@@ -17,7 +17,7 @@ import kotlin.coroutines.suspendCoroutine
  * 导致该类无法利用 SelectionKey 的 attachment
  * 但是对于一般的应用而言是足够使用的
  */
-class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThread: INioThread) : IAsyncNioSocket {
+class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INioThread) : IAsyncNioSocket {
 	override val channel: SocketChannel = key.channel() as SocketChannel
 
 	override suspend fun read(buffer: ByteBuffer): Int {

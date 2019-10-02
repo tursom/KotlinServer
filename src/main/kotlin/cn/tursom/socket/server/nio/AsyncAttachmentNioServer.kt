@@ -9,7 +9,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.nio.channels.SelectionKey
 
-class AttachmentAsyncNioServer(
+class AsyncAttachmentNioServer(
 	val port: Int,
 	nioThreadGenerator: (threadName: String, workLoop: (thread: INioThread) -> Unit) -> INioThread = { name, workLoop ->
 		ThreadPoolNioThread(name, workLoop = workLoop)

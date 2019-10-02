@@ -1,7 +1,7 @@
 package cn.tursom.socket.server.nio
 
+import cn.tursom.socket.AsyncNioSocket
 import cn.tursom.socket.INioProtocol
-import cn.tursom.socket.ProtocolAsyncNioSocket
 import cn.tursom.socket.niothread.INioThread
 import cn.tursom.socket.server.ISocketServer
 import kotlinx.coroutines.GlobalScope
@@ -13,13 +13,13 @@ import java.nio.channels.SelectionKey
  * 不过因为结构更加简单，所以性能实际上比多线程的 ProtocolGroupAsyncNioServer 高
  * 而且协程是天生多线程，并不需要太多的接受线程来处理，所以一般只需要用本服务器即可
  */
-class ProtocolAsyncNioServer(
+class AsyncNioServer(
 	val port: Int,
-	val handler: suspend ProtocolAsyncNioSocket.() -> Unit
-) : ISocketServer by ProtocolNioServer(port, object : INioProtocol by ProtocolAsyncNioSocket.nioSocketProtocol {
+	val handler: suspend AsyncNioSocket.() -> Unit
+) : ISocketServer by ProtocolNioServer(port, object : INioProtocol by AsyncNioSocket.nioSocketProtocol {
 	override fun handleConnect(key: SelectionKey, nioThread: INioThread) {
 		GlobalScope.launch {
-			val socket = ProtocolAsyncNioSocket(key, nioThread)
+			val socket = AsyncNioSocket(key, nioThread)
 			try {
 				socket.handler()
 			} catch (e: Exception) {
@@ -46,7 +46,7 @@ class ProtocolAsyncNioServer(
 	})
 
 	interface Handler {
-		fun handle(socket: ProtocolAsyncNioSocket)
+		fun handle(socket: AsyncNioSocket)
 	}
 }
 

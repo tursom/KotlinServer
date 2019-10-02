@@ -1,6 +1,6 @@
 package cn.tursom.socket.client
 
-import cn.tursom.socket.ProtocolAsyncNioSocket
+import cn.tursom.socket.AsyncNioSocket
 import cn.tursom.socket.niothread.WorkerLoopNioThread
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
@@ -10,7 +10,7 @@ import kotlin.coroutines.suspendCoroutine
 
 object ProtocolAsyncNioClient {
 	private const val TIMEOUT = 3000L
-	private val protocol = ProtocolAsyncNioSocket.nioSocketProtocol
+	private val protocol = AsyncNioSocket.nioSocketProtocol
 	private val nioThread = WorkerLoopNioThread { nioThread ->
 		val selector = nioThread.selector
 		if (selector.select(TIMEOUT) != 0) {
@@ -45,7 +45,7 @@ object ProtocolAsyncNioClient {
 	}
 
 	@Suppress("DuplicatedCode")
-	fun getConnection(host: String, port: Int): ProtocolAsyncNioSocket {
+	fun getConnection(host: String, port: Int): AsyncNioSocket {
 		val selector = nioThread.selector
 		val channel = SocketChannel.open()
 		channel.connect(InetSocketAddress(host, port))
@@ -55,11 +55,11 @@ object ProtocolAsyncNioClient {
 		}
 		selector.wakeup()
 		val key: SelectionKey = f.get()
-		return ProtocolAsyncNioSocket(key, nioThread)
+		return AsyncNioSocket(key, nioThread)
 	}
 
 	@Suppress("DuplicatedCode")
-	suspend fun getSuspendConnection(host: String, port: Int): ProtocolAsyncNioSocket {
+	suspend fun getSuspendConnection(host: String, port: Int): AsyncNioSocket {
 		val selector = nioThread.selector
 		val key: SelectionKey = suspendCoroutine { cont ->
 			nioThread.submit {
@@ -73,6 +73,6 @@ object ProtocolAsyncNioClient {
 			}
 			selector.wakeup()
 		}
-		return ProtocolAsyncNioSocket(key, nioThread)
+		return AsyncNioSocket(key, nioThread)
 	}
 }

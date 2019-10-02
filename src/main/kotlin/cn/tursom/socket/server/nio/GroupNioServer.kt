@@ -16,7 +16,7 @@ import java.util.concurrent.LinkedBlockingDeque
  * 拥有一个连接线程和多个工作线程的 nio 服务器
  */
 @Suppress("MemberVisibilityCanBePrivate")
-class ProtocolGroupNioServer(
+class GroupNioServer(
 	val port: Int,
 	val threads: Int = Runtime.getRuntime().availableProcessors(),
 	private val protocol: INioProtocol,
