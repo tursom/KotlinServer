@@ -18,14 +18,17 @@ interface IAsyncNioSocket : AsyncSocket {
 
 	fun waitMode() {
 		nioThread.execute { if (key.isValid) key.interestOps(0) }
+		nioThread.wakeup()
 	}
 
 	fun readMode() {
 		nioThread.execute { if (key.isValid) key.interestOps(SelectionKey.OP_READ) }
+		nioThread.wakeup()
 	}
 
 	fun writeMode() {
 		nioThread.execute { if (key.isValid) key.interestOps(SelectionKey.OP_WRITE) }
+		nioThread.wakeup()
 	}
 
 	suspend fun read(buffer: ByteBuffer): Int
