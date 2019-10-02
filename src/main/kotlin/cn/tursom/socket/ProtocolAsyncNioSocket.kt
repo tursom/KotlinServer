@@ -1,9 +1,8 @@
 package cn.tursom.socket
 
 import cn.tursom.socket.niothread.INioThread
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import cn.tursom.utils.timer.TimerTask
+import cn.tursom.utils.timer.WheelTimer.Companion.timer
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
@@ -53,17 +52,16 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 		if (timeout <= 0) return read(buffer)
 		if (buffer.remaining() == 0) return -1
 		return try {
-			var finished = false
+			var timeoutTask: TimerTask? = null
 			val result: Int = suspendCoroutine {
-				GlobalScope.launch {
-					delay(timeout)
-					if (!finished) it.resumeWithException(TimeoutException())
+				timeoutTask = timer.exec(timeout) {
+					it.resumeWithException(TimeoutException())
 				}
 				key.attach(Context(buffer, it))
 				readMode()
 				nioThread.wakeup()
 			}
-			finished = true
+			timeoutTask?.cancel()
 			result
 		} catch (e: Exception) {
 			waitMode()
@@ -75,17 +73,16 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 		if (timeout <= 0) return write(buffer)
 		if (buffer.remaining() == 0) return -1
 		return try {
-			var finished = false
+			var timeoutTask: TimerTask? = null
 			val result: Int = suspendCoroutine {
-				GlobalScope.launch {
-					delay(timeout)
-					if (!finished) it.resumeWithException(TimeoutException())
+				timeoutTask = timer.exec(timeout) {
+					it.resumeWithException(TimeoutException())
 				}
 				key.attach(Context(buffer, it))
 				writeMode()
 				nioThread.wakeup()
 			}
-			finished = true
+			timeoutTask?.cancel()
 			result
 		} catch (e: Exception) {
 			waitMode()

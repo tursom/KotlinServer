@@ -1,9 +1,8 @@
 package cn.tursom.socket
 
 import cn.tursom.socket.niothread.INioThread
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import cn.tursom.utils.timer.TimerTask
+import cn.tursom.utils.timer.WheelTimer
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
@@ -58,17 +57,16 @@ class AttachmentAsyncNioSocket(override val key: SelectionKey, override val nioT
 		if (timeout <= 0) return read(buffer)
 		if (buffer.remaining() == 0) return -1
 		return try {
-			var finished = false
+			var timeoutTask: TimerTask? = null
 			val result: Int = suspendCoroutine {
-				GlobalScope.launch {
-					delay(timeout)
-					if (!finished) it.resumeWithException(TimeoutException())
+				timeoutTask = WheelTimer.timer.exec(timeout) {
+					it.resumeWithException(TimeoutException())
 				}
 				attachment = Context(buffer, it)
 				readMode()
 				nioThread.wakeup()
 			}
-			finished = true
+			timeoutTask?.cancel()
 			result
 		} catch (e: Exception) {
 			waitMode()
@@ -80,17 +78,16 @@ class AttachmentAsyncNioSocket(override val key: SelectionKey, override val nioT
 		if (timeout <= 0) return write(buffer)
 		if (buffer.remaining() == 0) return -1
 		return try {
-			var finished = false
+			var timeoutTask: TimerTask? = null
 			val result: Int = suspendCoroutine {
-				GlobalScope.launch {
-					delay(timeout)
-					if (!finished) it.resumeWithException(TimeoutException())
+				timeoutTask = WheelTimer.timer.exec(timeout) {
+					it.resumeWithException(TimeoutException())
 				}
 				attachment = Context(buffer, it)
 				writeMode()
 				nioThread.wakeup()
 			}
-			finished = true
+			timeoutTask?.cancel()
 			result
 		} catch (e: Exception) {
 			waitMode()
