@@ -43,7 +43,7 @@ class ProtocolNioServer(
 									val channel = serverChannel.accept() ?: return@whileBlock
 									channel.configureBlocking(false)
 									nioThread.register(channel) {
-										protocol.handleAccept(it, nioThread)
+										protocol.handleConnect(it, nioThread)
 									}
 								}
 								key.isReadable -> {

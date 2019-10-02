@@ -5,7 +5,7 @@ import java.nio.channels.SelectionKey
 
 interface INioProtocol {
 	@Throws(Throwable::class)
-	fun handleAccept(key: SelectionKey, nioThread: INioThread) {
+	fun handleConnect(key: SelectionKey, nioThread: INioThread) {
 	}
 
 	@Throws(Throwable::class)
@@ -15,5 +15,9 @@ interface INioProtocol {
 	fun handleWrite(key: SelectionKey, nioThread: INioThread)
 
 	@Throws(Throwable::class)
-	fun exceptionCause(key: SelectionKey, nioThread: INioThread, e: Throwable)
+	fun exceptionCause(key: SelectionKey, nioThread: INioThread, e: Throwable) {
+		key.cancel()
+		key.channel().close()
+		e.printStackTrace()
+	}
 }

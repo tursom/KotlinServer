@@ -27,7 +27,7 @@ object ProtocolAsyncNioClient {
 							protocol.handleWrite(key, nioThread)
 						}
 						key.isConnectable -> {
-							protocol.handleAccept(key, nioThread)
+							protocol.handleConnect(key, nioThread)
 						}
 					}
 				} catch (e: Throwable) {

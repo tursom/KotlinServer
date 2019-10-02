@@ -18,7 +18,7 @@ object AttachmentAsyncNioClient {
 				try {
 					when {
 						key.isAcceptable -> {
-							protocol.handleAccept(key, nioThread)
+							protocol.handleConnect(key, nioThread)
 						}
 						key.isReadable -> {
 							protocol.handleRead(key, nioThread)

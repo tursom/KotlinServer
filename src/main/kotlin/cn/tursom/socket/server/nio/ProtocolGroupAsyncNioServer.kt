@@ -18,7 +18,7 @@ class ProtocolGroupAsyncNioServer(
 	val threads: Int = Runtime.getRuntime().availableProcessors(),
 	val handler: suspend ProtocolAsyncNioSocket.() -> Unit
 ) : ISocketServer by ProtocolGroupNioServer(port, threads, object : INioProtocol by ProtocolAsyncNioSocket.nioSocketProtocol {
-	override fun handleAccept(key: SelectionKey, nioThread: INioThread) {
+	override fun handleConnect(key: SelectionKey, nioThread: INioThread) {
 		GlobalScope.launch {
 			val socket = ProtocolAsyncNioSocket(key, nioThread)
 			try {

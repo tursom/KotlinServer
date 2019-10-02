@@ -49,7 +49,7 @@ class ProtocolGroupNioServer(
 								val channel = serverChannel.accept() ?: return@forEachKey
 								channel.configureBlocking(false)
 								nioThread.register(channel) {
-									protocol.handleAccept(it, nioThread)
+									protocol.handleConnect(it, nioThread)
 								}
 							}
 							key.isReadable -> {
@@ -85,7 +85,7 @@ class ProtocolGroupNioServer(
 								val channel = serverChannel.accept() ?: return@forEachKey
 								channel.configureBlocking(false)
 								workerGroup.register(channel) { (key, thread) ->
-									protocol.handleAccept(key, thread)
+									protocol.handleConnect(key, thread)
 								}
 							}
 						}

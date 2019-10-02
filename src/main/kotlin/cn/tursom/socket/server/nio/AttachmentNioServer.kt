@@ -44,14 +44,14 @@ class AttachmentNioServer(
 									channel.configureBlocking(false)
 									nioThread.register(channel) {
 										it.attach(NioAttachment(null, protocol))
-										protocol.handleAccept(it, nioThread)
+										protocol.handleConnect(it, nioThread)
 									}
 								}
 								key.isReadable -> {
-									(key.attachment() as NioAttachment).protocol.handleAccept(key, nioThread)
+									(key.attachment() as NioAttachment).protocol.handleConnect(key, nioThread)
 								}
 								key.isValid && key.isWritable -> {
-									(key.attachment() as NioAttachment).protocol.handleAccept(key, nioThread)
+									(key.attachment() as NioAttachment).protocol.handleConnect(key, nioThread)
 								}
 							}
 						} catch (e: Throwable) {

@@ -52,7 +52,7 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 
 	companion object {
 		val nioSocketProtocol = object : INioProtocol {
-			override fun handleAccept(key: SelectionKey, nioThread: INioThread) {}
+			override fun handleConnect(key: SelectionKey, nioThread: INioThread) {}
 
 			override fun handleRead(key: SelectionKey, nioThread: INioThread) {
 				key.interestOps(0)

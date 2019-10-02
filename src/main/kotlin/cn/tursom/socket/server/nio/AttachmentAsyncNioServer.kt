@@ -16,7 +16,7 @@ class AttachmentAsyncNioServer(
 	},
 	val handler: suspend AttachmentAsyncNioSocket.() -> Unit)
 	: ISocketServer by AttachmentNioServer(port, object : INioProtocol by AttachmentAsyncNioSocket.nioSocketProtocol {
-	override fun handleAccept(key: SelectionKey, nioThread: INioThread) {
+	override fun handleConnect(key: SelectionKey, nioThread: INioThread) {
 		GlobalScope.launch {
 			val socket = AttachmentAsyncNioSocket(key, nioThread)
 			socket.handler()
