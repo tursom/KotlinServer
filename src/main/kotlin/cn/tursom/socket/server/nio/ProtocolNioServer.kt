@@ -11,7 +11,11 @@ import java.nio.channels.ServerSocketChannel
 import java.util.concurrent.ConcurrentLinkedDeque
 
 
-class ProtocolNioServer(val port: Int, private val protocol: INioProtocol) : ISocketServer {
+class ProtocolNioServer(
+	val port: Int,
+	private val protocol: INioProtocol,
+	val nioThread: Class<*> = ThreadPoolNioThread::class.java
+) : ISocketServer {
 	private val listenChannel = ServerSocketChannel.open()
 	private val selectorList = ConcurrentLinkedDeque<Selector>()
 
@@ -21,7 +25,7 @@ class ProtocolNioServer(val port: Int, private val protocol: INioProtocol) : ISo
 	}
 
 	override fun run() {
-		val nioThread = ThreadPoolNioThread()
+		val nioThread = nioThread.newInstance() as INioThread
 		val selector = Selector.open()
 		selectorList.add(selector)
 		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
@@ -42,7 +46,7 @@ class ProtocolNioServer(val port: Int, private val protocol: INioProtocol) : ISo
 			if (selector.isOpen) {
 				if (selector.select(TIMEOUT) != 0) {
 					val keyIter = selector.selectedKeys().iterator()
-					while (keyIter.hasNext()) {
+					while (keyIter.hasNext()) run whileBlock@{
 						val key = keyIter.next()
 						keyIter.remove()
 						try {
@@ -51,7 +55,7 @@ class ProtocolNioServer(val port: Int, private val protocol: INioProtocol) : ISo
 								}
 								key.isAcceptable -> {
 									val serverChannel = key.channel() as ServerSocketChannel
-									val channel = serverChannel.accept()
+									val channel = serverChannel.accept() ?: return@whileBlock
 									channel.configureBlocking(false)
 									val socketKey = channel.register(selector, 0)
 									protocol.handleAccept(socketKey, nioThread)
@@ -69,6 +73,8 @@ class ProtocolNioServer(val port: Int, private val protocol: INioProtocol) : ISo
 							} catch (e1: Throwable) {
 								e.printStackTrace()
 								e1.printStackTrace()
+								key.cancel()
+								key.channel().close()
 							}
 						}
 					}

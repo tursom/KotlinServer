@@ -144,7 +144,8 @@ class ByteArrayAdvanceByteBuffer(override val array: ByteArray, val offset: Int 
 	}
 
 	override fun toString(): String {
-		return String(array, readOffset, readableSize)
+		//return String(array, readOffset, readableSize)
+		return "ByteArrayAdvanceByteBuffer(size=$size, readPosition=$readPosition, writePosition=$writePosition)"
 	}
 
 	/**

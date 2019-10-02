@@ -3,13 +3,17 @@ package cn.tursom.socket.server.nio
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.ProtocolAsyncNioSocket
 import cn.tursom.socket.niothread.INioThread
+import cn.tursom.socket.niothread.ThreadPoolNioThread
 import cn.tursom.socket.server.ISocketServer
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.nio.channels.SelectionKey
 
-class ProtocolAsyncNioServer(val port: Int, val handler: suspend ProtocolAsyncNioSocket.() -> Unit)
-	: ISocketServer by ProtocolNioServer(port, object : INioProtocol by ProtocolAsyncNioSocket.nioSocketProtocol {
+class ProtocolAsyncNioServer(
+	val port: Int,
+	val nioThread: Class<*> = ThreadPoolNioThread::class.java,
+	val handler: suspend ProtocolAsyncNioSocket.() -> Unit
+) : ISocketServer by ProtocolNioServer(port, object : INioProtocol by ProtocolAsyncNioSocket.nioSocketProtocol {
 	override fun handleAccept(key: SelectionKey, nioThread: INioThread) {
 		GlobalScope.launch {
 			val socket = ProtocolAsyncNioSocket(key, nioThread)
@@ -31,7 +35,11 @@ class ProtocolAsyncNioServer(val port: Int, val handler: suspend ProtocolAsyncNi
 	/**
 	 * 次要构造方法，为使用Spring的同学们准备的
 	 */
-	constructor(port: Int, handler: Handler) : this(port, {
+	constructor(
+		port: Int,
+		nioThread: Class<*> = ThreadPoolNioThread::class.java,
+		handler: Handler
+	) : this(port, nioThread, {
 		handler.handle(this)
 	})
 

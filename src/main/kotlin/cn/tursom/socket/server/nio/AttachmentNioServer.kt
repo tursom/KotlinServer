@@ -11,7 +11,11 @@ import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.util.concurrent.ConcurrentLinkedDeque
 
-class AttachmentNioServer(val port: Int, var protocol: INioProtocol) : ISocketServer {
+class AttachmentNioServer(
+	val port: Int,
+	var protocol: INioProtocol,
+	val nioThread: Class<*> = ThreadPoolNioThread::class.java
+) : ISocketServer {
 	private val listenChannel = ServerSocketChannel.open()
 	private val selectorList = ConcurrentLinkedDeque<Selector>()
 
@@ -21,7 +25,7 @@ class AttachmentNioServer(val port: Int, var protocol: INioProtocol) : ISocketSe
 	}
 
 	override fun run() {
-		val nioThread = ThreadPoolNioThread()
+		val nioThread: INioThread = nioThread.newInstance() as INioThread
 		val selector = Selector.open()
 		selectorList.add(selector)
 		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
@@ -43,14 +47,14 @@ class AttachmentNioServer(val port: Int, var protocol: INioProtocol) : ISocketSe
 			if (selector.isOpen) {
 				if (selector.select(TIMEOUT) != 0) {
 					val keyIter = selector.selectedKeys().iterator()
-					while (keyIter.hasNext()) {
+					while (keyIter.hasNext()) run whileBlock@{
 						val key = keyIter.next()
 						keyIter.remove()
 						try {
 							when {
 								key.isAcceptable -> {
 									val serverChannel = key.channel() as ServerSocketChannel
-									val channel = serverChannel.accept()
+									val channel = serverChannel.accept() ?: return@whileBlock
 									channel.configureBlocking(false)
 									val socketKey = channel.register(selector, 0)
 									socketKey.attach(NioAttachment(null, protocol))
@@ -69,6 +73,8 @@ class AttachmentNioServer(val port: Int, var protocol: INioProtocol) : ISocketSe
 							} catch (e1: Throwable) {
 								e.printStackTrace()
 								e1.printStackTrace()
+								key.cancel()
+								key.channel().close()
 							}
 						}
 					}

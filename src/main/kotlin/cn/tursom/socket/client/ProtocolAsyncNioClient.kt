@@ -33,10 +33,10 @@ object ProtocolAsyncNioClient {
 					val keyIter = synchronized(selector) { selector.selectedKeys() }.iterator()
 					while (keyIter.hasNext()) {
 						val key = keyIter.next()
+						keyIter.remove()
 						try {
 							when {
 								!key.isValid -> {
-									System.err.println("$key is not valid")
 								}
 								key.isReadable -> {
 									protocol.handleRead(key, nioThread)
@@ -55,8 +55,6 @@ object ProtocolAsyncNioClient {
 								e.printStackTrace()
 								e1.printStackTrace()
 							}
-						} finally {
-							keyIter.remove()
 						}
 					}
 				}

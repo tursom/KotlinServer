@@ -155,16 +155,8 @@ interface AdvanceByteBuffer {
 	}
 }
 
-inline fun <T> AdvanceByteBuffer.readMode(action: () -> T): T {
-	readMode()
-	return try {
-		action()
-	} finally {
-		resumeWriteMode()
-	}
-}
-
 inline fun <T> AdvanceByteBuffer.readNioBuffer(action: (nioBuffer: ByteBuffer) -> T): T {
+	readMode()
 	val buffer = nioBuffer
 	val position = nioBuffer.position()
 	return try {

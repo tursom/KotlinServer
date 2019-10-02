@@ -9,7 +9,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-class AttachmentAsyncNioSocket(override val key: SelectionKey, val nioThread: INioThread) : IAsyncNioSocket {
+class AttachmentAsyncNioSocket(override val key: SelectionKey, override val nioThread: INioThread) : IAsyncNioSocket {
 	override val channel = key.channel() as SocketChannel
 	var attachment: Any?
 		get() = (key.attachment() as NioAttachment).attachment
@@ -18,10 +18,11 @@ class AttachmentAsyncNioSocket(override val key: SelectionKey, val nioThread: IN
 		}
 
 	override suspend fun read(buffer: ByteBuffer): Int {
+		if (buffer.remaining() == 0) return 0
 		return try {
 			suspendCoroutine {
 				key.attach(Context(buffer, it))
-				nioThread.execute { if (key.isValid) key.interestOps(SelectionKey.OP_READ) }
+				readMode()
 				key.selector().wakeup()
 			}
 		} catch (e: Exception) {
@@ -30,10 +31,11 @@ class AttachmentAsyncNioSocket(override val key: SelectionKey, val nioThread: IN
 	}
 
 	override suspend fun write(buffer: ByteBuffer): Int {
+		if (buffer.remaining() == 0) return 0
 		return try {
 			suspendCoroutine {
 				key.attach(Context(buffer, it))
-				nioThread.execute { if (key.isValid) key.interestOps(SelectionKey.OP_WRITE) }
+				writeMode()
 				key.selector().wakeup()
 			}
 		} catch (e: Exception) {
@@ -49,9 +51,8 @@ class AttachmentAsyncNioSocket(override val key: SelectionKey, val nioThread: IN
 	data class Context(val buffer: ByteBuffer, val cont: Continuation<Int>)
 
 	companion object {
+		@Suppress("DuplicatedCode")
 		val nioSocketProtocol = object : INioProtocol {
-			override fun handleAccept(key: SelectionKey, nioThread: INioThread) {}
-
 			override fun handleRead(key: SelectionKey, nioThread: INioThread) {
 				val attachment = key.attachment() as NioAttachment
 				val context = attachment.attachment as Context
@@ -74,8 +75,14 @@ class AttachmentAsyncNioSocket(override val key: SelectionKey, val nioThread: IN
 
 			override fun exceptionCause(key: SelectionKey, nioThread: INioThread, e: Throwable) {
 				val attachment = key.attachment() as NioAttachment
-				val context = attachment.attachment as Context
-				context.cont.resumeWithException(e)
+				val context = attachment.attachment as Context?
+				if (context != null)
+					context.cont.resumeWithException(e)
+				else {
+					key.cancel()
+					key.channel().close()
+					e.printStackTrace()
+				}
 			}
 		}
 	}

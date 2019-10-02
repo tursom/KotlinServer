@@ -14,14 +14,15 @@ import kotlin.coroutines.suspendCoroutine
  * 导致该类无法利用 SelectionKey 的 attachment
  * 但是对于一般的应用而言是足够使用的
  */
-class ProtocolAsyncNioSocket(override val key: SelectionKey, val nioThread: INioThread) : IAsyncNioSocket {
+class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThread: INioThread) : IAsyncNioSocket {
 	override val channel: SocketChannel = key.channel() as SocketChannel
 
 	override suspend fun read(buffer: ByteBuffer): Int {
+		if (buffer.remaining() == 0) return 0
 		return try {
 			suspendCoroutine {
 				key.attach(Context(buffer, it))
-				nioThread.execute { key.interestOps(SelectionKey.OP_READ) }
+				readMode()
 				key.selector().wakeup()
 			}
 		} catch (e: Exception) {
@@ -30,10 +31,11 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, val nioThread: INio
 	}
 
 	override suspend fun write(buffer: ByteBuffer): Int {
+		if (buffer.remaining() == 0) return 0
 		return try {
 			suspendCoroutine {
 				key.attach(Context(buffer, it))
-				nioThread.execute { key.interestOps(SelectionKey.OP_WRITE) }
+				writeMode()
 				key.selector().wakeup()
 			}
 		} catch (e: Exception) {
@@ -70,8 +72,14 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, val nioThread: INio
 
 			override fun exceptionCause(key: SelectionKey, nioThread: INioThread, e: Throwable) {
 				nioThread.execute { if (key.isValid) key.interestOps(0) }
-				val context = key.attachment() as Context
-				context.cont.resumeWithException(e)
+				val context = key.attachment() as Context?
+				if (context != null)
+					context.cont.resumeWithException(e)
+				else {
+					key.cancel()
+					key.channel().close()
+					e.printStackTrace()
+				}
 			}
 		}
 	}
