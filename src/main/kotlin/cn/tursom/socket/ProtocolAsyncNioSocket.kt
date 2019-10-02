@@ -1,9 +1,13 @@
 package cn.tursom.socket
 
 import cn.tursom.socket.niothread.INioThread
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
+import java.util.concurrent.TimeoutException
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -18,7 +22,7 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 	override val channel: SocketChannel = key.channel() as SocketChannel
 
 	override suspend fun read(buffer: ByteBuffer): Int {
-		if (buffer.remaining() == 0) return 0
+		if (buffer.remaining() == 0) return -1
 		return try {
 			suspendCoroutine {
 				key.attach(Context(buffer, it))
@@ -26,12 +30,13 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 				nioThread.wakeup()
 			}
 		} catch (e: Exception) {
+			waitMode()
 			throw RuntimeException(e)
 		}
 	}
 
 	override suspend fun write(buffer: ByteBuffer): Int {
-		if (buffer.remaining() == 0) return 0
+		if (buffer.remaining() == 0) return -1
 		return try {
 			suspendCoroutine {
 				key.attach(Context(buffer, it))
@@ -39,6 +44,51 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 				nioThread.wakeup()
 			}
 		} catch (e: Exception) {
+			waitMode()
+			throw Exception(e)
+		}
+	}
+
+	override suspend fun read(buffer: ByteBuffer, timeout: Long): Int {
+		if (timeout <= 0) return read(buffer)
+		if (buffer.remaining() == 0) return -1
+		return try {
+			var finished = false
+			val result: Int = suspendCoroutine {
+				GlobalScope.launch {
+					delay(timeout)
+					if (!finished) it.resumeWithException(TimeoutException())
+				}
+				key.attach(Context(buffer, it))
+				readMode()
+				nioThread.wakeup()
+			}
+			finished = true
+			result
+		} catch (e: Exception) {
+			waitMode()
+			throw RuntimeException(e)
+		}
+	}
+
+	override suspend fun write(buffer: ByteBuffer, timeout: Long): Int {
+		if (timeout <= 0) return write(buffer)
+		if (buffer.remaining() == 0) return -1
+		return try {
+			var finished = false
+			val result: Int = suspendCoroutine {
+				GlobalScope.launch {
+					delay(timeout)
+					if (!finished) it.resumeWithException(TimeoutException())
+				}
+				key.attach(Context(buffer, it))
+				writeMode()
+				nioThread.wakeup()
+			}
+			finished = true
+			result
+		} catch (e: Exception) {
+			waitMode()
 			throw Exception(e)
 		}
 	}

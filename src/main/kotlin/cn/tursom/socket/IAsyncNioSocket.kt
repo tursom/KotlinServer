@@ -4,8 +4,6 @@ import cn.tursom.socket.niothread.INioThread
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.readNioBuffer
 import cn.tursom.utils.bytebuffer.writeNioBuffer
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withTimeout
 import java.net.SocketException
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
@@ -37,6 +35,7 @@ interface IAsyncNioSocket : AsyncSocket {
 	 * 如果通道已断开则会抛出异常
 	 */
 	suspend fun recv(buffer: ByteBuffer): Int {
+		if (buffer.remaining() == 0) return 0
 		val readSize = read(buffer)
 		if (readSize < 0) {
 			throw SocketException("channel closed")
@@ -44,26 +43,14 @@ interface IAsyncNioSocket : AsyncSocket {
 		return readSize
 	}
 
-	override suspend fun read(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) try {
-		withTimeout(timeout) { read(buffer) }
-	} catch (e: TimeoutCancellationException) {
-		waitMode()
-		throw e
-	} else read(buffer)
-
-	override suspend fun write(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) try {
-		withTimeout(timeout) { write(buffer) }
-	} catch (e: TimeoutCancellationException) {
-		waitMode()
-		throw e
-	} else write(buffer)
-
-	suspend fun recv(buffer: ByteBuffer, timeout: Long): Int = if (timeout > 0) try {
-		withTimeout(timeout) { recv(buffer) }
-	} catch (e: TimeoutCancellationException) {
-		waitMode()
-		throw e
-	} else recv(buffer)
+	suspend fun recv(buffer: ByteBuffer, timeout: Long): Int {
+		if (buffer.remaining() == 0) return 0
+		val readSize = read(buffer, timeout)
+		if (readSize < 0) {
+			throw SocketException("channel closed")
+		}
+		return readSize
+	}
 
 	suspend fun read(buffer: AdvanceByteBuffer, timeout: Long = 0): Int {
 		return buffer.writeNioBuffer {
