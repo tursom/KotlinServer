@@ -14,7 +14,7 @@ class ThreadPoolWorkerGroup(
 	var registered = 0
 	override fun register(channel: SelectableChannel, onComplete: (key: SelectionContext) -> Unit) {
 		val workerThread = workerGroup[registered++ % poolSize]
-		workerThread.register(channel) {
+		workerThread.register(channel, 0) {
 			onComplete(SelectionContext(it, workerThread))
 		}
 	}

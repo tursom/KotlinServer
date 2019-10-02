@@ -2,7 +2,7 @@ package cn.tursom.socket.server.nio
 
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.niothread.INioThread
-import cn.tursom.socket.niothread.ThreadPoolNioThread
+import cn.tursom.socket.niothread.WorkerLoopNioThread
 import cn.tursom.socket.server.ISocketServer
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
@@ -16,7 +16,7 @@ class ProtocolNioServer(
 	val port: Int,
 	private val protocol: INioProtocol,
 	val nioThreadGenerator: (threadName: String, workLoop: (thread: INioThread) -> Unit) -> INioThread = { name, workLoop ->
-		ThreadPoolNioThread(name, workLoop = workLoop)
+		WorkerLoopNioThread(name, workLoop = workLoop)
 	}
 ) : ISocketServer {
 	private val listenChannel = ServerSocketChannel.open()
@@ -28,7 +28,20 @@ class ProtocolNioServer(
 	}
 
 	override fun run() {
-		val nioThread = nioThreadGenerator("nio worker") { nioThread ->
+		val nioThread = nioThreadGenerator("nio worker", LoopHandler(protocol)::handle)
+		nioThread.register(listenChannel, SelectionKey.OP_ACCEPT) {}
+		threadList.add(nioThread)
+	}
+
+	override fun close() {
+		listenChannel.close()
+		threadList.forEach {
+			it.close()
+		}
+	}
+
+	class LoopHandler(val protocol: INioProtocol) {
+		fun handle(nioThread: INioThread) {
 			val selector = nioThread.selector
 			if (selector.isOpen) {
 				if (selector.select(TIMEOUT) != 0) {
@@ -42,7 +55,7 @@ class ProtocolNioServer(
 									val serverChannel = key.channel() as ServerSocketChannel
 									val channel = serverChannel.accept() ?: return@whileBlock
 									channel.configureBlocking(false)
-									nioThread.register(channel) {
+									nioThread.register(channel, 0) {
 										protocol.handleConnect(it, nioThread)
 									}
 								}
@@ -67,22 +80,10 @@ class ProtocolNioServer(
 				}
 			}
 		}
-		val selector = nioThread.selector
-
-		threadList.add(nioThread)
-		listenChannel.register(selector, SelectionKey.OP_ACCEPT)
-		nioThread.wakeup()
-	}
-
-	override fun close() {
-		listenChannel.close()
-		threadList.forEach {
-			it.close()
-		}
 	}
 
 	companion object {
-		private const val TIMEOUT = 3000L
+		private const val TIMEOUT = 1000L
 	}
 }
 

@@ -45,11 +45,11 @@ class ThreadPoolNioThread(
 		selector.wakeup()
 	}
 
-	override fun register(channel: SelectableChannel, onComplete: (key: SelectionKey) -> Unit) {
+	override fun register(channel: SelectableChannel, ops: Int, onComplete: (key: SelectionKey) -> Unit) {
 		if (Thread.currentThread() == thread) {
-			onComplete(channel.register(selector, 0))
+			onComplete(channel.register(selector, ops))
 		} else {
-			threadPool.execute { register(channel, onComplete) }
+			threadPool.execute { register(channel, ops, onComplete) }
 			wakeup()
 		}
 	}

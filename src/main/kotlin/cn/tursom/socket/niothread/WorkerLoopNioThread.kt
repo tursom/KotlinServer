@@ -4,8 +4,9 @@ import java.nio.channels.Selector
 import java.util.concurrent.Callable
 import java.util.concurrent.LinkedBlockingDeque
 
-@Suppress("MemberVisibilityCanBePrivate")
+@Suppress("MemberVisibilityCanBePrivate", "CanBeParameter")
 class WorkerLoopNioThread(
+	val threadName: String = "nioLoopThread",
 	override val selector: Selector = Selector.open(),
 	override val workLoop: (thread: INioThread) -> Unit
 ) : INioThread {
@@ -40,6 +41,7 @@ class WorkerLoopNioThread(
 	}
 
 	init {
+		thread.name = threadName
 		thread.isDaemon = true
 		thread.start()
 	}

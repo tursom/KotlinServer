@@ -2,7 +2,7 @@ package cn.tursom.socket
 
 import cn.tursom.socket.niothread.INioThread
 import cn.tursom.utils.timer.TimerTask
-import cn.tursom.utils.timer.WheelTimer.Companion.timer
+import cn.tursom.utils.timer.WheelTimer
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
@@ -129,5 +129,8 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 				}
 			}
 		}
+
+		//val timer = StaticWheelTimer.timer
+		val timer = WheelTimer.timer
 	}
 }

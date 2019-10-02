@@ -42,7 +42,7 @@ class AttachmentNioServer(
 									val serverChannel = key.channel() as ServerSocketChannel
 									val channel = serverChannel.accept() ?: return@whileBlock
 									channel.configureBlocking(false)
-									nioThread.register(channel) {
+									nioThread.register(channel, 0) {
 										it.attach(NioAttachment(null, protocol))
 										protocol.handleConnect(it, nioThread)
 									}

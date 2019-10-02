@@ -19,11 +19,15 @@ interface INioThread : Closeable {
 		selector.wakeup()
 	}
 
-	fun register(channel: SelectableChannel, onComplete: (key: SelectionKey) -> Unit) {
+	fun register(channel: SelectableChannel, ops: Int, onComplete: (key: SelectionKey) -> Unit) {
 		if (Thread.currentThread() == thread) {
-			channel.register(selector, 0)
+			val key = channel.register(selector, ops)
+			onComplete(key)
 		} else {
-			execute { channel.register(selector, 0) }
+			execute {
+				val key = channel.register(selector, ops)
+				onComplete(key)
+			}
 			wakeup()
 		}
 	}
@@ -36,6 +40,7 @@ interface INioThread : Closeable {
 	fun <T> call(task: Callable<T>): T {
 		return submit(task).get()
 	}
+
 	fun <T> call(task: () -> T): T {
 		return call(Callable<T> { task() })
 	}

@@ -38,40 +38,10 @@ class ProtocolGroupNioServer(
 	}
 
 	override fun run() {
-		val workerGroup = nioThreadGenerator("nioWorkerGroup", threads) { nioThread ->
-			val selector = nioThread.selector
-			if (selector.isOpen) {
-				forEachKey(selector) { key ->
-					try {
-						when {
-							key.isAcceptable -> {
-								val serverChannel = key.channel() as ServerSocketChannel
-								val channel = serverChannel.accept() ?: return@forEachKey
-								channel.configureBlocking(false)
-								nioThread.register(channel) {
-									protocol.handleConnect(it, nioThread)
-								}
-							}
-							key.isReadable -> {
-								protocol.handleRead(key, nioThread)
-							}
-							key.isWritable -> {
-								protocol.handleWrite(key, nioThread)
-							}
-						}
-					} catch (e: Throwable) {
-						try {
-							protocol.exceptionCause(key, nioThread, e)
-						} catch (e1: Throwable) {
-							e.printStackTrace()
-							e1.printStackTrace()
-							key.cancel()
-							key.channel().close()
-						}
-					}
-				}
-			}
-		}
+		val workerGroup = nioThreadGenerator(
+			"nioWorkerGroup", threads,
+			ProtocolNioServer.LoopHandler(protocol)::handle
+		)
 		workerGroupList.add(workerGroup)
 
 		val nioThread = ThreadPoolNioThread("nioAccepter") { nioThread ->
