@@ -1,8 +1,21 @@
 package cn.tursom.socket.niothread
 
+import java.io.Closeable
+import java.nio.channels.SelectableChannel
+import java.nio.channels.SelectionKey
+import java.nio.channels.Selector
 import java.util.concurrent.Callable
 
-interface INioThread {
+/**
+ * 一个 nio 工作线程，一个线程只有一个 Selector
+ */
+interface INioThread : Closeable {
+	val selector: Selector
+	val closed: Boolean
+
+	fun wakeup()
+	fun register(channel: SelectableChannel, onComplete: (key: SelectionKey) -> Unit)
+
 	fun execute(command: Runnable)
 	fun execute(command: () -> Unit) {
 		execute(Runnable { command() })

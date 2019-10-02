@@ -54,26 +54,27 @@ class AttachmentAsyncNioSocket(override val key: SelectionKey, override val nioT
 		@Suppress("DuplicatedCode")
 		val nioSocketProtocol = object : INioProtocol {
 			override fun handleRead(key: SelectionKey, nioThread: INioThread) {
+				key.interestOps(0)
 				val attachment = key.attachment() as NioAttachment
 				val context = attachment.attachment as Context
 				val channel = key.channel() as SocketChannel
 				val readSize = channel.read(context.buffer)
-				key.interestOps(0)
 				context.cont.resume(readSize)
 				attachment.attachment = null
 			}
 
 			override fun handleWrite(key: SelectionKey, nioThread: INioThread) {
+				key.interestOps(0)
 				val attachment = key.attachment() as NioAttachment
 				val context = attachment.attachment as Context
 				val channel = key.channel() as SocketChannel
 				val readSize = channel.write(context.buffer)
-				key.interestOps(0)
 				context.cont.resume(readSize)
 				attachment.attachment = null
 			}
 
 			override fun exceptionCause(key: SelectionKey, nioThread: INioThread, e: Throwable) {
+				key.interestOps(0)
 				val attachment = key.attachment() as NioAttachment
 				val context = attachment.attachment as Context?
 				if (context != null)

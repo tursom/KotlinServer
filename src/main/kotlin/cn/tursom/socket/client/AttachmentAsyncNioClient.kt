@@ -1,20 +1,19 @@
 package cn.tursom.socket.client
 
 import cn.tursom.socket.AttachmentAsyncNioSocket
-import cn.tursom.socket.niothread.ThreadPoolNioThread
+import cn.tursom.socket.niothread.SingleThreadNioThread
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
-import java.nio.channels.Selector
 import java.nio.channels.SocketChannel
 
 object AttachmentAsyncNioClient {
 	private const val TIMEOUT = 3000L
-	private val selector = Selector.open()
 	private val protocol = AttachmentAsyncNioSocket.nioSocketProtocol
-	private val nioThread = ThreadPoolNioThread()
+	private val nioThread = SingleThreadNioThread()
 
 	@Suppress("DuplicatedCode")
 	fun getConnection(host: String, port: Int): AttachmentAsyncNioSocket {
+		val selector = nioThread.selector
 		val channel = SocketChannel.open()
 		channel.connect(InetSocketAddress(host, port))
 		channel.configureBlocking(false)
@@ -28,6 +27,7 @@ object AttachmentAsyncNioClient {
 
 	init {
 		nioThread.execute(object : Runnable {
+			val selector = nioThread.selector
 			override fun run() {
 				if (selector.select(TIMEOUT) != 0) {
 

@@ -3,7 +3,7 @@ package cn.tursom.socket.server.nio
 import cn.tursom.socket.AttachmentAsyncNioSocket
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.niothread.INioThread
-import cn.tursom.socket.niothread.ThreadPoolNioThread
+import cn.tursom.socket.niothread.SingleThreadNioThread
 import cn.tursom.socket.server.ISocketServer
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -11,7 +11,7 @@ import java.nio.channels.SelectionKey
 
 class AttachmentAsyncNioServer(
 	val port: Int,
-	val nioThread: Class<*> = ThreadPoolNioThread::class.java,
+	val nioThread: Class<*> = SingleThreadNioThread::class.java,
 	val handler: suspend AttachmentAsyncNioSocket.() -> Unit)
 	: ISocketServer by AttachmentNioServer(port, object : INioProtocol by AttachmentAsyncNioSocket.nioSocketProtocol {
 	override fun handleAccept(key: SelectionKey, nioThread: INioThread) {
@@ -33,7 +33,7 @@ class AttachmentAsyncNioServer(
 	 */
 	constructor(
 		port: Int,
-		nioThread: Class<*> = ThreadPoolNioThread::class.java,
+		nioThread: Class<*> = SingleThreadNioThread::class.java,
 		handler: Handler
 	) : this(port, nioThread, {
 		handler.handle(this)

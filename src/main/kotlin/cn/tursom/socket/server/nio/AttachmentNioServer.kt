@@ -3,7 +3,7 @@ package cn.tursom.socket.server.nio
 import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.NioAttachment
 import cn.tursom.socket.niothread.INioThread
-import cn.tursom.socket.niothread.ThreadPoolNioThread
+import cn.tursom.socket.niothread.SingleThreadNioThread
 import cn.tursom.socket.server.ISocketServer
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentLinkedDeque
 class AttachmentNioServer(
 	val port: Int,
 	var protocol: INioProtocol,
-	val nioThread: Class<*> = ThreadPoolNioThread::class.java
+	val nioThread: Class<*> = SingleThreadNioThread::class.java
 ) : ISocketServer {
 	private val listenChannel = ServerSocketChannel.open()
 	private val selectorList = ConcurrentLinkedDeque<Selector>()
@@ -56,9 +56,10 @@ class AttachmentNioServer(
 									val serverChannel = key.channel() as ServerSocketChannel
 									val channel = serverChannel.accept() ?: return@whileBlock
 									channel.configureBlocking(false)
-									val socketKey = channel.register(selector, 0)
-									socketKey.attach(NioAttachment(null, protocol))
-									protocol.handleAccept(socketKey, nioThread)
+									nioThread.register(channel) {
+										it.attach(NioAttachment(null, protocol))
+										protocol.handleAccept(it, nioThread)
+									}
 								}
 								key.isReadable -> {
 									(key.attachment() as NioAttachment).protocol.handleAccept(key, nioThread)

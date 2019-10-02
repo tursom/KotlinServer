@@ -23,7 +23,7 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 			suspendCoroutine {
 				key.attach(Context(buffer, it))
 				readMode()
-				key.selector().wakeup()
+				nioThread.wakeup()
 			}
 		} catch (e: Exception) {
 			throw RuntimeException(e)
@@ -36,7 +36,7 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 			suspendCoroutine {
 				key.attach(Context(buffer, it))
 				writeMode()
-				key.selector().wakeup()
+				nioThread.wakeup()
 			}
 		} catch (e: Exception) {
 			throw Exception(e)
@@ -55,7 +55,7 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 			override fun handleAccept(key: SelectionKey, nioThread: INioThread) {}
 
 			override fun handleRead(key: SelectionKey, nioThread: INioThread) {
-				nioThread.execute { if (key.isValid) key.interestOps(0) }
+				key.interestOps(0)
 				val context = key.attachment() as Context
 				val channel = key.channel() as SocketChannel
 				val readSize = channel.read(context.buffer)
@@ -63,7 +63,7 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 			}
 
 			override fun handleWrite(key: SelectionKey, nioThread: INioThread) {
-				nioThread.execute { if (key.isValid) key.interestOps(0) }
+				key.interestOps(0)
 				val context = key.attachment() as Context
 				val channel = key.channel() as SocketChannel
 				val readSize = channel.write(context.buffer)
@@ -71,7 +71,7 @@ class ProtocolAsyncNioSocket(override val key: SelectionKey, override val nioThr
 			}
 
 			override fun exceptionCause(key: SelectionKey, nioThread: INioThread, e: Throwable) {
-				nioThread.execute { if (key.isValid) key.interestOps(0) }
+				key.interestOps(0)
 				val context = key.attachment() as Context?
 				if (context != null)
 					context.cont.resumeWithException(e)
