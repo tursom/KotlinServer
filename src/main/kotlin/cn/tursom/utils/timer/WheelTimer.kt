@@ -16,7 +16,7 @@ class WheelTimer(
 	private var position = 0
 
 	override fun exec(timeout: Long, task: () -> Unit): TimerTask {
-		val index = ((timeout / tick) % wheelSize).toInt()
+		val index = ((timeout / tick + position + if (timeout % tick == 0L) 0 else 1) % wheelSize).toInt()
 		return taskQueueArray[index].offer(task, timeout)
 	}
 
