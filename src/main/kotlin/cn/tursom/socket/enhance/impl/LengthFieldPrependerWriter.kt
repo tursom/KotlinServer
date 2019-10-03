@@ -1,6 +1,6 @@
 package cn.tursom.socket.enhance.impl
 
-import cn.tursom.socket.AsyncNioSocket
+import cn.tursom.socket.IAsyncNioSocket
 import cn.tursom.socket.enhance.SocketWriter
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.ByteArrayAdvanceByteBuffer
@@ -9,9 +9,9 @@ import cn.tursom.utils.bytebuffer.ByteArrayAdvanceByteBuffer
 class LengthFieldPrependerWriter(
     val prevWriter: SocketWriter<AdvanceByteBuffer>
 ) : SocketWriter<AdvanceByteBuffer> {
-    override val socket: AsyncNioSocket get() = prevWriter.socket
+    override val socket: IAsyncNioSocket get() = prevWriter.socket
 
-    constructor(socket: AsyncNioSocket) : this(SimpSocketWriter(socket))
+    constructor(socket: IAsyncNioSocket) : this(SimpSocketWriter(socket))
 
     override suspend fun write(value: AdvanceByteBuffer, timeout: Long) {
         if (value.readableSize < 1024) {

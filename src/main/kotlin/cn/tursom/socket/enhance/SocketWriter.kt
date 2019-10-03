@@ -1,8 +1,8 @@
 package cn.tursom.socket.enhance
 
-import cn.tursom.socket.AsyncNioSocket
+import cn.tursom.socket.IAsyncNioSocket
 
 interface SocketWriter<T> {
-	val socket: AsyncNioSocket
+	val socket: IAsyncNioSocket
 	suspend fun write(value: T, timeout: Long = 0)
 }
