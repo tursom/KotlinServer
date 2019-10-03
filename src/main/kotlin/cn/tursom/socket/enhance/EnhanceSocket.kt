@@ -1,3 +1,5 @@
 package cn.tursom.socket.enhance
 
-interface EnhanceSocket<Read, Write> : SocketReader<Read>, SocketWriter<Write>
+import cn.tursom.socket.IAsyncNioSocket
+
+interface EnhanceSocket<Read, Write> : SocketReader<Read>, SocketWriter<Write>, IAsyncNioSocket

@@ -1,16 +1,17 @@
 package cn.tursom.socket.enhance.impl
 
 import cn.tursom.socket.AsyncNioSocket
+import cn.tursom.socket.IAsyncNioSocket
 import cn.tursom.socket.enhance.EnhanceSocket
 import cn.tursom.socket.enhance.SocketReader
 import cn.tursom.socket.enhance.SocketWriter
 
 @Suppress("MemberVisibilityCanBePrivate")
 class UnionEnhanceSocket<Read, Write>(
-    val prevReader: SocketReader<Read>,
-    val prevWriter: SocketWriter<Write>
+	val prevReader: SocketReader<Read>,
+	val prevWriter: SocketWriter<Write>,
+	override val socket: AsyncNioSocket = prevReader.socket
 ) : EnhanceSocket<Read, Write>,
-    SocketReader<Read> by prevReader,
-    SocketWriter<Write> by prevWriter {
-    override val socket: AsyncNioSocket get() = prevReader.socket
-}
+	SocketReader<Read> by prevReader,
+	SocketWriter<Write> by prevWriter,
+	IAsyncNioSocket by socket
