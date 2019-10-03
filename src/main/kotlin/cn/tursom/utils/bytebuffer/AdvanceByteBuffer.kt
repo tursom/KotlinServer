@@ -9,6 +9,7 @@ interface AdvanceByteBuffer {
 	/**
 	 * 各种位置变量
 	 */
+	val hasArray: Boolean
 	var writePosition: Int
 	var limit: Int
 	val capacity: Int
@@ -152,6 +153,13 @@ interface AdvanceByteBuffer {
 		for (i in index until index + size) {
 			put(array[i])
 		}
+	}
+
+	fun peekString(size: Int = readableSize): String {
+		val readP = readPosition
+		val str = getString(size)
+		readPosition = readP
+		return str
 	}
 }
 

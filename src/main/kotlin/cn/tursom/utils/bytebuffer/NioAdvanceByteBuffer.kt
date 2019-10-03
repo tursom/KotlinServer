@@ -11,6 +11,8 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 
 	override val nioBuffer: ByteBuffer get() = buffer
 
+	override val hasArray: Boolean get() = buffer.hasArray()
+
 	private var _readMode = false
 	var readMark = 0
 	var writeMark = 0

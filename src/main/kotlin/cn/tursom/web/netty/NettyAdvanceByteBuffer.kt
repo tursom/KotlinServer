@@ -6,6 +6,7 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 
 class NettyAdvanceByteBuffer(val byteBuf: ByteBuf) : AdvanceByteBuffer {
+	override val hasArray: Boolean get() = byteBuf.hasArray()
 	override val nioBuffer: ByteBuffer
 		get() = if (readMode) byteBuf.nioBuffer(writePosition, limit)
 		else byteBuf.nioBuffer()

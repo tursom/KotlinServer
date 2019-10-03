@@ -129,7 +129,7 @@ open class NettyHttpContent(
 		finish(response)
 	}
 
-	fun finish(response: DefaultFullHttpResponse) {
+	fun finish(response: FullHttpResponse) {
 		val heads = response.headers()
 		addHeaders(heads, mapOf(
 			HttpHeaderNames.CONTENT_TYPE to "${HttpHeaderValues.TEXT_PLAIN}; charset=UTF-8",

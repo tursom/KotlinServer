@@ -65,10 +65,10 @@ object AsyncNioClient {
 	suspend fun getSuspendConnection(host: String, port: Int): AsyncNioSocket {
 		val key: SelectionKey = suspendCoroutine { cont ->
 			try {
+				val channel = SocketChannel.open()
+				channel.connect(InetSocketAddress(host, port))
+				channel.configureBlocking(false)
 				nioThread.submit {
-					val channel = SocketChannel.open()
-					channel.connect(InetSocketAddress(host, port))
-					channel.configureBlocking(false)
 					nioThread.register(channel, 0) { key ->
 						cont.resume(key)
 					}
@@ -88,15 +88,15 @@ object AsyncNioClient {
 
 		var timeoutTask: TimerTask? = null
 		val key: SelectionKey = suspendCoroutine { cont ->
+			val channel = SocketChannel.open()
+			channel.connect(InetSocketAddress(host, port))
+			channel.configureBlocking(false)
+			channel.register(selector, 0)
+			timeoutTask = AsyncNioSocket.timer.exec(timeout) {
+				channel.close()
+				cont.resumeWithException(TimeoutException())
+			}
 			try {
-				val channel = SocketChannel.open()
-				channel.connect(InetSocketAddress(host, port))
-				channel.configureBlocking(false)
-				channel.register(selector, 0)
-				timeoutTask = AsyncNioSocket.timer.exec(timeout) {
-					channel.close()
-					cont.resumeWithException(TimeoutException())
-				}
 				nioThread.register(channel, 0) { key ->
 					cont.resume(key)
 				}

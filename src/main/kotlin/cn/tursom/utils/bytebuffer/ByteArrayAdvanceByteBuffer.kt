@@ -3,10 +3,18 @@ package cn.tursom.utils.bytebuffer
 import cn.tursom.utils.*
 import java.io.OutputStream
 import java.nio.ByteBuffer
+import kotlin.math.min
 
-class ByteArrayAdvanceByteBuffer(override val array: ByteArray, val offset: Int = 0, override val size: Int = array.size - offset) : AdvanceByteBuffer {
-	constructor(size: Int) : this(ByteArray(size), 0, size)
+class ByteArrayAdvanceByteBuffer(
+	override val array: ByteArray,
+	val offset: Int = 0,
+	override val size: Int = array.size - offset,
+	override var readPosition: Int = 0,
+	override var writePosition: Int = size
+) : AdvanceByteBuffer {
+	constructor(size: Int) : this(ByteArray(size), 0, size, 0, 0)
 
+	override val hasArray: Boolean get() = true
 	override val nioBuffer: ByteBuffer
 		get() = if (readMode) readByteBuffer
 		else writeByteBuffer
@@ -34,8 +42,6 @@ class ByteArrayAdvanceByteBuffer(override val array: ByteArray, val offset: Int 
 		return size
 	}
 
-	override var writePosition = 0
-	override var readPosition = 0
 
 	override val readOffset get() = offset + readPosition
 	override val writeOffset get() = offset + writePosition
@@ -115,10 +121,15 @@ class ByteArrayAdvanceByteBuffer(override val array: ByteArray, val offset: Int 
 	}
 
 	override fun writeTo(buffer: AdvanceByteBuffer): Int {
-		val size = readAllSize()
-		buffer.writePosition += size
-		array.copyInto(buffer.array, buffer.arrayOffset, offset, size)
-		return size
+		return if (buffer.hasArray) {
+			val size = min(readableSize, buffer.writeableSize)
+			array.copyInto(buffer.array, buffer.writeOffset, readOffset, readOffset + size)
+			buffer.writePosition += size
+			readPosition += size
+			size
+		} else {
+			super.writeTo(buffer)
+		}
 	}
 
 	override fun toByteArray() = getBytes()
