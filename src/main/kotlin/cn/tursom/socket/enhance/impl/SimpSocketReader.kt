@@ -6,11 +6,13 @@ import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.ByteArrayAdvanceByteBuffer
 
 class SimpSocketReader(
-    override val socket: AsyncNioSocket,
-    val buffer: AdvanceByteBuffer = ByteArrayAdvanceByteBuffer(1024)
+	override val socket: AsyncNioSocket,
+	val buffer: AdvanceByteBuffer = ByteArrayAdvanceByteBuffer(1024)
 ) : SocketReader<AdvanceByteBuffer> {
-    override suspend fun read(timeout: Long): AdvanceByteBuffer {
-        socket.read(buffer)
-        return buffer
-    }
+	override suspend fun read(timeout: Long): AdvanceByteBuffer {
+		if (socket.read(buffer) < 0) {
+			socket.close()
+		}
+		return buffer
+	}
 }
