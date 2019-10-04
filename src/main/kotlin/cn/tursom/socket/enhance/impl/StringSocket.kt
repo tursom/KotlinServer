@@ -9,7 +9,7 @@ import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 class StringSocket(
 	socket: IAsyncNioSocket,
 	prevReader: SocketReader<AdvanceByteBuffer> = LengthFieldBasedFrameReader(socket),
-	prevWriter: SocketWriter<AdvanceByteBuffer> = LengthFieldPrependerWriter(socket)
+	prevWriter: SocketWriter<AdvanceByteBuffer> = LengthFieldPrependWriter(socket)
 ) : EnhanceSocket<String, String> by UnionEnhanceSocket(
 	socket,
 	StringReader(prevReader),

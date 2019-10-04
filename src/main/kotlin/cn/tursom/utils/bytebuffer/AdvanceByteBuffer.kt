@@ -14,7 +14,7 @@ interface AdvanceByteBuffer {
 	 */
 	val hasArray: Boolean
 	val readOnly: Boolean
-	val singleBuffer: Boolean get() = true
+	val bufferCount: Int get() = 1
 
 	var writePosition: Int
 	var limit: Int

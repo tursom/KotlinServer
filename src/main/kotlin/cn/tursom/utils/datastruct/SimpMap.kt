@@ -1,12 +1,11 @@
 package cn.tursom.utils.datastruct
 
 interface SimpMap<K, V> : Map<K, V> {
-	infix fun remove(key: K): V?
-
 	/**
 	 * @return prev value
 	 */
 	operator fun set(key: K, value: V)
+	infix fun delete(key: K): V?
 
 	fun setAndGet(key: K, value: V): V? {
 		val prev = get(key)

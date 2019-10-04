@@ -2,7 +2,6 @@ package cn.tursom.socket
 
 import cn.tursom.socket.niothread.INioThread
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
-import cn.tursom.utils.bytebuffer.readNioBuffer
 import cn.tursom.utils.bytebuffer.writeNioBuffer
 import java.net.SocketException
 import java.nio.ByteBuffer
@@ -41,8 +40,10 @@ interface IAsyncNioSocket : AsyncSocket {
 		}
 	}
 
-	suspend fun read(buffer: ByteBuffer): Int
-	suspend fun write(buffer: ByteBuffer): Int
+	suspend fun read(buffer: ByteBuffer): Int = read(arrayOf(buffer)).toInt()
+	suspend fun write(buffer: ByteBuffer): Int = write(arrayOf(buffer)).toInt()
+	suspend fun read(buffer: Array<out ByteBuffer>): Long
+	suspend fun write(buffer: Array<out ByteBuffer>): Long
 	/**
 	 * 如果通道已断开则会抛出异常
 	 */
@@ -64,21 +65,22 @@ interface IAsyncNioSocket : AsyncSocket {
 		return readSize
 	}
 
-	suspend fun read(buffer: AdvanceByteBuffer, timeout: Long = 0): Int {
-		return buffer.writeNioBuffer {
-			read(it, timeout)
+	suspend fun recv(buffers: Array<out ByteBuffer>, timeout: Long): Long {
+		if (buffers.isEmpty()) return 0
+		val readSize = read(buffers, timeout)
+		if (readSize < 0) {
+			throw SocketException("channel closed")
 		}
-	}
-
-	suspend fun write(buffer: AdvanceByteBuffer, timeout: Long = 0): Int {
-		return buffer.readNioBuffer {
-			write(it, timeout)
-		}
+		return readSize
 	}
 
 	suspend fun recv(buffer: AdvanceByteBuffer, timeout: Long = 0): Int {
-		return buffer.writeNioBuffer {
-			recv(it, timeout)
+		return if (buffer.bufferCount == 1) {
+			buffer.writeNioBuffer {
+				recv(it, timeout)
+			}
+		} else {
+			recv(buffer.nioBuffers, timeout).toInt()
 		}
 	}
 }

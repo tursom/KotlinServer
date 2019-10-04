@@ -69,7 +69,7 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : SimpMap<K, V> {
 		arr.sort()
 	}
 
-	override infix fun remove(key: K): V? {
+	override infix fun delete(key: K): V? {
 		val index = search(key)
 		if (index >= 0) {
 			val oldNode = arr[index]

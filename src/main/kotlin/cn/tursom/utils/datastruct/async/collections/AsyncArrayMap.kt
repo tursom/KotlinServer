@@ -54,7 +54,7 @@ class AsyncArrayMap<K : Comparable<K>, V> : AsyncPotableMap<K, V> {
 	}
 
 	override suspend fun remove(key: K): V? {
-		return lock { map.remove(key) }
+		return lock { map.delete(key) }
 	}
 
 	override suspend fun contains(element: Map.Entry<K, V>): Boolean {

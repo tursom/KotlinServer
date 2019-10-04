@@ -8,7 +8,7 @@ import cn.tursom.utils.bytebuffer.ByteArrayAdvanceByteBuffer
 class StringWriter(
     val prevWriter: SocketWriter<AdvanceByteBuffer>
 ) : SocketWriter<String> {
-    constructor(socket: IAsyncNioSocket) : this(LengthFieldPrependerWriter(socket))
+    constructor(socket: IAsyncNioSocket) : this(LengthFieldPrependWriter(socket))
 
     override suspend fun put(value: String, timeout: Long) {
         val buf = ByteArrayAdvanceByteBuffer(value.toByteArray())

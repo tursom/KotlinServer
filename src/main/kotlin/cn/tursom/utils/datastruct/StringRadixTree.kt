@@ -234,7 +234,7 @@ class StringRadixTree<T> {
 				subNodes = ArrayMap()
 				subNodes.putAll(oldNodes)
 			}
-			subNodes.remove(key)
+			subNodes.delete(key)
 		}
 
 		override fun toString(): String {

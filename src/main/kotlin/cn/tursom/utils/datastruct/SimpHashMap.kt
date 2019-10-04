@@ -3,7 +3,7 @@ package cn.tursom.utils.datastruct
 class SimpHashMap<K, V>(
 	val hashMap: java.util.AbstractMap<K, V> = HashMap()
 ) : SimpMap<K, V>, Map<K, V> by hashMap {
-	override fun remove(key: K): V? {
+	override fun delete(key: K): V? {
 		return hashMap.remove(key)
 	}
 

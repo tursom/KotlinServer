@@ -12,6 +12,9 @@ class NettyAdvanceByteBuffer(val byteBuf: ByteBuf) : AdvanceByteBuffer {
 		get() = if (readMode) byteBuf.nioBuffer()
 		else byteBuf.nioBuffer(writePosition, limit)
 
+	override val bufferCount: Int get() = byteBuf.nioBufferCount()
+	override val nioBuffers: Array<out ByteBuffer> get() = byteBuf.nioBuffers()
+
 	override var writePosition: Int
 		get() = byteBuf.writerIndex()
 		set(value) {
