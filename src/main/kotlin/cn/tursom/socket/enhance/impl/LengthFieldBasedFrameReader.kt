@@ -6,25 +6,28 @@ import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 import cn.tursom.utils.bytebuffer.ByteArrayAdvanceByteBuffer
 
 class LengthFieldBasedFrameReader(
-    val prevReader: SocketReader<AdvanceByteBuffer>
+	val prevReader: SocketReader<AdvanceByteBuffer>
 ) : SocketReader<AdvanceByteBuffer> {
-    override val socket: IAsyncNioSocket get() = prevReader.socket
+	constructor(socket: IAsyncNioSocket) : this(SimpSocketReader(socket))
 
-    constructor(socket: IAsyncNioSocket) : this(SimpSocketReader(socket))
+	override suspend fun readSocket(buffer: AdvanceByteBuffer, timeout: Long): AdvanceByteBuffer {
+		val rBuf = prevReader.readSocket(buffer, timeout)
+		val blockSize = rBuf.getInt()
+		if (rBuf.readableSize == blockSize) return rBuf
 
-    override suspend fun read(timeout: Long): AdvanceByteBuffer {
-        val buffer1 = prevReader.read(timeout)
-        val blockSize = buffer1.getInt()
-        val targetBuffer = ByteArrayAdvanceByteBuffer(blockSize)
-        buffer1.writeTo(targetBuffer)
+		val targetBuffer = ByteArrayAdvanceByteBuffer(blockSize)
+		rBuf.writeTo(targetBuffer)
+		while (targetBuffer.writeableSize != 0) {
+			val rBuf2 = prevReader.readSocket(buffer, timeout)
+			if (rBuf2.readableSize == 0) return targetBuffer
+			rBuf2.writeTo(targetBuffer)
+		}
+		return targetBuffer
+	}
 
-        while (targetBuffer.writeableSize != 0) {
-            val buf = prevReader.read(timeout)
-            if (buf.readableSize == 0) return targetBuffer
-            buf.writeTo(targetBuffer)
-        }
-        return targetBuffer
-    }
+	override fun close() {
+		prevReader.close()
+	}
 }
 
 

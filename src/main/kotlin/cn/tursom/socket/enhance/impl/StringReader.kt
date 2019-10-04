@@ -5,13 +5,15 @@ import cn.tursom.socket.enhance.SocketReader
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 
 class StringReader(
-    val prevReader: SocketReader<AdvanceByteBuffer>
+	val prevReader: SocketReader<AdvanceByteBuffer>
 ) : SocketReader<String> {
-    override val socket: IAsyncNioSocket get() = prevReader.socket
+	constructor(socket: IAsyncNioSocket) : this(LengthFieldBasedFrameReader(socket))
 
-    constructor(socket: IAsyncNioSocket) : this(LengthFieldBasedFrameReader(socket))
+	override suspend fun readSocket(buffer: AdvanceByteBuffer, timeout: Long): String {
+		return prevReader.readSocket(buffer, timeout).getString()
+	}
 
-    override suspend fun read(timeout: Long): String {
-        return prevReader.read(timeout).getString()
-    }
+	override fun close() {
+		prevReader.close()
+	}
 }

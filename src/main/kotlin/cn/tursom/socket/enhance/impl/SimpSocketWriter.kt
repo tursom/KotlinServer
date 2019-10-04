@@ -5,9 +5,13 @@ import cn.tursom.socket.enhance.SocketWriter
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 
 class SimpSocketWriter(
-    override val socket: IAsyncNioSocket
+    val socket: IAsyncNioSocket
 ) : SocketWriter<AdvanceByteBuffer> {
     override suspend fun write(value: AdvanceByteBuffer, timeout: Long) {
         socket.write(value, timeout)
     }
+
+	override fun close() {
+		socket.close()
+	}
 }

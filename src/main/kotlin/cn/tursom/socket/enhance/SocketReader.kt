@@ -1,9 +1,10 @@
 package cn.tursom.socket.enhance
 
-import cn.tursom.socket.IAsyncNioSocket
+import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
+import java.io.Closeable
 
-interface SocketReader<T> {
-	val socket: IAsyncNioSocket
-	suspend fun read(timeout: Long = 0): T
+interface SocketReader<T> : Closeable {
+	suspend fun readSocket(buffer: AdvanceByteBuffer, timeout: Long = 0): T
+	override fun close()
 }
 

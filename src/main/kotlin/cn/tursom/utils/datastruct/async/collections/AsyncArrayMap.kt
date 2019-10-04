@@ -1,6 +1,5 @@
 package cn.tursom.utils.datastruct.async.collections
 
-import cn.tursom.utils.asynclock.AsyncLock
 import cn.tursom.utils.asynclock.AsyncWriteFirstRWLock
 import cn.tursom.utils.datastruct.ArrayMap
 import cn.tursom.utils.datastruct.async.interfaces.AsyncCollection
@@ -37,14 +36,14 @@ class AsyncArrayMap<K : Comparable<K>, V> : AsyncPotableMap<K, V> {
 	}
 
 	override suspend fun set(key: K, value: V): V? {
-		return lock { map.set(key, value) }
+		return lock { map.setAndGet(key, value) }
 	}
 
 	override suspend fun putIfAbsent(key: K, value: V): Boolean {
 		return lock {
 			if (containsKey(key)) false
 			else {
-				map[key] = value
+				map.setAndGet(key, value)
 				true
 			}
 		}

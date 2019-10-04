@@ -11,7 +11,7 @@ class StringSocket(
 	prevReader: SocketReader<AdvanceByteBuffer> = LengthFieldBasedFrameReader(socket),
 	prevWriter: SocketWriter<AdvanceByteBuffer> = LengthFieldPrependerWriter(socket)
 ) : EnhanceSocket<String, String> by UnionEnhanceSocket(
+	socket,
 	StringReader(prevReader),
-	StringWriter(prevWriter),
-	socket
+	StringWriter(prevWriter)
 )

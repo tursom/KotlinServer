@@ -8,8 +8,6 @@ import cn.tursom.utils.bytebuffer.ByteArrayAdvanceByteBuffer
 class StringWriter(
     val prevWriter: SocketWriter<AdvanceByteBuffer>
 ) : SocketWriter<String> {
-    override val socket: IAsyncNioSocket get() = prevWriter.socket
-
     constructor(socket: IAsyncNioSocket) : this(LengthFieldPrependerWriter(socket))
 
     override suspend fun write(value: String, timeout: Long) {
@@ -17,4 +15,8 @@ class StringWriter(
         buf.writePosition = buf.limit
         prevWriter.write(buf, timeout)
     }
+
+	override fun close() {
+		prevWriter.close()
+	}
 }

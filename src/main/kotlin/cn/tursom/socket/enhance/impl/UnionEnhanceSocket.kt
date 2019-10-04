@@ -7,10 +7,15 @@ import cn.tursom.socket.enhance.SocketWriter
 
 @Suppress("MemberVisibilityCanBePrivate")
 class UnionEnhanceSocket<Read, Write>(
+	val socket: IAsyncNioSocket,
 	val prevReader: SocketReader<Read>,
-	val prevWriter: SocketWriter<Write>,
-	override val socket: IAsyncNioSocket = prevReader.socket
+	val prevWriter: SocketWriter<Write>
 ) : EnhanceSocket<Read, Write>,
 	SocketReader<Read> by prevReader,
 	SocketWriter<Write> by prevWriter,
-	IAsyncNioSocket by socket
+	IAsyncNioSocket by socket {
+
+	override fun close() {
+		socket.close()
+	}
+}

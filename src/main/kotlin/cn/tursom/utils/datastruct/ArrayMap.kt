@@ -1,7 +1,7 @@
 package cn.tursom.utils.datastruct
 
 @Suppress("MemberVisibilityCanBePrivate")
-class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
+class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : SimpMap<K, V> {
 	@Volatile
 	private var arr: Array<Node<K, V>?> = Array(initialCapacity) { null }
 	@Volatile
@@ -13,13 +13,6 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 	override val values: Collection<V> = ValueCollection(this)
 
 	/**
-	 * 清空整个表
-	 */
-	fun clear() {
-		end = 0
-	}
-
-	/**
 	 * @param key 查找的键
 	 * @return 键所在的下标
 	 * @return < 0 如果键不存在, -${return} - 1 为如果插入应插入的下标
@@ -29,10 +22,24 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 		return arr.binarySearch(key, 0, end)
 	}
 
-	/**
-	 * @return prev value
-	 */
-	operator fun set(key: K, value: V): V? {
+	infix fun getFromIndex(index: Int): V? {
+		return if (index < 0) null
+		else arr[index]?.value
+	}
+
+	override fun first(): V? {
+		return getFromIndex(0)
+	}
+
+	override fun clear() {
+		end = 0
+	}
+
+	override operator fun set(key: K, value: V) {
+		setAndGet(key, value)
+	}
+
+	override fun setAndGet(key: K, value: V): V? {
 		// 首先查找得到目标所在的下标
 		val index = search(key)
 		var prev: V? = null
@@ -49,7 +56,7 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 		return prev
 	}
 
-	infix fun putAll(from: Map<out K, V>) {
+	override infix fun putAll(from: Map<out K, V>) {
 		from.forEach { (key, value) ->
 			val index = search(key)
 			if (index < 0) arr[end++] = Node(key, value)
@@ -62,7 +69,7 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 		arr.sort()
 	}
 
-	infix fun remove(key: K): V? {
+	override infix fun remove(key: K): V? {
 		val index = search(key)
 		if (index >= 0) {
 			val oldNode = arr[index]
@@ -88,11 +95,6 @@ class ArrayMap<K : Comparable<K>, V>(initialCapacity: Int = 4) : Map<K, V> {
 
 	override infix operator fun get(key: K): V? {
 		val index = search(key)
-		return if (index < 0) null
-		else arr[index]?.value
-	}
-
-	infix fun getFromIndex(index: Int): V? {
 		return if (index < 0) null
 		else arr[index]?.value
 	}

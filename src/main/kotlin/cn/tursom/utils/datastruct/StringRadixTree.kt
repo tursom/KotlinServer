@@ -76,7 +76,7 @@ class StringRadixTree<T> {
 	private fun removeNode(node: Node<T>): Boolean {
 		val parent = node.parent
 		return if (parent != null) {
-			parent.subNodes.remove(node[0])
+			parent.remove(node[0])
 			true
 		} else {
 			node.str = ""
@@ -92,7 +92,7 @@ class StringRadixTree<T> {
 		// 只有节点值为0且只有一个字节点的时候才会进行合并
 		if (node.value != null || node.subNodes.size != 1) return false
 		// 魔法操作（笑）
-		val subNode = node.subNodes.getFromIndex(0)!!
+		val subNode = node.subNodes.first()!!
 		node.str += subNode.str
 		node.subNodes = subNode.subNodes
 		node.subNodes.forEach { (_, u) -> u.parent = subNode }
@@ -210,17 +210,31 @@ class StringRadixTree<T> {
 	/**
 	 * 基数树的节点，用来储存数据和子节点
 	 */
-	private data class Node<T>(var str: String = "", var value: T? = null, var parent: Node<T>? = null, var subNodes: ArrayMap<Char, Node<T>> = ArrayMap(0)) {
+	private data class Node<T>(var str: String = "", var value: T? = null, var parent: Node<T>? = null, var subNodes: SimpMap<Char, Node<T>> = ArrayMap(0)) {
 		constructor(parent: Node<T>, str: String = "", value: T? = null) : this(str, value, parent, parent.subNodes) {
 			parent.subNodes = ArrayMap(1)
-			parent.subNodes[this[0]] = this
+			parent.subNodes.setAndGet(this[0], this)
 			subNodes.forEach { (_, u) -> u.parent = this }
 		}
 
 		val length get() = str.length
 		operator fun get(index: Int) = str[index]
 		fun addSubNode(key: String, value: T?) {
-			subNodes[key[0]] = Node(key, value, this)
+			if (subNodes is ArrayMap && subNodes.size > 16) {
+				val oldNodes = subNodes
+				subNodes = SimpHashMap()
+				subNodes.putAll(oldNodes)
+			}
+			subNodes.setAndGet(key[0], Node(key, value, this))
+		}
+
+		fun remove(key: Char) {
+			if (subNodes is SimpHashMap && subNodes.size < 8) {
+				val oldNodes = subNodes
+				subNodes = ArrayMap()
+				subNodes.putAll(oldNodes)
+			}
+			subNodes.remove(key)
 		}
 
 		override fun toString(): String {
