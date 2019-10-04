@@ -3,5 +3,5 @@ package cn.tursom.socket.enhance
 import java.io.Closeable
 
 interface SocketWriter<T> : Closeable {
-	suspend fun write(value: T, timeout: Long = 0)
+	suspend fun put(value: T, timeout: Long = 0)
 }

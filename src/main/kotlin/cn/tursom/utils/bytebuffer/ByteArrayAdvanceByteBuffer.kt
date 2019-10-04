@@ -3,7 +3,6 @@ package cn.tursom.utils.bytebuffer
 import cn.tursom.utils.*
 import java.io.OutputStream
 import java.nio.ByteBuffer
-import kotlin.math.min
 
 class ByteArrayAdvanceByteBuffer(
 	override val array: ByteArray,
@@ -15,6 +14,7 @@ class ByteArrayAdvanceByteBuffer(
 	constructor(size: Int) : this(ByteArray(size), 0, size, 0, 0)
 
 	override val hasArray: Boolean get() = true
+	override var readOnly: Boolean = false
 	override val nioBuffer: ByteBuffer
 		get() = if (readMode) readByteBuffer
 		else writeByteBuffer
@@ -118,18 +118,6 @@ class ByteArrayAdvanceByteBuffer(
 	override fun writeTo(buffer: ByteArray, bufferOffset: Int, size: Int): Int {
 		array.copyInto(buffer, bufferOffset, offset, useReadSize(size))
 		return size
-	}
-
-	override fun writeTo(buffer: AdvanceByteBuffer): Int {
-		return if (buffer.hasArray) {
-			val size = min(readableSize, buffer.writeableSize)
-			array.copyInto(buffer.array, buffer.writeOffset, readOffset, readOffset + size)
-			buffer.writePosition += size
-			readPosition += size
-			size
-		} else {
-			super.writeTo(buffer)
-		}
 	}
 
 	override fun toByteArray() = getBytes()

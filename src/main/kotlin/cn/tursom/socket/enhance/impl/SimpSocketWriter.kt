@@ -7,7 +7,7 @@ import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 class SimpSocketWriter(
     val socket: IAsyncNioSocket
 ) : SocketWriter<AdvanceByteBuffer> {
-    override suspend fun write(value: AdvanceByteBuffer, timeout: Long) {
+    override suspend fun put(value: AdvanceByteBuffer, timeout: Long) {
         socket.write(value, timeout)
     }
 

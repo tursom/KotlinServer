@@ -7,12 +7,12 @@ import cn.tursom.utils.timer.WheelTimer
 
 class TimeoutReader<Read>(val prevReader: SocketReader<Read>, val timeout: Long = 5000L) : SocketReader<Read> {
 	private var timerTask: TimerTask? = null
-	override suspend fun readSocket(buffer: AdvanceByteBuffer, timeout: Long): Read {
+	override suspend fun get(buffer: AdvanceByteBuffer, timeout: Long): Read {
 		timerTask?.cancel()
 		timerTask = timer.exec(this.timeout) {
 			prevReader.close()
 		}
-		return prevReader.readSocket(buffer, timeout)
+		return prevReader.get(buffer, timeout)
 	}
 
 	override fun close() {

@@ -7,7 +7,7 @@ import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
 class SimpSocketReader(
 	val socket: IAsyncNioSocket
 ) : SocketReader<AdvanceByteBuffer> {
-	override suspend fun readSocket(buffer: AdvanceByteBuffer, timeout: Long): AdvanceByteBuffer {
+	override suspend fun get(buffer: AdvanceByteBuffer, timeout: Long): AdvanceByteBuffer {
 		buffer.reset()
 		if (socket.read(buffer) < 0) {
 			socket.close()

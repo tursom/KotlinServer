@@ -7,9 +7,10 @@ import java.nio.ByteBuffer
 
 class NettyAdvanceByteBuffer(val byteBuf: ByteBuf) : AdvanceByteBuffer {
 	override val hasArray: Boolean get() = byteBuf.hasArray()
+	override val readOnly: Boolean get() = byteBuf.isReadOnly
 	override val nioBuffer: ByteBuffer
-		get() = if (readMode) byteBuf.nioBuffer(writePosition, limit)
-		else byteBuf.nioBuffer()
+		get() = if (readMode) byteBuf.nioBuffer()
+		else byteBuf.nioBuffer(writePosition, limit)
 
 	override var writePosition: Int
 		get() = byteBuf.writerIndex()

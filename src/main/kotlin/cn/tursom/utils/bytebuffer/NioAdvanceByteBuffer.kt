@@ -12,6 +12,7 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	override val nioBuffer: ByteBuffer get() = buffer
 
 	override val hasArray: Boolean get() = buffer.hasArray()
+	override val readOnly: Boolean get() = buffer.isReadOnly
 
 	private var _readMode = false
 	var readMark = 0
@@ -129,20 +130,6 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 		return size
 	}
 
-	override fun writeTo(buffer: AdvanceByteBuffer): Int {
-		val size = readAllSize()
-		buffer.writePosition += size
-		array.copyInto(buffer.array, buffer.arrayOffset, arrayOffset, size)
-		return size
-	}
-
-	override fun writeTo(os: OutputStream): Int {
-		val size = readableSize
-		os.write(array, arrayOffset + readPosition, size)
-		reset()
-		return size
-	}
-
 	override fun toByteArray() = getBytes()
 
 
@@ -163,5 +150,16 @@ class NioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	override fun put(str: String) = put(str.toByteArray())
 	override fun put(byteArray: ByteArray, startIndex: Int, endIndex: Int) {
 		byteArray.copyInto(array, push(endIndex - startIndex), startIndex, endIndex)
+	}
+
+	override fun split(from: Int, to: Int): AdvanceByteBuffer {
+		val readMark = readPosition
+		val writeMark = writePosition
+		buffer.position(readMark)
+		buffer.limit(writeMark)
+		val slice = NioAdvanceByteBuffer(buffer.slice())
+		readPosition = readMark
+		writePosition = writeMark
+		return slice
 	}
 }

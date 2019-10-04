@@ -10,10 +10,10 @@ class StringWriter(
 ) : SocketWriter<String> {
     constructor(socket: IAsyncNioSocket) : this(LengthFieldPrependerWriter(socket))
 
-    override suspend fun write(value: String, timeout: Long) {
+    override suspend fun put(value: String, timeout: Long) {
         val buf = ByteArrayAdvanceByteBuffer(value.toByteArray())
         buf.writePosition = buf.limit
-        prevWriter.write(buf, timeout)
+        prevWriter.put(buf, timeout)
     }
 
 	override fun close() {

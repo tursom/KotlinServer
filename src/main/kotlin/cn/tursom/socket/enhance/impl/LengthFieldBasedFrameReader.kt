@@ -10,15 +10,27 @@ class LengthFieldBasedFrameReader(
 ) : SocketReader<AdvanceByteBuffer> {
 	constructor(socket: IAsyncNioSocket) : this(SimpSocketReader(socket))
 
-	override suspend fun readSocket(buffer: AdvanceByteBuffer, timeout: Long): AdvanceByteBuffer {
-		val rBuf = prevReader.readSocket(buffer, timeout)
+	override suspend fun get(buffer: AdvanceByteBuffer, timeout: Long): AdvanceByteBuffer {
+		val rBuf = prevReader.get(buffer, timeout)
 		val blockSize = rBuf.getInt()
-		if (rBuf.readableSize == blockSize) return rBuf
+		if (rBuf.readableSize == blockSize) {
+			return rBuf
+		} else if (rBuf.readableSize > blockSize) {
+			return if (rBuf.hasArray) {
+				val retBuf = ByteArrayAdvanceByteBuffer(rBuf.array, rBuf.readOffset, blockSize)
+				rBuf.readPosition += blockSize
+				retBuf
+			} else {
+				val targetBuffer = ByteArrayAdvanceByteBuffer(blockSize)
+				rBuf.writeTo(targetBuffer)
+				targetBuffer
+			}
+		}
 
 		val targetBuffer = ByteArrayAdvanceByteBuffer(blockSize)
 		rBuf.writeTo(targetBuffer)
 		while (targetBuffer.writeableSize != 0) {
-			val rBuf2 = prevReader.readSocket(buffer, timeout)
+			val rBuf2 = prevReader.get(buffer, timeout)
 			if (rBuf2.readableSize == 0) return targetBuffer
 			rBuf2.writeTo(targetBuffer)
 		}

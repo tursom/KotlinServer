@@ -2,8 +2,8 @@
 
 package cn.tursom.utils
 
+import cn.tursom.utils.bytebuffer.HeapByteBuffer
 import java.io.*
-import java.lang.IndexOutOfBoundsException
 import java.nio.ByteOrder
 
 class WrongPushTypeException : Exception()
@@ -543,3 +543,5 @@ private val ByteArrayOutputStream_count = ByteArrayOutputStream::class.java.getD
 
 val ByteArrayOutputStream.buf get() = ByteArrayOutputStream_buf.get(this) as ByteArray
 val ByteArrayOutputStream.count get() = ByteArrayOutputStream_count.get(this) as Int
+
+fun ByteArray.toByteBuffer() = HeapByteBuffer.wrap(this, 0, size)

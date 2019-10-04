@@ -9,8 +9,8 @@ class StringReader(
 ) : SocketReader<String> {
 	constructor(socket: IAsyncNioSocket) : this(LengthFieldBasedFrameReader(socket))
 
-	override suspend fun readSocket(buffer: AdvanceByteBuffer, timeout: Long): String {
-		return prevReader.readSocket(buffer, timeout).getString()
+	override suspend fun get(buffer: AdvanceByteBuffer, timeout: Long): String {
+		return prevReader.get(buffer, timeout).getString()
 	}
 
 	override fun close() {
