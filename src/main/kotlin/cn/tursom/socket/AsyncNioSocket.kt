@@ -83,7 +83,10 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 			var timeoutTask: TimerTask? = null
 			val result: Int = suspendCoroutine {
 				timeoutTask = timer.exec(timeout) {
-					it.resumeWithException(TimeoutException())
+					try {
+						it.resumeWithException(TimeoutException())
+					} catch (e: Exception) {
+					}
 				}
 				key.attach(SingleContext(buffer, it))
 				readMode()
@@ -104,7 +107,10 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 			var timeoutTask: TimerTask? = null
 			val result: Long = suspendCoroutine {
 				timeoutTask = timer.exec(timeout) {
-					it.resumeWithException(TimeoutException())
+					try {
+						it.resumeWithException(TimeoutException())
+					} catch (e: Exception) {
+					}
 				}
 				key.attach(MultiContext(buffer, it))
 				readMode()
@@ -125,7 +131,10 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 			var timeoutTask: TimerTask? = null
 			val result: Int = suspendCoroutine {
 				timeoutTask = timer.exec(timeout) {
-					it.resumeWithException(TimeoutException())
+					try {
+						it.resumeWithException(TimeoutException())
+					} catch (e: Exception) {
+					}
 				}
 				key.attach(SingleContext(buffer, it))
 				writeMode()
@@ -146,7 +155,10 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 			var timeoutTask: TimerTask? = null
 			val result: Long = suspendCoroutine {
 				timeoutTask = timer.exec(timeout) {
-					it.resumeWithException(TimeoutException())
+					try {
+						it.resumeWithException(TimeoutException())
+					} catch (e: Exception) {
+					}
 				}
 				key.attach(MultiContext(buffer, it))
 				writeMode()

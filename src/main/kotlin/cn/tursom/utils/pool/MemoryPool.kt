@@ -1,35 +1,38 @@
 package cn.tursom.utils.pool
 
-import cn.tursom.utils.bytebuffer.HeapByteBuffer
-import cn.tursom.utils.datastruct.ArrayBitSet
+import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
+import cn.tursom.utils.bytebuffer.NioAdvanceByteBuffer
 import java.nio.ByteBuffer
 
-@Suppress("CanBeParameter", "MemberVisibilityCanBePrivate")
-class MemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) : Pool<ByteBuffer> {
-	private val memoryPool = ByteArray(blockSize * blockCount)
-	private val bitSet = ArrayBitSet(blockCount.toLong())
-	
-	override fun put(cache: ByteBuffer): Boolean {
-		if (cache.array() !== memoryPool) return false
-		
-		val index = (cache.arrayOffset() / blockSize).toLong()
-		synchronized(bitSet) {
-			bitSet.down(index)
+interface MemoryPool {
+	fun allocate(): Int
+	fun free(token: Int)
+	fun getMemory(token: Int): ByteBuffer?
+	fun getAdvanceByteBuffer(token: Int): AdvanceByteBuffer? {
+		val buffer = getMemory(token)
+		return if (buffer != null) {
+			NioAdvanceByteBuffer(buffer)
+		} else {
+			null
 		}
-		
-		cache.asCharBuffer()
-		return true
 	}
-	
-	override fun get(): ByteBuffer? {
-		val index = synchronized(bitSet) {
-			val index = bitSet.firstDown()
-			if (index >= 0) bitSet.up(index)
-			index
-		}.toInt()
-		return if (index < 0 || index > blockCount) null
-		else HeapByteBuffer.wrap(memoryPool, blockSize * index, blockSize)
+}
+
+
+inline fun MemoryPool.usingMemory(action: (ByteBuffer?) -> Unit) {
+	val token = allocate()
+	try {
+		action(getMemory(token))
+	} finally {
+		free(token)
 	}
-	
-	fun contain(buffer: ByteBuffer) = buffer.array() === memoryPool
+}
+
+inline fun MemoryPool.usingAdvanceByteBuffer(action: (AdvanceByteBuffer?) -> Unit) {
+	val token = allocate()
+	try {
+		action(getAdvanceByteBuffer(token))
+	} finally {
+		free(token)
+	}
 }

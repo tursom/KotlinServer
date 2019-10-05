@@ -5,8 +5,9 @@ import cn.tursom.utils.bytebuffer.NioAdvanceByteBuffer
 import cn.tursom.utils.datastruct.ArrayBitSet
 import java.nio.ByteBuffer
 
-class DirectMemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) : MemoryPool {
-	private val memoryPool = ByteBuffer.allocateDirect(blockSize * blockCount)
+@Suppress("MemberVisibilityCanBePrivate")
+class HeapMemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) : MemoryPool {
+	private val memoryPool = ByteBuffer.allocate(blockSize * blockCount)
 	private val bitMap = ArrayBitSet(blockCount.toLong())
 
 	/**
