@@ -1,5 +1,6 @@
 package cn.tursom.socket.niothread
 
+import cn.tursom.utils.printNonDaemonThread
 import cn.tursom.utils.timer.WheelTimer
 import java.nio.channels.Selector
 import java.util.concurrent.Callable
@@ -10,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class WorkerLoopNioThread(
 	val threadName: String = "nioLoopThread",
 	override val selector: Selector = Selector.open(),
+	override val isDaemon: Boolean = true,
 	override val workLoop: (thread: INioThread) -> Unit
 ) : INioThread {
 	private var onWakeup: AtomicBoolean = AtomicBoolean(false)
@@ -47,7 +49,7 @@ class WorkerLoopNioThread(
 
 	init {
 		thread.name = threadName
-		thread.isDaemon = true
+		thread.isDaemon = isDaemon
 		thread.start()
 	}
 

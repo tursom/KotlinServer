@@ -15,7 +15,7 @@ object AsyncNioClient {
 	private const val TIMEOUT = 1000L
 	private val protocol = AsyncNioSocket.nioSocketProtocol
 	@JvmStatic
-	private val nioThread = WorkerLoopNioThread("nioClient") { nioThread ->
+	val nioThread = WorkerLoopNioThread("nioClient") { nioThread ->
 		val selector = nioThread.selector
 		//logE("AsyncNioClient selector select")
 		if (selector.select(TIMEOUT) != 0) {

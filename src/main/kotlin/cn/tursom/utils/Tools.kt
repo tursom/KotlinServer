@@ -11,6 +11,20 @@ import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
 
+fun printNonDaemonThread() {
+	val currentGroup = Thread.currentThread().threadGroup
+	val noThreads = currentGroup.activeCount()
+	val lstThreads = arrayOfNulls<Thread>(noThreads)
+	currentGroup.enumerate(lstThreads)
+	for (i in 0 until noThreads) {
+		val t = lstThreads[i]
+		if (t?.isDaemon != true) {
+			println("${System.currentTimeMillis()}: ${t?.name}")
+		}
+	}
+	println()
+}
+
 fun log(log: String) = println("${System.currentTimeMillis()}: $log")
 fun logE(log: String) = System.err.println("${System.currentTimeMillis()}: $log")
 

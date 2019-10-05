@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class ThreadPoolNioThread(
 	val threadName: String = "",
 	override val selector: Selector = Selector.open(),
+	override val isDaemon: Boolean = true,
 	override val workLoop: (thread: INioThread) -> Unit
 ) : INioThread {
 	private var onWakeup: AtomicBoolean = AtomicBoolean(false)
@@ -28,7 +29,7 @@ class ThreadPoolNioThread(
 		ThreadFactory {
 			val thread = Thread(it)
 			this.thread = thread
-			thread.isDaemon = true
+			thread.isDaemon = isDaemon
 			thread.name = threadName
 			thread
 		})

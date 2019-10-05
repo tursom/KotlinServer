@@ -26,7 +26,7 @@ class GroupNioServer(
 		threads: Int,
 		worker: (thread: INioThread) -> Unit
 	) -> IWorkerGroup = { name, _, worker ->
-		ThreadPoolWorkerGroup(threads, name, worker)
+		ThreadPoolWorkerGroup(threads, name, false, worker)
 	}
 ) : ISocketServer {
 	private val listenChannel = ServerSocketChannel.open()

@@ -1,5 +1,6 @@
 package cn.tursom.socket.niothread
 
+import cn.tursom.utils.printNonDaemonThread
 import java.io.Closeable
 import java.nio.channels.SelectableChannel
 import java.nio.channels.SelectionKey
@@ -14,6 +15,7 @@ interface INioThread : Closeable {
 	val closed: Boolean
 	val workLoop: (thread: INioThread) -> Unit
 	val thread: Thread
+	val isDaemon: Boolean
 
 	fun wakeup() {
 		if (Thread.currentThread() != thread) selector.wakeup()
