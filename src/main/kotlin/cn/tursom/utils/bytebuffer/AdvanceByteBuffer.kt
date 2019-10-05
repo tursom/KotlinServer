@@ -1,5 +1,6 @@
 package cn.tursom.utils.bytebuffer
 
+import cn.tursom.utils.forEachIndex
 import sun.reflect.generics.reflectiveObjects.NotImplementedException
 import java.io.OutputStream
 import java.nio.ByteBuffer
@@ -12,21 +13,21 @@ interface AdvanceByteBuffer {
 	/**
 	 * 各种位置变量
 	 */
-	val hasArray: Boolean
 	val readOnly: Boolean
 	val bufferCount: Int get() = 1
 
 	var writePosition: Int
 	var limit: Int
 	val capacity: Int
+	val hasArray: Boolean
 	val array: ByteArray
 	val arrayOffset: Int
 	var readPosition: Int
-	val readOffset: Int
+	val readOffset: Int get() = arrayOffset + readPosition
 	val readableSize: Int
-	val available: Int
-	val writeOffset: Int
-	val writeableSize: Int
+	val available: Int get() = readableSize
+	val writeOffset: Int get() = arrayOffset + writePosition
+	val writeableSize: Int get() = limit - writePosition
 	val size: Int
 	val readMode: Boolean
 
@@ -67,15 +68,24 @@ interface AdvanceByteBuffer {
 			array.copyInto(array, arrayOffset, readOffset, arrayOffset + writePosition)
 			writePosition = readableSize
 			readPosition = 0
+		} else {
+			readMode()
+			nioBuffer.rewind()
+			val writePosition = readPosition
+			resumeWriteMode()
+			readPosition = 0
+			this.writePosition = writePosition
 		}
 	}
 
 	fun reset(outputStream: OutputStream) {
 		if (hasArray) {
 			outputStream.write(array, readOffset, arrayOffset + writePosition)
-			writePosition = 0
-			readPosition = 0
+		} else {
+			outputStream.write(getBytes())
 		}
+		writePosition = 0
+		readPosition = 0
 	}
 
 	fun requireAvailableSize(size: Int) {
@@ -87,15 +97,87 @@ interface AdvanceByteBuffer {
 	 * 数据获取方法
 	 */
 
-	fun get(): Byte
-	fun getChar(): Char
-	fun getShort(): Short
-	fun getInt(): Int
-	fun getLong(): Long
-	fun getFloat(): Float
-	fun getDouble(): Double
-	fun getBytes(): ByteArray
-	fun getString(size: Int = readableSize): String
+
+	fun get(): Byte = if (readMode) {
+		nioBuffer.get()
+	} else {
+		readMode()
+		val value = nioBuffer.get()
+		resumeWriteMode()
+		value
+	}
+
+	fun getChar(): Char = if (readMode) {
+		nioBuffer.char
+	} else {
+		readMode()
+		val value = nioBuffer.char
+		resumeWriteMode()
+		value
+	}
+
+	fun getShort(): Short = if (readMode) {
+		nioBuffer.short
+	} else {
+		readMode()
+		val value = nioBuffer.short
+		resumeWriteMode()
+		value
+	}
+
+	fun getInt(): Int = if (readMode) {
+		nioBuffer.int
+	} else {
+		readMode()
+		val value = nioBuffer.int
+		resumeWriteMode()
+		value
+	}
+
+	fun getLong(): Long = if (readMode) {
+		nioBuffer.long
+	} else {
+		readMode()
+		val value = nioBuffer.long
+		resumeWriteMode()
+		value
+	}
+
+	fun getFloat(): Float = if (readMode) {
+		nioBuffer.float
+	} else {
+		readMode()
+		val value = nioBuffer.float
+		resumeWriteMode()
+		value
+	}
+
+	fun getDouble(): Double = if (readMode) {
+		nioBuffer.double
+	} else {
+		readMode()
+		val value = nioBuffer.double
+		resumeWriteMode()
+		value
+	}
+
+
+	fun getBytes(): ByteArray = if (readMode) {
+		val bytes = ByteArray(readableSize)
+		nioBuffer.get(bytes)
+		readPosition = writePosition
+		bytes
+	} else {
+		readMode()
+		val bytes = ByteArray(readableSize)
+		nioBuffer.get(bytes)
+		readPosition = writePosition
+		resumeWriteMode()
+		bytes
+	}
+
+
+	fun getString(size: Int = readableSize): String = String(getBytes())
 
 	fun writeTo(buffer: ByteArray, bufferOffset: Int = 0, size: Int = min(readableSize, buffer.size)): Int {
 		val readSize = min(readableSize, size)
@@ -151,54 +233,153 @@ interface AdvanceByteBuffer {
 	 * 数据写入方法
 	 */
 
-	fun put(byte: Byte)
-	fun put(char: Char)
-	fun put(short: Short)
-	fun put(int: Int)
-	fun put(long: Long)
-	fun put(float: Float)
-	fun put(double: Double)
-	fun put(str: String)
+	fun put(byte: Byte) {
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.put(byte)
+			readMode()
+		} else {
+			nioBuffer.put(byte)
+		}
+	}
+
+	fun put(char: Char) {
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.putChar(char)
+			readMode()
+		} else {
+			nioBuffer.putChar(char)
+		}
+	}
+
+	fun put(short: Short) {
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.putShort(short)
+			readMode()
+		} else {
+			nioBuffer.putShort(short)
+		}
+	}
+
+	fun put(int: Int) {
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.putInt(int)
+			readMode()
+		} else {
+			nioBuffer.putInt(int)
+		}
+	}
+
+	fun put(long: Long) {
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.putLong(long)
+			readMode()
+		} else {
+			nioBuffer.putLong(long)
+		}
+	}
+
+	fun put(float: Float) {
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.putFloat(float)
+			readMode()
+		} else {
+			nioBuffer.putFloat(float)
+		}
+	}
+
+	fun put(double: Double) {
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.putDouble(double)
+			readMode()
+		} else {
+			nioBuffer.putDouble(double)
+		}
+	}
+
+	fun put(str: String) {
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.put(str.toByteArray())
+			readMode()
+		} else {
+			nioBuffer.put(str.toByteArray())
+		}
+	}
 
 	fun put(byteArray: ByteArray, startIndex: Int = 0, endIndex: Int = byteArray.size) {
-		for (i in startIndex until endIndex) {
-			put(byteArray[i])
+		if (readMode) {
+			resumeWriteMode()
+			nioBuffer.put(byteArray, startIndex, endIndex - startIndex)
+			readMode()
+		} else {
+			nioBuffer.put(byteArray, startIndex, endIndex - startIndex)
 		}
 	}
 
 	fun put(array: CharArray, index: Int = 0, size: Int = array.size - index) {
-		for (i in index until index + size) {
-			put(array[i])
+		if (readMode) {
+			resumeWriteMode()
+			array.forEachIndex(index, index + size - 1, this::put)
+			readMode()
+		} else {
+			array.forEachIndex(index, index + size - 1, this::put)
 		}
 	}
 
 	fun put(array: ShortArray, index: Int = 0, size: Int = array.size - index) {
-		for (i in index until index + size) {
-			put(array[i])
+		if (readMode) {
+			resumeWriteMode()
+			array.forEachIndex(index, index + size - 1, this::put)
+			readMode()
+		} else {
+			array.forEachIndex(index, index + size - 1, this::put)
 		}
 	}
 
 	fun put(array: IntArray, index: Int = 0, size: Int = array.size - index) {
-		for (i in index until index + size) {
-			put(array[i])
+		if (readMode) {
+			resumeWriteMode()
+			array.forEachIndex(index, index + size - 1, this::put)
+			readMode()
+		} else {
+			array.forEachIndex(index, index + size - 1, this::put)
 		}
 	}
 
 	fun put(array: LongArray, index: Int = 0, size: Int = array.size - index) {
-		for (i in index until index + size) {
-			put(array[i])
+		if (readMode) {
+			resumeWriteMode()
+			array.forEachIndex(index, index + size - 1, this::put)
+			readMode()
+		} else {
+			array.forEachIndex(index, index + size - 1, this::put)
 		}
 	}
 
 	fun put(array: FloatArray, index: Int = 0, size: Int = array.size - index) {
-		for (i in index until index + size) {
-			put(array[i])
+		if (readMode) {
+			resumeWriteMode()
+			array.forEachIndex(index, index + size - 1, this::put)
+			readMode()
+		} else {
+			array.forEachIndex(index, index + size - 1, this::put)
 		}
 	}
 
 	fun put(array: DoubleArray, index: Int = 0, size: Int = array.size - index) {
-		for (i in index until index + size) {
-			put(array[i])
+		if (readMode) {
+			resumeWriteMode()
+			array.forEachIndex(index, index + size - 1, this::put)
+			readMode()
+		} else {
+			array.forEachIndex(index, index + size - 1, this::put)
 		}
 	}
 

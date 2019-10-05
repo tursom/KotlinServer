@@ -11,6 +11,9 @@ import java.security.NoSuchAlgorithmException
 import java.util.*
 import java.util.jar.JarFile
 
+fun log(log: String) = println("${System.currentTimeMillis()}: $log")
+fun logE(log: String) = System.err.println("${System.currentTimeMillis()}: $log")
+
 
 val String.urlDecode: String get() = URLDecoder.decode(this, "utf-8")
 val String.urlEncode: String get() = URLEncoder.encode(this, "utf-8")

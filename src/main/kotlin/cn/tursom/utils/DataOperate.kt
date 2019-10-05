@@ -545,3 +545,51 @@ val ByteArrayOutputStream.buf get() = ByteArrayOutputStream_buf.get(this) as Byt
 val ByteArrayOutputStream.count get() = ByteArrayOutputStream_count.get(this) as Int
 
 fun ByteArray.toByteBuffer() = HeapByteBuffer.wrap(this, 0, size)
+
+inline fun <T> Array<T>.forEachIndex(fromIndex: Int, toIndex: Int, action: (T) -> Unit) {
+	for (i in fromIndex..toIndex) {
+		action(this[i])
+	}
+}
+
+inline fun ByteArray.forEachIndex(fromIndex: Int, toIndex: Int, action: (Byte) -> Unit) {
+	for (i in fromIndex..toIndex) {
+		action(this[i])
+	}
+}
+
+inline fun CharArray.forEachIndex(fromIndex: Int, toIndex: Int, action: (Char) -> Unit) {
+	for (i in fromIndex..toIndex) {
+		action(this[i])
+	}
+}
+
+inline fun ShortArray.forEachIndex(fromIndex: Int, toIndex: Int, action: (Short) -> Unit) {
+	for (i in fromIndex..toIndex) {
+		action(this[i])
+	}
+}
+
+inline fun IntArray.forEachIndex(fromIndex: Int, toIndex: Int, action: (Int) -> Unit) {
+	for (i in fromIndex..toIndex) {
+		action(this[i])
+	}
+}
+
+inline fun LongArray.forEachIndex(fromIndex: Int, toIndex: Int, action: (Long) -> Unit) {
+	for (i in fromIndex..toIndex) {
+		action(this[i])
+	}
+}
+
+inline fun FloatArray.forEachIndex(fromIndex: Int, toIndex: Int, action: (Float) -> Unit) {
+	for (i in fromIndex..toIndex) {
+		action(this[i])
+	}
+}
+
+inline fun DoubleArray.forEachIndex(fromIndex: Int, toIndex: Int, action: (Double) -> Unit) {
+	for (i in fromIndex..toIndex) {
+		action(this[i])
+	}
+}

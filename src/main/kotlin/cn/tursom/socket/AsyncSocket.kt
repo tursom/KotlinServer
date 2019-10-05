@@ -1,6 +1,7 @@
 package cn.tursom.socket
 
 import cn.tursom.utils.bytebuffer.AdvanceByteBuffer
+import cn.tursom.utils.bytebuffer.readNioBuffer
 import cn.tursom.utils.bytebuffer.writeNioBuffer
 import java.io.Closeable
 import java.nio.ByteBuffer
@@ -14,11 +15,15 @@ interface AsyncSocket : Closeable {
 
 	suspend fun write(buffer: AdvanceByteBuffer, timeout: Long = 0): Int {
 		return if (buffer.bufferCount == 1) {
-			buffer.writeNioBuffer {
+			buffer.readNioBuffer {
 				write(it, timeout)
 			}
 		} else {
-			write(buffer.nioBuffers, timeout).toInt()
+			val readMode = buffer.readMode
+			buffer.readMode()
+			val value = write(buffer.nioBuffers, timeout).toInt()
+			if (!readMode) buffer.resumeWriteMode()
+			value
 		}
 	}
 
@@ -28,7 +33,11 @@ interface AsyncSocket : Closeable {
 				read(it, timeout)
 			}
 		} else {
-			read(buffer.nioBuffers, timeout).toInt()
+			val readMode = buffer.readMode
+			buffer.resumeWriteMode()
+			val value = read(buffer.nioBuffers, timeout).toInt()
+			if (readMode) buffer.readMode()
+			value
 		}
 	}
 }

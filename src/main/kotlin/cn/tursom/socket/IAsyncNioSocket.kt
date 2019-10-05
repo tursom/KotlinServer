@@ -80,7 +80,11 @@ interface IAsyncNioSocket : AsyncSocket {
 				recv(it, timeout)
 			}
 		} else {
-			recv(buffer.nioBuffers, timeout).toInt()
+			val readMode = buffer.readMode
+			buffer.resumeWriteMode()
+			val value = recv(buffer.nioBuffers, timeout).toInt()
+			if (readMode) buffer.readMode()
+			value
 		}
 	}
 }

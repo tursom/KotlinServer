@@ -16,7 +16,7 @@ interface INioThread : Closeable {
 	val thread: Thread
 
 	fun wakeup() {
-		selector.wakeup()
+		if (Thread.currentThread() != thread) selector.wakeup()
 	}
 
 	fun register(channel: SelectableChannel, ops: Int, onComplete: (key: SelectionKey) -> Unit) {

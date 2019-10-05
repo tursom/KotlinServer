@@ -3,6 +3,10 @@ package cn.tursom.utils.bytebuffer
 import java.nio.ByteBuffer
 
 class MultiAdvanceByteBuffer(vararg val buffers: AdvanceByteBuffer) : AdvanceByteBuffer {
+	init {
+		resumeWriteMode()
+	}
+
 	var writeBufferIndex = 0
 	var readBufferIndex = 0
 	val readBuffer get() = buffers[writeBufferIndex]
@@ -62,10 +66,12 @@ class MultiAdvanceByteBuffer(vararg val buffers: AdvanceByteBuffer) : AdvanceByt
 
 	override fun readMode() {
 		readMode = true
+		buffers.forEach(AdvanceByteBuffer::readMode)
 	}
 
 	override fun resumeWriteMode(usedSize: Int) {
 		readMode = false
+		buffers.forEach { it.resumeWriteMode() }
 	}
 
 	override fun clear() {

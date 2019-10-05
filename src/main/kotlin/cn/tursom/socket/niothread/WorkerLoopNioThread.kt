@@ -22,6 +22,7 @@ class WorkerLoopNioThread(
 			} catch (e: Exception) {
 				e.printStackTrace()
 			}
+			//System.err.println("$threadName worker loop finish once")
 			while (waitQueue.isNotEmpty()) try {
 				waitQueue.poll().run()
 			} catch (e: Exception) {
