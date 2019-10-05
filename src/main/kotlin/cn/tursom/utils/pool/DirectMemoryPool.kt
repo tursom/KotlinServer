@@ -23,7 +23,7 @@ class DirectMemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) {
 	}
 
 	fun free(token: Int) {
-		if (token >= 0) synchronized(this) {
+		if (token in 0 until blockCount) synchronized(this) {
 			bitMap.down(token.toLong())
 		}
 	}
