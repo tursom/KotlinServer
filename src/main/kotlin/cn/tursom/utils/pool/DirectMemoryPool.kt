@@ -30,8 +30,8 @@ class DirectMemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) {
 
 	fun getMemory(token: Int): ByteBuffer? = if (token in 0 until blockCount) {
 		synchronized(this) {
-			memoryPool.position(token * blockSize)
 			memoryPool.limit((token + 1) * blockSize)
+			memoryPool.position(token * blockSize)
 			return memoryPool.slice()
 		}
 	} else {
@@ -40,8 +40,8 @@ class DirectMemoryPool(val blockSize: Int = 1024, val blockCount: Int = 16) {
 
 	fun getAdvanceByteBuffer(token: Int): AdvanceByteBuffer? = if (token in 0 until blockCount) {
 		synchronized(this) {
-			memoryPool.position(token * blockSize)
 			memoryPool.limit((token + 1) * blockSize)
+			memoryPool.position(token * blockSize)
 			return NioAdvanceByteBuffer(memoryPool.slice())
 		}
 	} else {

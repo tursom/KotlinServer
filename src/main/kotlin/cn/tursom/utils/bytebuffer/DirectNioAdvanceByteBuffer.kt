@@ -42,8 +42,8 @@ class DirectNioAdvanceByteBuffer(val buffer: ByteBuffer) : AdvanceByteBuffer {
 	override fun resumeWriteMode(usedSize: Int) {
 		if (readMode) {
 			readMode = false
-			buffer.position(writePosition)
 			buffer.limit(capacity)
+			buffer.position(writePosition)
 		}
 	}
 
