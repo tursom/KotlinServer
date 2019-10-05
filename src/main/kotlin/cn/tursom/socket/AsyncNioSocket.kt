@@ -173,8 +173,10 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 	}
 
 	override fun close() {
-		channel.close()
-		key.cancel()
+		nioThread.execute {
+			channel.close()
+			key.cancel()
+		}
 	}
 
 	interface Context {

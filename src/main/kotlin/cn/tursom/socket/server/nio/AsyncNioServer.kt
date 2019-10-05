@@ -27,9 +27,7 @@ class AsyncNioServer(
 				e.printStackTrace()
 			} finally {
 				try {
-					@Suppress("BlockingMethodInNonBlockingContext")
-					socket.channel.close()
-					socket.key.cancel()
+					socket.close()
 				} catch (e: Exception) {
 				}
 			}

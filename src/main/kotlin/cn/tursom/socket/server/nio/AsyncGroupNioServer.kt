@@ -28,9 +28,7 @@ class AsyncGroupNioServer(
 				e.printStackTrace()
 			} finally {
 				try {
-					@Suppress("BlockingMethodInNonBlockingContext")
-					socket.channel.close()
-					socket.key.cancel()
+					nioThread.execute { socket.close() }
 				} catch (e: Exception) {
 				}
 			}

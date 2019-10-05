@@ -1,8 +1,10 @@
 package cn.tursom.socket.niothread
 
+import cn.tursom.utils.timer.WheelTimer
 import java.nio.channels.Selector
 import java.util.concurrent.Callable
 import java.util.concurrent.LinkedBlockingDeque
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Suppress("MemberVisibilityCanBePrivate", "CanBeParameter")
 class WorkerLoopNioThread(
@@ -10,6 +12,8 @@ class WorkerLoopNioThread(
 	override val selector: Selector = Selector.open(),
 	override val workLoop: (thread: INioThread) -> Unit
 ) : INioThread {
+	private var onWakeup: AtomicBoolean = AtomicBoolean(false)
+
 	override var closed: Boolean = false
 
 	val waitQueue = LinkedBlockingDeque<Runnable>()
@@ -62,6 +66,15 @@ class WorkerLoopNioThread(
 		closed = true
 	}
 
+	override fun wakeup() {
+		if (Thread.currentThread() != thread && onWakeup.compareAndSet(false, true)) {
+			timer.exec(50) {
+				onWakeup.set(false)
+				selector.wakeup()
+			}
+		}
+	}
+
 	class Future<T>(val task: Callable<T>) : NioThreadFuture<T> {
 		private val lock = Object()
 		private var exception: Throwable? = null
@@ -97,5 +110,9 @@ class WorkerLoopNioThread(
 				lock.notifyAll()
 			}
 		}
+	}
+
+	companion object {
+		val timer = WheelTimer.smoothTimer
 	}
 }

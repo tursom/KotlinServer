@@ -1,9 +1,11 @@
 package cn.tursom.socket.niothread
 
+import cn.tursom.utils.timer.WheelTimer
 import java.nio.channels.SelectableChannel
 import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.util.concurrent.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 @Suppress("MemberVisibilityCanBePrivate")
 class ThreadPoolNioThread(
@@ -11,6 +13,7 @@ class ThreadPoolNioThread(
 	override val selector: Selector = Selector.open(),
 	override val workLoop: (thread: INioThread) -> Unit
 ) : INioThread {
+	private var onWakeup: AtomicBoolean = AtomicBoolean(false)
 	override lateinit var thread: Thread
 	//val threadPool: ExecutorService = Executors.newSingleThreadExecutor {
 	//	val thread = Thread(it)
@@ -42,7 +45,12 @@ class ThreadPoolNioThread(
 	override var closed: Boolean = false
 
 	override fun wakeup() {
-		selector.wakeup()
+		if (Thread.currentThread() != thread && onWakeup.compareAndSet(false, true)) {
+			timer.exec(50) {
+				onWakeup.set(false)
+				selector.wakeup()
+			}
+		}
 	}
 
 	override fun register(channel: SelectableChannel, ops: Int, onComplete: (key: SelectionKey) -> Unit) {
@@ -69,5 +77,9 @@ class ThreadPoolNioThread(
 
 	override fun toString(): String {
 		return "SingleThreadNioThread($threadName)"
+	}
+
+	companion object {
+		val timer = WheelTimer.smoothTimer
 	}
 }

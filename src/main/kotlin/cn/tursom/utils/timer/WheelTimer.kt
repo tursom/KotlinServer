@@ -8,8 +8,7 @@ import kotlin.concurrent.thread
 
 class WheelTimer(
 	val tick: Long = 200,
-	val wheelSize: Int = 512,
-	val threadPool: ExecutorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())
+	val wheelSize: Int = 512
 ) : Timer {
 	var closed = false
 	val taskQueueArray = Array(wheelSize) { TaskQueue() }
@@ -94,6 +93,8 @@ class WheelTimer(
 	}
 
 	companion object {
-		val timer = WheelTimer(100, 1024)
+		val threadPool: ExecutorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())
+		val timer by lazy { WheelTimer(200, 1024) }
+		val smoothTimer by lazy { WheelTimer(20, 128) }
 	}
 }

@@ -14,6 +14,7 @@ import kotlin.coroutines.suspendCoroutine
 object AsyncNioClient {
 	private const val TIMEOUT = 1000L
 	private val protocol = AsyncNioSocket.nioSocketProtocol
+	@JvmStatic
 	private val nioThread = WorkerLoopNioThread("nioClient") { nioThread ->
 		val selector = nioThread.selector
 		//logE("AsyncNioClient selector select")
@@ -52,8 +53,6 @@ object AsyncNioClient {
 
 	@Suppress("DuplicatedCode")
 	fun getConnection(host: String, port: Int): AsyncNioSocket {
-		nioThread // 确保 nio thread 已经加载，防止虚断
-
 		val selector = nioThread.selector
 		val channel = SocketChannel.open()
 		channel.connect(InetSocketAddress(host, port))
@@ -68,8 +67,6 @@ object AsyncNioClient {
 
 	@Suppress("DuplicatedCode")
 	suspend fun getSuspendConnection(host: String, port: Int): AsyncNioSocket {
-		nioThread // 确保 nio thread 已经加载，防止虚断
-
 		val key: SelectionKey = suspendCoroutine { cont ->
 			try {
 				val channel = SocketChannel.open()
@@ -91,8 +88,6 @@ object AsyncNioClient {
 	@Suppress("DuplicatedCode")
 	suspend fun getSuspendConnection(host: String, port: Int, timeout: Long): AsyncNioSocket {
 		if (timeout <= 0) return getSuspendConnection(host, port)
-		nioThread // 确保 nio thread 已经加载，防止虚断
-
 		var timeoutTask: TimerTask? = null
 		val key: SelectionKey = suspendCoroutine { cont ->
 			val channel = SocketChannel.open()

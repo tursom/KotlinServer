@@ -6,8 +6,7 @@ import kotlin.concurrent.thread
 
 class StaticWheelTimer(
 	val tick: Long = 200,
-	val wheelSize: Int = 512,
-	val threadPool: ExecutorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())
+	val wheelSize: Int = 512
 ) : Timer {
 	var closed = false
 	val taskQueueArray = Array(wheelSize) { TaskQueue() }
@@ -87,5 +86,6 @@ class StaticWheelTimer(
 
 	companion object {
 		val timer = StaticWheelTimer(100, 1024)
+		val threadPool: ExecutorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())
 	}
 }
