@@ -70,7 +70,7 @@ interface AdvanceByteBuffer {
 			readPosition = 0
 		} else {
 			readMode()
-			nioBuffer.rewind()
+			nioBuffer.compact()
 			val writePosition = readPosition
 			resumeWriteMode()
 			readPosition = 0
