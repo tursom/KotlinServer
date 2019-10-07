@@ -4,7 +4,6 @@ import cn.tursom.socket.INioProtocol
 import cn.tursom.socket.niothread.INioThread
 import cn.tursom.socket.niothread.WorkerLoopNioThread
 import cn.tursom.socket.server.ISocketServer
-import cn.tursom.utils.printNonDaemonThread
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
 import java.nio.channels.ServerSocketChannel
@@ -55,10 +54,13 @@ class NioServer(
 							when {
 								key.isAcceptable -> {
 									val serverChannel = key.channel() as ServerSocketChannel
-									val channel = serverChannel.accept() ?: return@whileBlock
-									channel.configureBlocking(false)
-									nioThread.register(channel, 0) {
-										protocol.handleConnect(it, nioThread)
+									var channel = serverChannel.accept()
+									while (channel != null) {
+										channel.configureBlocking(false)
+										nioThread.register(channel, 0) {
+											protocol.handleConnect(it, nioThread)
+										}
+										channel = serverChannel.accept()
 									}
 								}
 								key.isReadable -> {

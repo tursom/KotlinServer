@@ -53,10 +53,13 @@ class GroupNioServer(
 						when {
 							key.isAcceptable -> {
 								val serverChannel = key.channel() as ServerSocketChannel
-								val channel = serverChannel.accept() ?: return@forEachKey
-								channel.configureBlocking(false)
-								workerGroup.register(channel) { (key, thread) ->
-									protocol.handleConnect(key, thread)
+								var channel = serverChannel.accept()
+								while (channel != null) {
+									channel.configureBlocking(false)
+									workerGroup.register(channel) { (key, thread) ->
+										protocol.handleConnect(key, thread)
+									}
+									channel = serverChannel.accept()
 								}
 							}
 						}

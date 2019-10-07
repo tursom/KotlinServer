@@ -80,19 +80,16 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 		if (timeout <= 0) return read(buffer)
 		if (buffer.remaining() == 0) return -1
 		return try {
-			var timeoutTask: TimerTask? = null
 			val result: Int = suspendCoroutine {
-				timeoutTask = timer.exec(timeout) {
+				key.attach(SingleContext(buffer, it, timer.exec(timeout) {
 					try {
 						it.resumeWithException(TimeoutException())
 					} catch (e: Exception) {
 					}
-				}
-				key.attach(SingleContext(buffer, it))
+				}))
 				readMode()
 				nioThread.wakeup()
 			}
-			timeoutTask?.cancel()
 			result
 		} catch (e: Exception) {
 			waitMode()
@@ -104,19 +101,16 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 		if (timeout <= 0) return read(buffer)
 		if (buffer.isEmpty()) return -1
 		return try {
-			var timeoutTask: TimerTask? = null
 			val result: Long = suspendCoroutine {
-				timeoutTask = timer.exec(timeout) {
+				key.attach(MultiContext(buffer, it, timer.exec(timeout) {
 					try {
 						it.resumeWithException(TimeoutException())
 					} catch (e: Exception) {
 					}
-				}
-				key.attach(MultiContext(buffer, it))
+				}))
 				readMode()
 				nioThread.wakeup()
 			}
-			timeoutTask?.cancel()
 			result
 		} catch (e: Exception) {
 			waitMode()
@@ -128,19 +122,16 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 		if (timeout <= 0) return write(buffer)
 		if (buffer.remaining() == 0) return -1
 		return try {
-			var timeoutTask: TimerTask? = null
 			val result: Int = suspendCoroutine {
-				timeoutTask = timer.exec(timeout) {
+				key.attach(SingleContext(buffer, it, timer.exec(timeout) {
 					try {
 						it.resumeWithException(TimeoutException())
 					} catch (e: Exception) {
 					}
-				}
-				key.attach(SingleContext(buffer, it))
+				}))
 				writeMode()
 				nioThread.wakeup()
 			}
-			timeoutTask?.cancel()
 			result
 		} catch (e: Exception) {
 			waitMode()
@@ -152,19 +143,16 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 		if (timeout <= 0) return write(buffer)
 		if (buffer.isEmpty()) return -1
 		return try {
-			var timeoutTask: TimerTask? = null
 			val result: Long = suspendCoroutine {
-				timeoutTask = timer.exec(timeout) {
+				key.attach(MultiContext(buffer, it, timer.exec(timeout) {
 					try {
 						it.resumeWithException(TimeoutException())
 					} catch (e: Exception) {
 					}
-				}
-				key.attach(MultiContext(buffer, it))
+				}))
 				writeMode()
 				nioThread.wakeup()
 			}
-			timeoutTask?.cancel()
 			result
 		} catch (e: Exception) {
 			waitMode()
@@ -181,10 +169,20 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 
 	interface Context {
 		val cont: Continuation<*>
+		val timeoutTask: TimerTask? get() = null
 	}
 
-	class SingleContext(val buffer: ByteBuffer, override val cont: Continuation<Int>) : Context
-	class MultiContext(val buffer: Array<out ByteBuffer>, override val cont: Continuation<Long>) : Context
+	class SingleContext(
+		val buffer: ByteBuffer,
+		override val cont: Continuation<Int>,
+		override val timeoutTask: TimerTask? = null
+	) : Context
+
+	class MultiContext(
+		val buffer: Array<out ByteBuffer>,
+		override val cont: Continuation<Long>,
+		override val timeoutTask: TimerTask? = null
+	) : Context
 
 	companion object {
 		val nioSocketProtocol = object : INioProtocol {
@@ -192,7 +190,8 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 
 			override fun handleRead(key: SelectionKey, nioThread: INioThread) {
 				key.interestOps(0)
-				val context = key.attachment()
+				val context = key.attachment() as Context
+				context.timeoutTask?.cancel()
 				if (context is SingleContext) {
 					val channel = key.channel() as SocketChannel
 					val readSize = channel.read(context.buffer)
@@ -207,7 +206,8 @@ class AsyncNioSocket(override val key: SelectionKey, override val nioThread: INi
 
 			override fun handleWrite(key: SelectionKey, nioThread: INioThread) {
 				key.interestOps(0)
-				val context = key.attachment()
+				val context = key.attachment() as Context
+				context.timeoutTask?.cancel()
 				if (context is SingleContext) {
 					val channel = key.channel() as SocketChannel
 					val readSize = channel.write(context.buffer)

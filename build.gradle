@@ -28,6 +28,10 @@ dependencies {
 	implementation "com.google.code.gson:gson:2.8.2"
 //	implementation 'org.apache.commons:commons-lang3:3.5'
 
+	// spring
+	implementation 'org.springframework:spring-context:5.1.10.RELEASE'
+	implementation 'commons-dbutils:commons-dbutils:1.7'
+
 	// 数据库与序列化部分可选
 	implementation group: 'org.jetbrains.kotlin', name: 'kotlin-reflect', version: kotlin_version
 

@@ -1,19 +1,19 @@
 package cn.tursom.database.async.sqlite
 
-import cn.tursom.database.*
+import cn.tursom.database.SqlFieldData
+import cn.tursom.database.SqlUtils.fieldName
+import cn.tursom.database.SqlUtils.fieldStr
+import cn.tursom.database.SqlUtils.fieldValue
+import cn.tursom.database.SqlUtils.getAnnotation
+import cn.tursom.database.SqlUtils.ignored
+import cn.tursom.database.SqlUtils.tableName
+import cn.tursom.database.SqlUtils.valueStr
 import cn.tursom.database.annotation.*
 import cn.tursom.database.async.AsyncSqlAdapter
 import cn.tursom.database.async.AsyncSqlHelper
 import cn.tursom.database.async.vertx
 import cn.tursom.database.clauses.Clause
 import cn.tursom.utils.simplifyPath
-import cn.tursom.database.SqlUtils.fieldStr
-import cn.tursom.database.SqlUtils.tableName
-import cn.tursom.database.SqlUtils.getAnnotation
-import cn.tursom.database.SqlUtils.valueStr
-import cn.tursom.database.SqlUtils.fieldName
-import cn.tursom.database.SqlUtils.fieldValue
-import cn.tursom.database.SqlUtils.ignored
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.jdbc.JDBCClient
 import io.vertx.ext.sql.SQLConnection
@@ -32,7 +32,7 @@ class AsyncSqliteHelper(base: String) : AsyncSqlHelper {
 	override val connection = runBlocking {
 		val config = JsonObject()
 		config.put("url", "jdbc:sqlite:$path")
-		config.put("_driver class", "org.sqlite.JDBC")
+		config.put("driver_class", "org.sqlite.JDBC")
 		suspendCoroutine<SQLConnection> { cont ->
 			JDBCClient.createShared(vertx, config, File(base).absolutePath.replace(".${File.separator}", "")).getConnection {
 				if (!it.failed()) {

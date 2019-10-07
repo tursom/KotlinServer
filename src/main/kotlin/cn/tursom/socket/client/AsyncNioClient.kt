@@ -2,7 +2,6 @@ package cn.tursom.socket.client
 
 import cn.tursom.socket.AsyncNioSocket
 import cn.tursom.socket.niothread.WorkerLoopNioThread
-import cn.tursom.utils.timer.TimerTask
 import java.net.InetSocketAddress
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
@@ -15,7 +14,7 @@ object AsyncNioClient {
 	private const val TIMEOUT = 1000L
 	private val protocol = AsyncNioSocket.nioSocketProtocol
 	@JvmStatic
-	val nioThread = WorkerLoopNioThread("nioClient") { nioThread ->
+	private val nioThread = WorkerLoopNioThread("nioClient") { nioThread ->
 		val selector = nioThread.selector
 		//logE("AsyncNioClient selector select")
 		if (selector.select(TIMEOUT) != 0) {
@@ -52,7 +51,7 @@ object AsyncNioClient {
 	}
 
 	@Suppress("DuplicatedCode")
-	fun getConnection(host: String, port: Int): AsyncNioSocket {
+	fun connect(host: String, port: Int): AsyncNioSocket {
 		val selector = nioThread.selector
 		val channel = SocketChannel.open()
 		channel.connect(InetSocketAddress(host, port))
@@ -66,7 +65,7 @@ object AsyncNioClient {
 	}
 
 	@Suppress("DuplicatedCode")
-	suspend fun getSuspendConnection(host: String, port: Int): AsyncNioSocket {
+	suspend fun suspendConnect(host: String, port: Int): AsyncNioSocket {
 		val key: SelectionKey = suspendCoroutine { cont ->
 			try {
 				val channel = SocketChannel.open()
@@ -86,19 +85,19 @@ object AsyncNioClient {
 	}
 
 	@Suppress("DuplicatedCode")
-	suspend fun getSuspendConnection(host: String, port: Int, timeout: Long): AsyncNioSocket {
-		if (timeout <= 0) return getSuspendConnection(host, port)
-		var timeoutTask: TimerTask? = null
+	suspend fun suspendConnect(host: String, port: Int, timeout: Long): AsyncNioSocket {
+		if (timeout <= 0) return suspendConnect(host, port)
 		val key: SelectionKey = suspendCoroutine { cont ->
 			val channel = SocketChannel.open()
 			channel.connect(InetSocketAddress(host, port))
 			channel.configureBlocking(false)
-			timeoutTask = AsyncNioSocket.timer.exec(timeout) {
+			val timeoutTask = AsyncNioSocket.timer.exec(timeout) {
 				channel.close()
 				cont.resumeWithException(TimeoutException())
 			}
 			try {
 				nioThread.register(channel, 0) { key ->
+					timeoutTask.cancel()
 					cont.resume(key)
 				}
 				nioThread.wakeup()
@@ -106,7 +105,6 @@ object AsyncNioClient {
 				cont.resumeWithException(e)
 			}
 		}
-		timeoutTask?.cancel()
 		return AsyncNioSocket(key, nioThread)
 	}
 }
